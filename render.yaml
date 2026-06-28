@@ -1,13 +1,17 @@
-# Render Blueprint — 한 번의 연결로 [웹 + PostgreSQL + 매일 수집 크론]을 함께 배포.
+# Render Blueprint — 무료 티어 시작용 (웹 + PostgreSQL)
 #
 # 사용법:
 #   1) 이 저장소를 GitHub에 푸시
 #   2) Render 대시보드 > New + > "Blueprint" > 이 저장소 선택 > Apply
-#   3) Apply 후 sync:false 인 비밀값(MOLIT_SERVICE_KEY, CORS_ORIGINS)을 각 서비스 > Environment 에서 직접 입력
+#   3) Apply 후 sync:false 인 비밀값(MOLIT_SERVICE_KEY, CORS_ORIGINS)을 웹 서비스 > Environment 에서 직접 입력
+#   4) (최초 1회) 웹 서비스 > Shell 탭에서  python -m scripts.db_upgrade  실행 → DB 테이블 생성
 #
-# ⚠️ 주의: plan/region 이름과 무료 한도는 Render 정책에 따라 바뀔 수 있습니다.
-#    Blueprint Apply 시 값이 거부되면 대시보드 안내에 맞춰 plan(free/starter 등)·region 을 조정하세요.
-#    무료로만 시작하려면 cron 블록을 잠시 빼고(크론은 보통 유료), 수집은 수동으로 돌려도 됩니다.
+# ⚠️ 무료 티어 주의:
+#   - preDeployCommand(배포 전 자동 마이그레이션)는 무료에서 미지원 → 위 4번처럼 수동 1회.
+#   - 무료 웹은 15분 미사용 시 슬립(첫 요청 30~60초 지연). 실사용 시작하면 starter로 업그레이드.
+#   - cron(매일 자동 수집)은 보통 유료 → 아래 블록을 주석으로 둠. 당분간은 Shell에서 수동 수집:
+#       python -m scripts.run_collect live
+#     유료로 올릴 때 아래 cron 주석을 풀고 plan: starter 로 사용.
 
 services:
   # ── 웹 서비스(API + 빌드된 프런트엔드를 같은 컨테이너에서 서빙) ─────────────
@@ -15,10 +19,9 @@ services:
     name: cheongju-realestate
     runtime: docker
     region: singapore            # 한국에서 가장 가까운 리전(거부되면 oregon 등으로)
-    plan: free                   # 무료는 15분 미사용 시 슬립 → 출시/트래픽 시 starter($7)로 업그레이드 권장
+    plan: free                   # 무료. 출시/트래픽 시 starter($7)로 업그레이드 권장
     healthCheckPath: /health
     autoDeploy: true             # main 브랜치 푸시 시 자동 재배포
-    preDeployCommand: python -m scripts.db_upgrade   # 새 버전 가동 전 DB 마이그레이션 자동 실행(head 0016)
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -33,25 +36,9 @@ services:
       - key: WEB_CONCURRENCY
         value: "2"
       - key: CORS_ORIGINS
-        sync: false              # 배포 후 실제 접속 도메인으로 직접 입력(예: https://내도메인)
+        sync: false              # 배포 후 실제 접속 도메인으로 직접 입력(예: https://내앱.onrender.com)
       - key: MOLIT_SERVICE_KEY
         sync: false              # 비밀 — 대시보드에서만 입력(절대 코드/깃에 넣지 말 것)
-
-  # ── 매일 실거래 수집 크론(신규분만 증분 수집) ───────────────────────────────
-  - type: cron
-    name: cheongju-collect
-    runtime: docker
-    region: singapore
-    plan: starter                # 크론 잡은 보통 유료. 무료로 시작하려면 이 블록 제거 후 수동 수집
-    schedule: "0 19 * * *"       # 매일 19:00 UTC = 한국시간 04:00 (새벽 자동 수집)
-    dockerCommand: python -m scripts.run_collect live
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: cheongju-db
-          property: connectionString
-      - key: MOLIT_SERVICE_KEY
-        sync: false
 
 databases:
   # ── 관리형 PostgreSQL ───────────────────────────────────────────────────────
@@ -59,3 +46,21 @@ databases:
     plan: free                   # 무료 티어(용량·보존기간 제한) → 운영은 유료(백업·PITR) 권장
     databaseName: cheongju
     region: singapore
+
+# ── (유료 전환 시) 매일 실거래 수집 크론 — 주석 해제하고 plan: starter 로 사용 ──
+# services 항목 아래에 같은 들여쓰기로 추가하세요:
+#
+#  - type: cron
+#    name: cheongju-collect
+#    runtime: docker
+#    region: singapore
+#    plan: starter
+#    schedule: "0 19 * * *"      # 매일 19:00 UTC = 한국시간 04:00
+#    dockerCommand: python -m scripts.run_collect live
+#    envVars:
+#      - key: DATABASE_URL
+#        fromDatabase:
+#          name: cheongju-db
+#          property: connectionString
+#      - key: MOLIT_SERVICE_KEY
+#        sync: false

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>청주 시세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<!-- PWA (Phase B) -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0F766E" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="청주시세" />
+<meta name="mobile-web-app-capable" content="yes" />
+<style>
+  :root{--up:#C8322A;--down:#1E5FC4;--ink:#1B2733;--muted:#566069;--teal:#0F766E;--line:rgba(99,120,128,.18);
+    --bg1:#EAF3F1;--bg2:#EDF0F8;--bg3:#F4EDF6;
+    --surface:rgba(255,255,255,.62);--surface-solid:#ffffff;--surface-2:rgba(255,255,255,.82);--card-border:rgba(255,255,255,.7);
+    --row:rgba(255,255,255,.4);--hd:rgba(99,120,128,.035);--chip:#EEF1F1;--callout-bg:#FFF6DC;--callout-fg:#7a5b00;}
+  [data-theme=dark]{--up:#FF6F62;--down:#76ABFF;--ink:#E7EDF2;--muted:#9DAAB4;--teal:#37B9A8;--line:rgba(150,170,185,.22);
+    --bg1:#0E151D;--bg2:#111A24;--bg3:#15131F;
+    --surface:rgba(30,41,53,.66);--surface-solid:#1A242F;--surface-2:rgba(18,27,36,.88);--card-border:rgba(255,255,255,.09);
+    --row:rgba(255,255,255,.05);--hd:rgba(255,255,255,.04);--chip:rgba(255,255,255,.07);--callout-bg:rgba(255,205,90,.13);--callout-fg:#E8C766;}
+  *{box-sizing:border-box;} html{-webkit-text-size-adjust:100%;}
+  body{margin:0;color:var(--ink);font-family:Pretendard,system-ui,-apple-system,sans-serif;min-height:100vh;
+    background:linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 48%,var(--bg3) 100%);background-attachment:fixed;}
+  .wrap{max-width:480px;margin:0 auto;padding:0 16px 96px;}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap;}
+  .card{background:var(--surface);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    border:1px solid var(--card-border);border-radius:16px;box-shadow:0 8px 26px rgba(30,64,90,.07);}
+  .sectit{font-weight:800;font-size:15px;margin:18px 2px 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .ex{background:rgba(225,120,40,.14);color:#A85420;}
+  .sel{padding:9px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2);min-height:42px;font:inherit;font-size:14px;font-weight:600;color:var(--ink);width:100%;min-width:0;}
+  .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr;}}
+  .pager{display:flex;justify-content:center;align-items:center;gap:10px;padding:14px 0 2px;}
+  .pgbtn{border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:10px;cursor:pointer;}
+  .pgbtn:disabled{color:#AEB7BB;background:rgba(244,246,246,.55);cursor:default;}
+  .pgnum{font-size:13px;color:var(--muted);font-weight:600;min-width:62px;text-align:center;}
+  .inp{padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2);font:inherit;font-size:15px;color:var(--ink);width:100%;}
+  .tog{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:10px;cursor:pointer;min-height:38px;}
+  .tog.on{background:var(--teal);color:#fff;border-color:var(--teal);}
+  :focus-visible{outline:2.5px solid var(--teal);outline-offset:2px;border-radius:7px;}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+  table{width:100%;border-collapse:collapse;} th,td{text-align:left;padding:10px 7px;font-size:13.5px;border-bottom:1px solid rgba(99,120,128,.12);vertical-align:top;}
+  th{color:var(--muted);font-weight:600;font-size:12px;background:var(--hd);} tr:hover td{background:var(--row);}
+  .rankno{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;background:rgba(99,120,128,.12);color:var(--muted);flex:none;}
+  .rankno.top{background:var(--teal);color:#fff;}
+  .listrow{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid rgba(99,120,128,.12);font-size:13.5px;}
+  .listrow:last-child{border-bottom:none;}
+  .statusdot{font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;white-space:nowrap;flex:none;}
+  .nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface-2);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.7);box-shadow:0 -6px 22px rgba(30,64,90,.08);z-index:50;}
+  .nav-inner{max-width:480px;margin:0 auto;display:flex;}
+  .nav-btn{flex:1;border:none;background:none;font:inherit;padding:9px 0 11px;cursor:pointer;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;min-width:0;min-height:48px;}
+  .nav-btn.on{color:var(--teal);}
+  @media(max-width:720px){.hide-sm{display:none;}.filters{grid-template-columns:1fr 1fr;}}
+  @media(max-width:380px){.nav-btn{font-size:10px;}}
+
+  /* --- 추가 UX 유틸 --- */
+  .skel{position:relative;overflow:hidden;background:var(--row);border-radius:8px;}
+  .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shimmer 1.3s infinite;}
+  [data-theme=dark] .skel::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);}
+  @keyframes shimmer{100%{transform:translateX(100%);}}
+  .sticky-filter{position:sticky;top:0;z-index:20;}
+  .collapse-body{animation:expand .22s ease;}
+  @keyframes expand{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+  .tip{position:relative;display:inline-flex;align-items:center;cursor:help;}
+  .tip>.tipdot{width:14px;height:14px;border-radius:50%;background:var(--line);color:var(--muted);font-size:10px;
+    font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;}
+  .tip>.tiptext{visibility:hidden;opacity:0;position:absolute;bottom:135%;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--surface-solid);font-size:11.5px;font-weight:500;line-height:1.5;
+    padding:7px 10px;border-radius:8px;width:max-content;max-width:230px;white-space:normal;z-index:60;
+    box-shadow:0 6px 18px rgba(0,0,0,.18);transition:opacity .15s;}
+  .tip:hover>.tiptext,.tip:active>.tiptext{visibility:visible;opacity:1;}
+  .txrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid rgba(99,120,128,.1);cursor:pointer;}
+  .txrow:last-child{border-bottom:none;} .txrow:hover{background:var(--row);}
+  .sparkwrap{display:flex;align-items:flex-end;gap:2px;height:30px;}
+  .themebtn{border:none;background:rgba(255,255,255,.16);color:#fff;border-radius:9px;width:34px;height:34px;
+    font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
+<script>
+  /* 설치형 PWA용 서비스워커 등록(로드 시). 푸시 코드의 register('/sw.js')와 멱등. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>

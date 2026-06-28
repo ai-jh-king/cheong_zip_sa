@@ -1,0 +1,56 @@
+# 프로덕션 구성 — 웹(다중 워커) + 스케줄러(단일) + Postgres.
+# (기존 docker-compose.yml 은 로컬 Postgres 점검용 — 그대로 둠)
+#
+# 사용:
+#   1) .env 작성(DEPLOY.md 참조)
+#   2) docker compose -f docker-compose.prod.yml up -d --build
+#   3) 최초/배포 시 마이그레이션:
+#        docker compose -f docker-compose.prod.yml run --rm web alembic upgrade head
+#
+# ⚠️ 운영은 리버스 프록시(Nginx/Caddy)로 HTTPS 종단 + web:8000 프록시 권장(DEPLOY.md).
+# ⚠️ scheduler 는 절대 scale 하지 말 것(중복 수집 방지). 항상 1개.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cheongju}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cheongju}
+      POSTGRES_DB: ${POSTGRES_DB:-cheongju}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cheongju}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    build: .
+    image: cheongju-app:latest
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cheongju:cheongju@db:5432/cheongju}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    image: cheongju-app:latest
+    command: python -m scripts.scheduler
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cheongju:cheongju@db:5432/cheongju}
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:

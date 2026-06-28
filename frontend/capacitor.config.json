@@ -1,0 +1,15 @@
+{
+  "appId": "com.example.cheongju",
+  "appName": "청주시세",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 800,
+      "backgroundColor": "#0F766E",
+      "showSpinner": false
+    }
+  }
+}

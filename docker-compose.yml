@@ -1,0 +1,38 @@
+# 로컬에서 '진짜 PostgreSQL'로 점검할 때만 사용(선택).
+# 평소 개발은 이거 없이 SQLite로 동작함. Postgres 설치 불필요 — Docker만 있으면 됨.
+#
+# 사용법:
+#   docker compose up -d                       # Postgres 띄우기
+#   export DATABASE_URL=postgresql://cheongju:cheongju@localhost:5432/cheongju
+#   python run.py                              # 앱이 Postgres로 접속(URL은 자동 정규화)
+#   docker compose down                        # 정리 (-v 추가 시 데이터까지 삭제)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cheongju
+      POSTGRES_PASSWORD: cheongju
+      POSTGRES_DB: cheongju
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cheongju"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+
+# --- (선택) 수집+지오코딩 스케줄러를 '단일 프로세스'로 분리 실행하는 예시 ---
+# 웹은 여러 워커로 떠도, 스케줄러는 반드시 1개만 띄울 것(중복 수집 방지).
+# 앱 이미지를 빌드한 뒤(별도 Dockerfile) 아래처럼 별도 서비스로 실행:
+#
+#   scheduler:
+#     image: cheongju-app:latest        # 앱 이미지(웹과 동일 코드)
+#     command: python -m scripts.scheduler
+#     env_file: .env
+#     restart: unless-stopped
+#     depends_on: [db]

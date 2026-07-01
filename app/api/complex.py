@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services import stats
 from app.services.poi import nearby
+from app.services import places as places_svc
+from app.services import landmarks as landmarks_svc
 from app.services.living import living_score
 
 router = APIRouter(prefix="/complex", tags=["complex"])
@@ -43,8 +45,12 @@ def detail(db: Session = Depends(get_db),
         res["poi"] = nearby(res["lat"], res["lng"])
         res["school_access"] = _school_summary((res["poi"] or {}).get("학교") or [])
         res["living_score"] = living_score(res["poi"])
+        res["places"] = places_svc.nearby(db, res["lat"], res["lng"])  # 공공데이터 학원·체육·생활
+        res["landmarks"] = landmarks_svc.nearby(db, res["lat"], res["lng"])  # 주변 개발 호재
     else:
         res["poi"] = None
         res["school_access"] = None
+        res["places"] = None
+        res["landmarks"] = None
         res["living_score"] = None
     return res

@@ -1,41 +1,9 @@
-# ── 가상환경·uv ──
-.venv/
-venv/
-env/
-.uv/
-
-# ── Python 캐시 ──
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-
-# ── 비밀키·환경설정 (절대 금지) ──
 .env
-.env.*
-!.env.example
-!.env.production.example
-*.key
-*.pem
-
-# ── DB·로컬 데이터 ──
 *.db
-*.sqlite
 *.sqlite3
-_pytest_tmp.db
-
-# ── 프런트 빌드물(Render가 직접 빌드) ──
-node_modules/
-dist/
-.vite/
-
-# ── 로그·임시·OS·에디터 ──
-*.log
-*.tmp
-.cache/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+app/web/uploads/
 .DS_Store
-Thumbs.db
-.idea/
-.vscode/

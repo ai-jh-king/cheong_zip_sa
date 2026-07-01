@@ -34,7 +34,7 @@ services:
       - key: AUTH_DEV_LOGIN
         value: "false"           # 운영에선 반드시 false (개발용 로그인 비활성)
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"             # 512MB(Starter)에선 워커 1개(2개면 메모리 2배 → OOM). 메모리 큰 인스턴스로 올리면 2~로.
       - key: CORS_ORIGINS
         sync: false              # 배포 후 실제 접속 도메인으로 직접 입력(예: https://내앱.onrender.com)
       - key: MOLIT_SERVICE_KEY

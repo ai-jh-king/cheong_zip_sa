@@ -502,3 +502,65 @@ class Subscription(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Place(Base):
+    """생활·교육·운동 시설(공공데이터 기반 + 향후 업체 등록).
+
+    학원·체육시설·도서관·병원 등을 하나의 모델로 normalize 한다. source 로 공공/등록/광고를
+    구분해, 나중에 업체 직접 등록·홍보를 같은 테이블에 얹는다(재작업 방지 — 부록 B 원칙).
+    좌표 없으면 거리/지도에서 제외(왜곡 방지). 공개 안 된 값은 null.
+    """
+    __tablename__ = "places"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(150), index=True)
+    category: Mapped[str] = mapped_column(String(24), index=True)      # 대분류: education/sports/living
+    subcategory: Mapped[str] = mapped_column(String(32), index=True)   # academy_exam/academy_lang/academy_art/academy_pe/academy_etc/library/hospital/pharmacy/sports/daycare ...
+    course: Mapped[str | None] = mapped_column(String(150), nullable=True)        # 교습과정/종목 원문(분류 근거·표시용)
+    road_address: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    lawd_cd: Mapped[str | None] = mapped_column(String(5), index=True, nullable=True)
+    dong_name: Mapped[str | None] = mapped_column(String(40), index=True, nullable=True)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    tuition: Mapped[int | None] = mapped_column(Integer, nullable=True)           # 공개 수강료/사용료(원). 없으면 null
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)         # 운영/등록 상태(개설/휴원/폐업 등)
+    attrs: Mapped[dict | None] = mapped_column(JSON, nullable=True)               # 소스별 부가(운영시간·정원·연락처·면적 등)
+    # --- 출처/등록 구분(현재 public만, 등록·광고 자리 미리) ---
+    source: Mapped[str] = mapped_column(String(12), default="public", index=True)  # public/claimed/ad
+    source_dataset: Mapped[str | None] = mapped_column(String(40), nullable=True)  # 원천 데이터셋 식별(gov_academy 등)
+    source_key: Mapped[str] = mapped_column(String(160), unique=True)             # 원천 고유키(중복 적재 방지)
+    claimed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)        # 향후 업체 계정 id(등록 시)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_places_cat_lawd", "category", "lawd_cd"),
+        Index("ix_places_subcat_lawd", "subcategory", "lawd_cd"),
+    )
+
+
+class Landmark(Base):
+    """개발 호재/이슈(청주 하이퍼로컬) — 위치 + 사실 + 출처.
+
+    왜곡 없음 원칙(중요):
+      - status 로 단계를 명확히(confirmed 확정 / ongoing 추진 / planned 계획).
+      - summary 는 '사실'만(예: "2029년 준공 목표, 1.16조원"). 집값 상승 단정·투자 권유 금지.
+      - source_name/url 필수(출처 없는 호재 등록 금지).
+    향후 자동수집/큐레이션 교체 대비 source 계열 필드 보유(현재는 수동 큐레이션 전제).
+    """
+    __tablename__ = "landmarks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(120))
+    category: Mapped[str] = mapped_column(String(16), index=True)   # industry/transport/commercial/residential/public
+    status: Mapped[str] = mapped_column(String(12), index=True)     # confirmed/ongoing/planned
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    summary: Mapped[str | None] = mapped_column(String(400), nullable=True)   # 사실만
+    expected_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_name: Mapped[str | None] = mapped_column(String(120), nullable=True)  # 출처(필수 권장)
+    source_url: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

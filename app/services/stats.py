@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.data.region_codes import CHEONGJU_DISTRICTS, DISTRICT_CENTROIDS
 from app.models import Transaction
 from app.core.cache import stat_cached
+from app.core.config import get_settings
 
 LOW_SAMPLE_THRESHOLD = 5
 
@@ -38,7 +39,6 @@ def _pct_change(curr: int | None, prev: int | None) -> float | None:
 
 def _cutoff_date(months: int | None = None) -> date:
     """집계 윈도우 시작일(최근 N개월의 1일). 기본 N = settings.aggregate_months(12)."""
-    from app.core.config import get_settings
     n = months if months is not None else get_settings().aggregate_months
     t = date.today()
     y, m = t.year, t.month - n
@@ -48,21 +48,46 @@ def _cutoff_date(months: int | None = None) -> date:
     return date(y, m, 1)
 
 
-def _load_all(db: Session, property_type: str) -> list[Transaction]:
-    """해제분 제외 + 유형 필터. 전체 이력(YoY·다년 시계열용)."""
-    stmt = select(Transaction).where(Transaction.is_canceled.isnot(True))  # 해제분 제외
+# 집계에서 실제 사용하는 컬럼만(메모리 절약). 전체 ORM 엔티티 대신 경량 Row를 조회한다.
+# ⚠️ stats.py 어디서든 _load* 결과 행에 새 컬럼을 접근하게 되면 반드시 여기에 추가할 것
+#    (누락 시 AttributeError). 현재 소비 컬럼 전수 조사 기준.
+_AGG_COLS = (
+    Transaction.deal_type, Transaction.deal_amount, Transaction.deposit,
+    Transaction.monthly_rent, Transaction.contract_date, Transaction.exclusive_area,
+    Transaction.floor, Transaction.complex_name, Transaction.dong_name,
+    Transaction.lawd_cd, Transaction.property_type, Transaction.build_year,
+    Transaction.trade_method, Transaction.is_sample, Transaction.is_canceled,
+    Transaction.corrected_at,
+)
+
+
+def _load_window(db: Session, property_type: str, months: int | None) -> list:
+    """집계 로더 — 최근 N개월만 **SQL에서** 필터 + **필요한 컬럼만** 조회(메모리 보호).
+    전체 ORM 객체 대신 경량 Row 반환 → 행당 메모리 대폭 절감 + identity map 미사용(대량 집계 OOM 방지).
+    months=None이면 전체. 해제분 제외 + 유형 필터. 반환 행은 r.deal_amount 처럼 컬럼명 속성으로 접근
+    (소비 코드 변경 불필요)."""
+    stmt = select(*_AGG_COLS).where(Transaction.is_canceled.isnot(True))  # 해제분 제외
     if property_type and property_type != "all":
         stmt = stmt.where(Transaction.property_type == property_type)
-    return db.scalars(stmt).all()
+    if months is not None:
+        stmt = stmt.where(Transaction.contract_date >= _cutoff_date(months))
+    return db.execute(stmt).all()
+
+
+def _rows_where(db: Session, *conds) -> list:
+    """집계용 경량 행 조회(조건 직접 지정). _load_window 와 동일하게 _AGG_COLS 만 가져온다."""
+    return db.execute(select(*_AGG_COLS).where(*conds)).all()
+
+
+def _load_all(db: Session, property_type: str) -> list[Transaction]:
+    """전체 이력(특수 용도). 일반 집계는 _load/_load_window 를 쓸 것(메모리 보호)."""
+    return _load_window(db, property_type, None)
 
 
 def _load(db: Session, property_type: str) -> list[Transaction]:
-    """집계 기본 로더 — 최근 aggregate_months(기본 12개월)만.
-    '현재 시세'(중앙값·평단가·전세가율·거래량·랭킹 등)는 이 윈도우 기준.
-    전체 이력이 필요한 곳(전년 대비, 단지 다년 추이)은 _load_all 사용."""
-    cut = _cutoff_date()
-    return [r for r in _load_all(db, property_type)
-            if r.contract_date and r.contract_date >= cut]
+    """집계 기본 로더 — 최근 aggregate_months(기본 12개월)만, SQL에서 윈도우 필터.
+    '현재 시세'(중앙값·평단가·전세가율·거래량·랭킹 등)는 이 윈도우 기준."""
+    return _load_window(db, property_type, get_settings().aggregate_months)
 
 
 def _monthly_trade_avgs(rows: list[Transaction]) -> dict[str, int]:
@@ -95,7 +120,7 @@ def city_summary(db: Session, property_type: str = "apartment") -> dict:
     wol = [r.monthly_rent for r in rows if r.deal_type == "wolse" and r.monthly_rent]
     wol_dep = [r.deposit for r in rows if r.deal_type == "wolse" and r.deposit]
 
-    monthly = _monthly_trade_avgs(_load_all(db, property_type))  # 전월/전년 대비는 전체 이력
+    monthly = _monthly_trade_avgs(_load_window(db, property_type, 16))  # 전월/전년 대비: 최근 16개월(YoY+지연 버퍼)
     dM, dY, latest = _delta_month_year(monthly)
 
     return {
@@ -112,13 +137,13 @@ def city_summary(db: Session, property_type: str = "apartment") -> dict:
 def by_region(db: Session, property_type: str = "apartment") -> list[dict]:
     out = []
     for d in CHEONGJU_DISTRICTS:
-        rows = db.scalars(
-            select(Transaction).where(
-                Transaction.property_type == property_type,
-                Transaction.lawd_cd == d.code,
-                Transaction.is_canceled.isnot(True),  # 해제분 제외
-            )
-        ).all()
+        rows = _rows_where(
+            db,
+            Transaction.property_type == property_type,
+            Transaction.lawd_cd == d.code,
+            Transaction.contract_date >= _cutoff_date(16),  # 최근 16개월(메모리·현재시세)
+            Transaction.is_canceled.isnot(True),  # 해제분 제외
+        )
         trade = [r.deal_amount for r in rows if r.deal_type == "trade" and r.deal_amount]
         jeon = [r.deposit for r in rows if r.deal_type == "jeonse" and r.deposit]
         monthly = _monthly_trade_avgs(rows)
@@ -150,13 +175,13 @@ def trend(db: Session, property_type: str = "apartment", months: int = 6) -> dic
     series = []
     contains_sample = False
     for d in CHEONGJU_DISTRICTS:
-        rows = db.scalars(
-            select(Transaction).where(
-                Transaction.property_type == property_type,
-                Transaction.lawd_cd == d.code,
-                Transaction.is_canceled.isnot(True),  # 해제분 제외
-            )
-        ).all()
+        rows = _rows_where(
+            db,
+            Transaction.property_type == property_type,
+            Transaction.lawd_cd == d.code,
+            Transaction.contract_date >= _cutoff_date(months + 2),  # 표시 구간 + 버퍼만
+            Transaction.is_canceled.isnot(True),  # 해제분 제외
+        )
         contains_sample = contains_sample or any(r.is_sample for r in rows)
         monthly = _monthly_trade_avgs(rows)
         series.append({
@@ -617,8 +642,31 @@ def complex_detail(db: Session, name: str, lawd_cd: str, property_type: str | No
     build_year = (cx.build_year if (cx and cx.build_year) else
                   next((r.build_year for r in trades if r.build_year), None))
 
+    # 단지 vs 동네(구) 평단가 포지셔닝 — 하이퍼로컬 차별화. 평단가(만원/평)로 공정 비교.
+    ptype = property_type or (rows[0].property_type if rows else "apartment")
+    cx_ppm = [_pyeong_unit(r.deal_amount, r.exclusive_area)
+              for r in trades_recent if r.exclusive_area and r.deal_amount]
+    cx_ppm_med = round(median(cx_ppm)) if cx_ppm else None
+    vs_region = None
+    if cx_ppm_med:
+        gu_rows = _rows_where(db,
+                              Transaction.property_type == ptype,
+                              Transaction.lawd_cd == lawd_cd,
+                              Transaction.contract_date >= cut,
+                              Transaction.deal_type == "trade",
+                              Transaction.is_canceled.isnot(True))
+        gu_ppm = [_pyeong_unit(r.deal_amount, r.exclusive_area)
+                  for r in gu_rows if r.exclusive_area and r.deal_amount]
+        gu_ppm_med = round(median(gu_ppm)) if gu_ppm else None
+        if gu_ppm_med:
+            vs_region = {"complex_ppm": cx_ppm_med, "gu_ppm": gu_ppm_med,
+                         "gu": _gu_name(lawd_cd),
+                         "pct": round((cx_ppm_med - gu_ppm_med) / gu_ppm_med * 100, 1),
+                         "sample": len(gu_ppm)}
+
     return {
         "found": True,
+        "vs_region": vs_region,
         "name": name, "gu": _gu_name(lawd_cd), "dong": dong,
         "property_type": property_type or (rows[0].property_type if rows else None),
         "build_year": build_year,
@@ -814,11 +862,13 @@ def gu_price_ranking(db: Session, property_type: str = "apartment") -> list[dict
     latest_month = max(all_months) if all_months else None
     out = []
     for d in CHEONGJU_DISTRICTS:
-        rows = db.scalars(select(Transaction).where(
+        rows = _rows_where(
+            db,
             Transaction.property_type == property_type,
             Transaction.lawd_cd == d.code,
+            Transaction.contract_date >= _cutoff_date(16),  # 최근 16개월
             Transaction.deal_type == "trade",
-            Transaction.is_canceled.isnot(True))).all()  # 해제분 제외
+            Transaction.is_canceled.isnot(True))  # 해제분 제외
         amts = [r.deal_amount for r in rows if r.deal_amount]
         pys = [_pyeong_unit(r.deal_amount, r.exclusive_area)
                for r in rows if r.deal_amount and r.exclusive_area]
@@ -840,11 +890,13 @@ def recent_trades(db: Session, property_type: str = "apartment", per_gu: int = 4
     """구별 최신 매매 실거래 N건씩 + 신고가(is_high) 표시."""
     out = []
     for d in CHEONGJU_DISTRICTS:
-        rows = [r for r in db.scalars(select(Transaction).where(
+        rows = [r for r in _rows_where(
+            db,
             Transaction.property_type == property_type,
             Transaction.lawd_cd == d.code,
+            Transaction.contract_date >= _cutoff_date(60),  # 최근 5년(신고가 판정·메모리)
             Transaction.deal_type == "trade",
-            Transaction.is_canceled.isnot(True))).all() if r.deal_amount]
+            Transaction.is_canceled.isnot(True)) if r.deal_amount]
         # 단지×면적대별 최고가/표본수 → 신고가 판정
         groups: dict[tuple, list] = {}
         for r in rows:
@@ -939,7 +991,7 @@ def trending_complexes(db: Session, property_type: str = "apartment", limit: int
            recent_count,prev_count,delta,price,contains_sample_data}]}
     """
     from datetime import timedelta
-    rows = [r for r in _load_all(db, property_type)
+    rows = [r for r in _load_window(db, property_type, 8)
             if r.deal_type == "trade" and r.deal_amount and r.complex_name and r.contract_date]
     if not rows:
         return {"basis": "surge", "items": []}
@@ -985,7 +1037,7 @@ def top_movers(db: Session, property_type: str = "apartment", limit: int = 10) -
     반환: {up:[...], down:[...]}, 각 항목 {rank,name,area_py,gu,dong,lawd_cd,
            prev_amount,latest_amount,change,pct,latest_date,contains_sample_data}
     """
-    rows = [r for r in _load_all(db, property_type)
+    rows = [r for r in _load_window(db, property_type, 60)
             if r.deal_type == "trade" and r.deal_amount and r.complex_name
             and r.contract_date and r.exclusive_area]
     groups: dict = {}

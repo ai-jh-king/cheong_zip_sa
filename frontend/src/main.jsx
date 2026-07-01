@@ -520,12 +520,12 @@ const DEMO_LISTINGS=[
 ];
 
 function ListingThumb({photo,size=104}){
- return <div style={{width:size,height:size,flex:"none",background:"var(--chip)",backgroundImage:photo?`url(${photo})`:"none",backgroundSize:"cover",backgroundPosition:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>{!photo&&<Icon name="camera" size={26}/>}</div>;
+ return <div style={{width:size,height:size,flex:"none",borderRadius:12,overflow:"hidden",background:"var(--chip)",backgroundImage:photo?`url(${photo})`:"none",backgroundSize:"cover",backgroundPosition:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>{!photo&&<Icon name="camera" size={26}/>}</div>;
 }
 function ListingCard({x,onOpen}){
  const unit=useUnit();
  const photo=(x.photos&&x.photos[0])||null;
- return (<div className="card" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(x))} style={{padding:0,overflow:"hidden",marginBottom:10,cursor:"pointer"}} onClick={()=>onOpen(x)}>
+ return (<div className="feedrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(x))} style={{padding:"12px 4px",cursor:"pointer"}} onClick={()=>onOpen(x)}>
   <div style={{display:"flex"}}>
    <ListingThumb photo={photo}/>
    <div style={{minWidth:0,padding:"10px 12px",flex:1}}>
@@ -989,7 +989,7 @@ function demoPosts(cat,q,sort){let a=DEMO_POSTS.slice();
 function CatPill({cat}){return <span className="pill" style={{background:(CAT_COLOR[cat]||TEAL)+"1A",color:CAT_COLOR[cat]||TEAL,fontWeight:800}}>{CAT_LABEL[cat]||cat}</span>;}
 function PostCard({p,onOpen,onAuthor}){
  const clickA=onAuthor&&p.account_id?(e)=>{e.stopPropagation();onAuthor(p.account_id);}:undefined;
- return (<div className="card" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(p))} style={{padding:"12px 14px",marginBottom:9,cursor:"pointer"}} onClick={()=>onOpen(p)}>
+ return (<div className="feedrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(p))} style={{padding:"14px 4px",cursor:"pointer"}} onClick={()=>onOpen(p)}>
   <div style={{display:"flex",gap:10}}>
    {p.thumb&&<div style={{width:62,height:62,flex:"none",borderRadius:9,background:`#EEF1F1 url(${p.thumb}) center/cover`}}/>}
    <div style={{minWidth:0,flex:1}}>
@@ -1268,8 +1268,16 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen}){
    </div>
    {(!cat&&!q&&best.length>0)&&<div style={{margin:"14px 0 4px"}}>
     <div style={{fontWeight:800,fontSize:14,margin:"0 2px 8px",display:"flex",alignItems:"center",gap:6}}>🔥 이번 주 베스트</div>
-    {best.map(p=><PostCard key={"b"+p.id} p={p} onOpen={openPost} onAuthor={openAuthor}/>)}
-    <div style={{height:6,borderBottom:"1px solid rgba(99,120,128,.12)",margin:"6px 0 2px"}}/>
+    <div className="card" style={{padding:"2px 4px"}}>{best.map((p,k)=>{const md=k===0?"🥇":k===1?"🥈":k===2?"🥉":null;return (
+     <div key={"b"+p.id} className="txrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>openPost(p))} onClick={()=>openPost(p)}>
+      <span style={{flex:"none",width:28,textAlign:"center",fontSize:md?18:14,fontWeight:800,color:md?"inherit":MUTED}}>{md||(k+1)}</span>
+      <div style={{minWidth:0,flex:1}}>
+       <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
+       <div style={{fontSize:11.5,color:MUTED,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[(p.gu||"").replace("청주시 ",""),p.complex_name].filter(Boolean).join(" · ")||(p.nickname||"회원")}</div>
+      </div>
+      <span className="num" style={{flex:"none",fontWeight:800,color:MUTED,fontSize:12.5}}>♥ {p.like_count||0}</span>
+     </div>);})}</div>
+    <div style={{height:6,borderBottom:"1px solid rgba(99,120,128,.12)",margin:"8px 0 2px"}}/>
    </div>}
    <div style={{marginTop:12}}>
     {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
@@ -1316,10 +1324,10 @@ function NotificationsOverlay({onClose,onOpenPost,onOpenComplex,onAllRead}){
    </div>
    <PushToggle/>
    {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
-    :items.length?items.map(n=>(<div key={n.id} onClick={()=>open(n)} className="card" style={{padding:"11px 13px",marginBottom:8,cursor:"pointer",borderLeft:n.is_read?"3px solid transparent":"3px solid "+TEAL}}>
+    :items.length?<div className="card" style={{padding:"0 4px",marginTop:8}}>{items.map(n=>(<div key={n.id} onClick={()=>open(n)} className="feedrow" style={{padding:"12px 9px",cursor:"pointer",borderLeft:n.is_read?"3px solid transparent":"3px solid "+TEAL,borderRadius:n.is_read?0:"0 8px 8px 0"}}>
        <div style={{fontSize:14,color:INK}}>{n.type==="new_high"?"📈 ":n.type==="transaction"?"🏷️ ":""}{n.message||(n.type==="reply"?"답글이 달렸어요":"댓글이 달렸어요")}</div>
        <div style={{fontSize:12,color:MUTED,marginTop:4}}>{timeAgo(n.created_at)}</div>
-      </div>))
+      </div>))}</div>
     :<div style={{padding:40,textAlign:"center",color:MUTED}}>새 알림이 없습니다.</div>}
   </div>
  </div>);
@@ -1988,6 +1996,7 @@ function ComplexQuickSheet({item,onClose,onDetail}){
      {d.trade_count!=null&&<div><div style={{fontSize:11,color:MUTED}}>거래</div><div className="num" style={{fontSize:21,fontWeight:800}}>{d.trade_count}건</div></div>}
     </div>
     {d.price_min!=null&&d.price_max!=null&&<div style={{fontSize:12,color:MUTED,padding:"0 4px 12px"}}>실거래 범위 {eok(d.price_min)} ~ {eok(d.price_max)}{d.reliability?` · 신뢰도 ${d.reliability}`:""}</div>}
+    {d.vs_region&&<div style={{margin:"0 4px 12px",fontSize:12.5,color:MUTED}}>📍 {d.vs_region.gu} 평균 대비 <b className="num" style={{color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK,fontSize:13.5}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</b> <span style={{fontSize:11}}>(평단가 기준)</span></div>}
    </div>}
   <button onClick={()=>onDetail&&onDetail(item)} style={{width:"100%",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,borderRadius:11,padding:"13px",cursor:"pointer"}}>전체 상세 페이지 보기 →</button>
   <div style={{height:8}}/>
@@ -2373,30 +2382,44 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
 function SubChip({children}){
  return <span style={{fontSize:11.5,fontWeight:700,background:"rgba(15,118,110,.10)",color:TEAL,padding:"3px 8px",borderRadius:7,whiteSpace:"nowrap"}}>{children}</span>;
 }
+function _parseYmd(v){if(!v)return null;const d=String(v).replace(/[^0-9]/g,"");if(d.length<8)return null;const dt=new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8));return isNaN(dt.getTime())?null:dt;}
+function subDday(s){const t=new Date();t.setHours(0,0,0,0);
+ if(s.status==="접수예정"){const b=_parseYmd(s.begin);if(b){const n=Math.round((b-t)/86400000);if(n>=0)return{txt:n===0?"오늘 접수시작":`접수 D-${n}`,urgent:n<=3};}}
+ if(s.status==="접수중"){const e=_parseYmd(s.end);if(e){const n=Math.round((e-t)/86400000);if(n>=0)return{txt:n===0?"오늘 마감":`마감 D-${n}`,urgent:true};}}
+ return null;}
 function SubCard({s,onOpen}){
- const c=s.status==="접수중"?{bg:"#E4F2E8",fg:"#1d6b3a"}:s.status==="접수예정"?{bg:"#E7EEF6",fg:"#1E5FC4"}:{bg:"#EEF1F1",fg:MUTED};
+ const c=s.status==="접수중"?{bg:"#E4F2E8",fg:"#1d6b3a",g1:"#1d6b3a",g2:"#2f9e5c"}:s.status==="접수예정"?{bg:"#E7EEF6",fg:"#1E5FC4",g1:"#1E5FC4",g2:"#4f86e0"}:{bg:"#EEF1F1",fg:MUTED,g1:"#6b7780",g2:"#8a949c"};
  const cr=s.competition_range;
  const compTxt=cr?(cr[0]===cr[1]?`${cr[0]}:1`:`${cr[0]}~${cr[1]}:1`):null;
  const ht=s.house_types||[];
- return (<div className="card" style={{padding:"12px 14px",marginBottom:8,cursor:onOpen?"pointer":"default"}} onClick={onOpen?()=>onOpen(s):undefined}>
-  <div style={{display:"flex",alignItems:"center",gap:8}}>
-   <div style={{fontWeight:700,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{s.name} {s.is_sample&&<ExBadge/>}</div>
-   <span className="statusdot" style={{marginLeft:"auto",flex:"none",background:c.bg,color:c.fg}}>{s.status}</span>
-   {onOpen&&<span style={{color:MUTED,fontSize:18,flex:"none"}}>›</span>}
+ const dd=subDday(s);
+ return (<div className="card" style={{padding:0,overflow:"hidden",marginBottom:8,cursor:onOpen?"pointer":"default"}} onClick={onOpen?()=>onOpen(s):undefined}>
+  <div style={{position:"relative",padding:"14px 14px 13px",background:`linear-gradient(120deg,${c.g1},${c.g2})`,color:"#fff",overflow:"hidden"}}>
+   <div style={{position:"absolute",right:-8,bottom:-18,fontSize:78,opacity:.16,lineHeight:1}}>🏢</div>
+   <div style={{display:"flex",alignItems:"center",gap:8,position:"relative"}}>
+    <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.22)",borderRadius:6,padding:"2px 8px"}}>{s.status}</span>
+    {dd&&<span style={{fontSize:11,fontWeight:800,background:dd.urgent?"#fff":"rgba(255,255,255,.22)",color:dd.urgent?c.g1:"#fff",borderRadius:6,padding:"2px 8px"}}>{dd.txt}</span>}
+    {s.is_sample&&<span style={{marginLeft:"auto",fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
+   </div>
+   <div style={{fontWeight:800,fontSize:16.5,marginTop:8,position:"relative",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.name}</div>
+   <div style={{fontSize:12,opacity:.92,marginTop:2,position:"relative"}}>{[s.location,s.units?`총 ${s.units}세대`:null].filter(Boolean).join(" · ")}</div>
   </div>
-  <div style={{fontSize:12,color:MUTED,marginTop:3}}>{[s.location,s.period,s.units?`총 ${s.units}세대`:null].filter(Boolean).join(" · ")}</div>
-  {(s.price||compTxt||s.min_score!=null)&&<div style={{display:"flex",flexWrap:"wrap",gap:"5px 7px",marginTop:8}}>
-   {s.price&&<SubChip>분양가 {s.price}</SubChip>}
-   {compTxt&&<SubChip>경쟁률 {compTxt}</SubChip>}
-   {s.min_score!=null&&<SubChip>최저가점 {s.min_score}</SubChip>}
-  </div>}
-  {ht.length>0&&<div style={{marginTop:9,borderTop:"1px solid rgba(99,120,128,.12)",paddingTop:7}}>
-   <div style={{fontSize:11,color:MUTED,marginBottom:3}}>주택형별</div>
-   {ht.map((h,i)=>(<div key={i} style={{display:"flex",gap:8,fontSize:12.5,padding:"2px 0",alignItems:"baseline"}}>
-    <span style={{fontWeight:700,minWidth:50,flex:"none"}}>{h.type||"-"}</span>
-    <span className="num" style={{color:MUTED}}>{[h.units?`${h.units}세대`:null,h.price,h.competition?`경쟁 ${h.competition}`:null,(h.min_score!=null)?`가점 ${h.min_score}`:null].filter(Boolean).join(" · ")||"집계 전"}</span>
-   </div>))}
-  </div>}
+  <div style={{padding:"11px 14px"}}>
+   <div style={{fontSize:12,color:MUTED}}>📅 {s.period}</div>
+   {(s.price||compTxt||s.min_score!=null)&&<div style={{display:"flex",flexWrap:"wrap",gap:"5px 7px",marginTop:8}}>
+    {s.price&&<SubChip>분양가 {s.price}</SubChip>}
+    {compTxt&&<SubChip>경쟁률 {compTxt}</SubChip>}
+    {s.min_score!=null&&<SubChip>최저가점 {s.min_score}</SubChip>}
+   </div>}
+   {ht.length>0&&<div style={{marginTop:9,borderTop:"1px solid var(--line)",paddingTop:7}}>
+    <div style={{fontSize:11,color:MUTED,marginBottom:3}}>주택형별 {onOpen&&<span style={{color:TEAL,fontWeight:700}}>· 자세히 ›</span>}</div>
+    {ht.slice(0,3).map((h,i)=>(<div key={i} style={{display:"flex",gap:8,fontSize:12.5,padding:"2px 0",alignItems:"baseline"}}>
+     <span style={{fontWeight:700,minWidth:50,flex:"none"}}>{h.type||"-"}</span>
+     <span className="num" style={{color:MUTED}}>{[h.units?`${h.units}세대`:null,h.price,h.competition?`경쟁 ${h.competition}`:null,(h.min_score!=null)?`가점 ${h.min_score}`:null].filter(Boolean).join(" · ")||"집계 전"}</span>
+    </div>))}
+    {ht.length>3&&<div style={{fontSize:11.5,color:MUTED,marginTop:2}}>외 {ht.length-3}개 주택형 ›</div>}
+   </div>}
+  </div>
  </div>);
 }
 function SubDetail({s,onClose}){
@@ -2436,7 +2459,10 @@ function SubDetail({s,onClose}){
     </div>}
    </div>))}
   </div>}
-  <a href={url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,textDecoration:"none",marginTop:12,background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"12px 0",borderRadius:11}}>청약홈에서 보기 →</a>
+  <div style={{display:"flex",gap:8,marginTop:12}}>
+   <a href={`https://map.naver.com/p/search/${encodeURIComponent((s.location||"청주")+" "+(s.name||""))}`} target="_blank" rel="noopener noreferrer" style={{flex:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:5,textDecoration:"none",background:"var(--surface-2)",color:INK,fontWeight:800,fontSize:13.5,padding:"12px 16px",borderRadius:11,border:"1px solid var(--line)"}}>📍 지도</a>
+   <a href={url} target="_blank" rel="noopener noreferrer" style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:6,textDecoration:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"12px 0",borderRadius:11}}>청약홈에서 보기 →</a>
+  </div>
   <div style={{fontSize:10.5,color:MUTED,marginTop:11,lineHeight:1.6}}>※ 청약 신청·당첨 결과의 최종 정보는 청약홈(applyhome.co.kr)에서 확인하세요. 경쟁률·가점은 집계 시점에 따라 갱신됩니다. 자료: 한국부동산원 청약홈.</div>
  </div>);
 }
@@ -3243,6 +3269,12 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
      <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>최근 {AGG_MONTHS}개월 고점 {eok(d.peak_amount)} 대비</div>
     </div>
    </div>
+   {d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+    <span style={{fontSize:13}}>📍</span>
+    <span style={{fontSize:13,fontWeight:700}}>{d.vs_region.gu} 평균 대비</span>
+    <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
+    <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>평단가 {d.vs_region.complex_ppm?.toLocaleString?.()||d.vs_region.complex_ppm} vs {d.vs_region.gu_ppm?.toLocaleString?.()||d.vs_region.gu_ppm} 만원/평</span>
+   </div>}
    {(d.timeseries||[]).length>1&&<div style={{marginTop:12}}>
     <div style={{fontSize:11,color:MUTED,marginBottom:4}}>최근 {(d.timeseries||[]).length}개월 매매가 추이</div>
     <Sparkline values={(d.timeseries||[]).map(t=>t.avg)} color={TEAL}/>
@@ -3309,6 +3341,32 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
      </div>
     </div>))}
     {d.poi&&d.poi["중개업소"]&&<div style={{fontSize:11,color:MUTED,padding:"6px 2px 8px"}}>※ 중개업소는 단지 인근 참고 정보이며, 위 실거래를 중개한 업소가 아닙니다.</div>}
+   </div>
+  </Collapsible>}
+  {d.places&&Object.keys(d.places).length>0&&<Collapsible icon="search" defaultOpen={true} title="주변 학원·운동·생활">
+   <div style={{padding:"4px 14px"}}>
+    {Object.entries(d.places).sort((a,b)=>b[1].count-a[1].count).map(([sub,info])=>(<div key={sub} className="listrow" style={{alignItems:"flex-start"}}>
+     <span style={{fontWeight:700,minWidth:62,flex:"none"}}>{info.label} <span style={{color:TEAL,fontWeight:800}}>{info.count}</span></span>
+     <div style={{minWidth:0}}>
+      {(info.items||[]).slice(0,4).map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name}{it.tuition?<span style={{color:MUTED,fontSize:12}}> · {Math.round(it.tuition/10000*10)/10}만원</span>:""} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))}
+     </div>
+    </div>))}
+    <div style={{fontSize:11,color:MUTED,padding:"6px 2px 8px"}}>자료: 공공데이터(학원·체육·도서관·의료 등). 공개분 수강료/사용료만 표시. 반경 약 1.2km.</div>
+   </div>
+  </Collapsible>}
+  {d.landmarks&&d.landmarks.length>0&&<Collapsible icon="trend" defaultOpen={true} title="주변 개발 호재">
+   <div style={{padding:"4px 14px"}}>
+    {d.landmarks.map(L=>{const sc=L.status==="confirmed"?TEAL:L.status==="ongoing"?"#C77A1A":MUTED;return (
+     <div key={L.id} style={{padding:"9px 0",borderBottom:"1px solid var(--line)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+       <span style={{fontSize:10.5,fontWeight:800,color:"#fff",background:sc,borderRadius:6,padding:"2px 7px"}}>{L.status_label}</span>
+       <span style={{fontWeight:700}}>{L.name}</span>
+       <span style={{fontSize:11.5,color:MUTED}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}{L.distance!=null?` · ${distM(L.distance)}`:""}</span>
+      </div>
+      {L.summary&&<div style={{fontSize:12.5,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
+      {L.source_name&&<div style={{fontSize:11,color:MUTED,marginTop:3}}>출처: {L.source_url?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:MUTED,textDecoration:"underline"}}>{L.source_name}</a>:L.source_name}</div>}
+     </div>);})}
+    <div style={{fontSize:11,color:MUTED,padding:"7px 2px 8px",lineHeight:1.5}}>※ 개발 단계(확정/추진/계획)와 출처를 함께 표기한 참고 정보입니다. 집값 변동을 보장하지 않으며 투자 판단은 본인 책임입니다.</div>
    </div>
   </Collapsible>}
   <div id="detail-loan"/>

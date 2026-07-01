@@ -29,6 +29,8 @@ from app.models import Transaction
 from app.api.dashboard import router as dashboard_router
 from app.api.home import router as home_router
 from app.api.complex import router as complex_router
+from app.api.places import router as places_router
+from app.api.landmarks import router as landmarks_router
 from app.api.compare import router as compare_router
 from app.api.subscription import router as subscription_router
 from app.api.push import router as push_router
@@ -72,6 +74,8 @@ app.add_middleware(GZipMiddleware, minimum_size=600)
 app.include_router(dashboard_router)
 app.include_router(home_router)
 app.include_router(complex_router)
+app.include_router(places_router)
+app.include_router(landmarks_router)
 app.include_router(loan_router)
 app.include_router(favorites_router)
 app.include_router(personal_router)

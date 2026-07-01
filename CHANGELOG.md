@@ -3,6 +3,137 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.128 (2026-06-28)
+- **구글플레이 출시 준비(Capacitor · Android)**.
+  - `frontend/capacitor.config.json`: appId를 예시값 → **com.cheongzipsa.app** 확정, appName "청주시세".
+  - `store/GOOGLE_PLAY_RUNBOOK.md` 신규: 실전 순서서(웹빌드 시 VITE_API_BASE 주입 필수 · cap add/sync · 아이콘 · 키스토어 서명 · Play Console 등록 · 내부테스트→프로덕션 · CORS/소셜로그인 주의점).
+  - ⚠️ 네이티브 빌드·서명·업로드는 운영자 PC(Android Studio·구글플레이 계정 $25)에서 수행. 샌드박스 불가. iOS는 Mac+Xcode 필요로 후순위.
+  - 코드 변경 없음(설정·문서). 백엔드/프런트 무영향.
+## v1.127 (2026-06-28)
+- **단지 상세 심화 — "동네 대비 포지셔닝"**(축1: 지금 데이터로 더 깊게). 추가 키·데이터 불필요, **기존 실거래로 즉시 작동**.
+  - `complex_detail`에 `vs_region` 추가: 단지 평단가(만원/평) 중앙값 vs **같은 구 평균 평단가** → "흥덕구 평균 대비 +12%"처럼 하이퍼로컬 비교(평단가 기준으로 평형 구성 차이 보정). 표본수 포함, 데이터 없으면 None(왜곡 없음).
+  - 프런트: 단지 빠른보기 + 전체 상세 헤더에 "📍 OO구 평균 대비 ±N%"(한국식 색: +빨강/−파랑) + 평단가 비교 노출.
+  - 호갱노노식 절대값 나열이 아니라 **"이 단지가 동네에서 비싼가/싼가"**를 한눈에 — 전국 앱이 약한 하이퍼로컬.
+  - 테스트 `test_stats_lowmem`(+1): 비싼 단지가 구 평균 대비 +%. (총 136→137)
+  - 검증: compileall·verify_frontend·괄호 균형 PASS.
+## v1.126 (2026-06-28)
+- **청약 화면 정보 강화 — '보고 싶게'**. 청약 카드를 정보 나열 → **비주얼 배너 + D-day**로.
+  - `SubCard`: 상태별 색 그라데이션 배너(단지명·위치·세대수) + **D-day 뱃지**(접수 D-n/마감 D-n, 임박 시 강조) + 분양가·경쟁률·가점 칩 + 주택형 미리보기(3개+"자세히").
+  - `SubDetail`: **📍지도** 버튼(네이버 지도 위치 검색) + 청약홈 버튼 나란히.
+  - 백엔드 `applyhome`: 아이템에 `begin/end` 추가(D-day 계산용).
+  - ⚠️ 분양 사진은 공공 API에 없음 → 가짜 사진 대신 위치·정보 기반 비주얼(왜곡 없음). 향후 공고 썸네일/지도 이미지 연동 여지.
+  - 검증: 괄호 균형·verify_frontend·py_compile PASS.
+## v1.125 (2026-06-28)
+- **청주 개발 호재 지도(Landmark) — 구조 구축**(데이터는 나중에, 차별화: 청주 하이퍼로컬).
+  - 모델 `Landmark` + 마이그레이션 0018: 위치+사실+출처. **왜곡 방지** 내장 — status(확정/추진/계획)·source 필수, summary는 사실만.
+  - 서비스/API: `/landmarks`(지도용 전체)·`/landmarks/near`(단지 주변 4km 거리순)·`/landmarks/labels`. 단지 상세 응답에 landmarks 연결.
+  - 프런트: 단지 상세에 "주변 개발 호재" 섹션(단계 뱃지·연도·거리·출처 링크 + "집값 변동 보장 안 함·투자 본인 책임" 고지).
+  - 시드: `scripts/seed_landmarks.py`(빈 리스트 + 작성 가이드 → 나중에 출처·좌표와 채우면 upsert). 문서 `LANDMARKS.md`.
+  - 테스트 `tests/test_landmarks.py`(3): 주변 거리·비활성 제외·좌표없음. (총 133→136)
+  - ⏳ 지도 탭 핀: 백엔드 준비 완료, 프런트 핀은 데이터+화면 확인 후 안전 연결(블라인드로 작동 지도 깨뜨릴 위험 회피).
+  - 검증: compileall·verify_frontend·괄호 균형 PASS.
+## v1.124 (2026-06-28)
+- **가족 맞춤 동네 점수 엔진(차별화 핵심)** — 사용자가 중요시하는 생활 항목(학원·운동·어린이집·도서관·병원·공원)에 중요도(0~5)를 주면, 단지 주변 '실제' 공공데이터 시설로 동네를 점수화.
+  - `app/services/places.fit_score()`: 항목별 subscore = 근접도 60% + 밀집도 40%, overall = 가중평균. **데이터 없는 항목은 점수를 지어내지 않고 '데이터 없음'으로 제외(왜곡 없음).** 좌표 없으면 None.
+  - API `GET /places/fit-score`(가중치 쿼리) + `/places/fit-categories`(항목 목록).
+  - 호갱노노식 '학원 N개' 나열이 아니라 **"우리 가족 기준 이 동네가 맞는가"**를 점수로 — 전국 앱이 못 하는 하이퍼로컬·개인화.
+  - 테스트 `tests/test_places.py`(+2): 가중치 반영·데이터없음 None·좌표없음. (총 131→133)
+  - 검증: compileall·verify_frontend PASS.
+  - ⚠️ 실제 점수는 Place 데이터 적재 후 의미. 지금은 데이터 없으면 '데이터 없음'. 개인화 입력 UI는 다음 단계(데이터+화면 확인과 함께).
+## v1.123 (2026-06-28)
+- **코드 정리(죽은 코드 제거)** — 전체 모듈 import 참조·라우터 등록·미사용 import를 기계적으로 스캔.
+  - 삭제: `app/data/sample_listings.py`(SAMPLE_LISTINGS)·`app/data/sample_posts.py`(SAMPLE_POSTS/COMMENTS) — 외부 참조 0건 교차검증 후 제거(실사용 시드는 sample_feed·sample_transactions). 백엔드 80개 파일·약 9,380줄.
+  - 확인만 하고 유지: 라우터 24개 전부 정상 등록(죽은 라우터 없음). `session.py`의 `from app import models`는 미사용처럼 보이나 **모델 등록 부수효과 import**(noqa F401)라 유지 필수. 내 매물·내 댓글 등 관리 화면 카드도 유지.
+  - 검증: compileall·verify_frontend PASS, 테스트 131 유지. (삭제 파일 백업: /tmp)
+## v1.122 (2026-06-28)
+- **UI 정리 2차** — 알림 목록을 카드 나열 → 구분선 행(한 박스, 안 읽음 표시 유지). 구분선 색을 전부 `var(--line)`로 통일(.listrow·.txrow·table·.rankno) → 라이트/다크 일관 + 옛 하드코딩 색 제거.
+  - 내 매물·내 댓글 등 관리 화면은 액션 버튼이 얽혀 있어 카드 유지(블라인드 변경 위험 회피).
+  - 검증: 괄호 균형·verify_frontend PASS.
+## v1.121 (2026-06-28)
+- **🔧 데이터 출처 정정 — 학원 API를 실제 제공처(NEIS)로 수정**. "진짜 API 활용 가능한 데이터만" 원칙 반영.
+  - 확인 결과: data.go.kr '전국학원및교습소표준데이터'(15096277)는 **CSV 파일** 제공이고 실제 Open API는 **NEIS(open.neis.go.kr) `acaInsTiInfo`** 제공. 기존 odcloud 추정 URL은 오류 → NEIS API로 재작성(`app/sources/academy.py`, source_dataset=neis_academy).
+    - 시도교육청코드(충북 M10)로 요청 후 청주 필터. 전국 확장은 OFFICE_CODES 추가만으로. NEIS는 좌표 미제공 → scripts.geocode로 보강. ⚠️ NEIS 키는 data.go.kr 키와 별도(ACADEMY_SERVICE_KEY=NEIS 키).
+  - 어린이집(15013108)은 data.go.kr odcloud OpenAPI 실재 확인(uddi)·좌표/놀이터수/CCTV/정원·현원 포함.
+  - `DATA_PLACES.md`에 **API 검증 상태표** 추가: 학원·어린이집=확인, 체육·도서관·의료·유치원·도시공원(놀이터)·실외운동기구=데이터셋 실재하나 엔드포인트는 활용신청 후 확정(코드 URL은 추정 placeholder로 명시).
+  - 테스트: test_academy를 NEIS 필드(ACA_NM 등)·좌표 None 기준으로 갱신(4). 총 131 유지.
+  - 검증: compileall·verify_frontend PASS.
+## v1.120 (2026-06-28)
+- **게시판 '이번 주 베스트' 컴팩트화** — 큰 글 카드 3개 나열 → 홈 '거래 급상승'과 동일한 **순위 목록**(🥇🥈🥉/번호 + 제목 + 동네·단지 + ♥ 좋아요)으로 한 박스에 정리. 화면 차지 줄고 일반 글 목록과 시각적으로 구분됨.
+  - 검증: 괄호 균형·verify_frontend PASS.
+## v1.119 (2026-06-28)
+- **메모리 최적화 일관성 — places.nearby 경량화**. 단지 상세 조회마다 호출되는 주변시설 조회가 전체 Place ORM 객체를 적재하던 것을 **필요한 7개 컬럼만**(subcategory·name·lat·lng·course·tuition·source) 경량 Row 조회로 전환. bbox 선필터(반경 1.2km)와 함께 메모리·속도 개선. stats.py 집계 최적화(v1.111)와 동일 원칙으로 통일.
+  - 검증: compileall PASS. 출력 동일(테스트 영향 없음).
+## v1.118 (2026-06-28)
+- **리스트 UI 정리 — 카드 줄줄이 → 구분선 행**(직방 '이야기' 류). 테스터 선호 반영.
+  - `.feedrow` 유틸 추가(헤어라인 구분선 + 탭 피드백). `PostCard`(게시판 글)·`ListingCard`(매물)를 개별 카드 박스에서 **구분선 행**으로 전환 → 목록이 깔끔하게 연속. 매물 썸네일은 자체 라운딩 부여.
+  - 검증: 괄호 균형·verify_frontend PASS. (UI는 머신 빌드로 최종 확인)
+## v1.117 (2026-06-28)
+- **🐞 긴급 버그픽스 — stats.py NameError(get_settings)**. 대시보드/시세 집계 호출 시 `NameError: name 'get_settings' is not defined`로 전부 실패하던 문제.
+  - 원인(v1.111 회귀): `_load`(stats.py 90행)가 `get_settings().aggregate_months`를 쓰는데, import가 `_cutoff_date` **함수 내부 지역 import**에만 있어 다른 함수에선 미해결.
+  - 수정: `from app.core.config import get_settings`를 **모듈 상단**으로 이동(20행). 중복 지역 import 제거.
+  - 영향: top_trades·city_summary·by_region 등 `_load` 사용 집계 전부 정상화.
+  - 검증: compileall PASS. 머신에서 `uv run -m pytest -q`(test_stats/test_stats_lowmem) 통과로 최종 확인 권장 — 이 버그는 그 테스트가 잡는 종류.
+## v1.116 (2026-06-28)
+- **UI/UX 현대화(토큰 기반, 앱 전체)** — 테스터 피드백("올드하다·안 세련됨") 반영.
+  - 글래스모피즘(반투명+블러) + 3색 파스텔 그라데이션 배경(2021~22 트렌드) → **깨끗한 단색 배경 + 솔리드 흰 카드 + 또렷한 헤어라인 경계 + 미니멀 그림자**(토스·당근 류 2026 감성).
+  - `frontend/index.html` 디자인 토큰만 교체(컴포넌트 무수정 → 저위험·앱 전체 일괄 적용): 배경 플랫(var(--bg1)), `--surface`/카드 솔리드, 경계 다크 헤어라인, 카드 radius 16→18, 그림자 경량화. 하단 탭바(.nav)도 글래스→솔리드 헤어라인. 다크모드도 플랫 재정의.
+  - Pretendard·한국식 상승=빨강/하락=파랑 유지. ⚠️ 렌더는 사용자 머신 확인 필요(롤백 쉬움: 토큰만 되돌리면 됨).
+- **도서관·어린이집 수집기 추가**(생활 인프라 확장 마무리).
+  - `app/sources/library.py`(도서관, WGS84 좌표·좌석수·운영시간) + `app/sources/daycare.py`(어린이집·유치원, 정원·현원). 공통 `places_common` 사용.
+  - `scripts/collect_places.py`: `library`·`daycare` 추가 + `all`에 포함(학원·체육·의료·도서관·어린이집 5종).
+  - 테스트 `tests/test_library_daycare.py`(4). (총 127→131)
+  - 검증: compileall·verify_frontend·style 균형 PASS. ⚠️ URL·필드는 Swagger 확정(tolerant 흡수).
+## v1.115 (2026-06-28)
+- **체육·의료 수집기 추가**(학원에 이어 생활 인프라 확장).
+  - 공통 유틸 `app/sources/places_common.py`: tolerant 필드픽·좌표·청주 필터·페이지 수집 + **EPSG:5174→WGS84 변환**(pyproj, 한국 범위 sanity, 실패 시 좌표 None — 틀린 좌표 저장 금지).
+  - `app/sources/sports.py`: 체육시설(체육관·수영장·풋살 등). WGS84 좌표·**사용료(tuition)**·유형(course)·수용인원. subcategory="sports".
+  - `app/sources/medical.py`: 의료기관. **WGS84 필드 우선 → 없으면 TM5174 변환**. 종별→subcategory(병원/의원=hospital, 약국=pharmacy).
+  - `scripts/collect_places.py`: `sports`·`medical`·`all` 명령 추가(upsert·중복방지).
+  - requirements: `pyproj`(선택, 의료 좌표 변환). config 키는 academy/molit 재사용.
+  - 테스트 `tests/test_sports.py`(3)+`tests/test_medical.py`(4): 정규화·분류·청주필터·좌표없음 None·종별(약국). 네트워크/pyproj 불필요. (총 120→127)
+  - 검증: compileall PASS. ⚠️ 각 데이터셋 URL·필드는 활용신청 후 Swagger로 확정(tolerant라 대부분 흡수). 실수집은 머신/서버.
+  - 문서: DATA_PLACES(수집 명령)·ROADMAP.
+## v1.114 (2026-06-28)
+- **학원·교습소 수집기(차별화 첫 실데이터)** — 전국학원및교습소표준데이터(공공데이터) → Place 적재.
+  - `app/sources/academy.py`: applyhome 패턴의 **tolerant 필드 매핑**(학원명/acaNm 등 여러 후보 자동 흡수) → Swagger 없이도 흔한 응답 흡수. 청주(충북) 필터 + 구→법정동코드 매핑 + 분야/과정 텍스트 → 세분류(`classify_academy`). 키 없으면 0건(안전).
+  - `scripts/collect_places.py academy`: 정규화→Place upsert(source_key 중복방지). 좌표 없는 행은 geocode로 보강.
+  - config `academy_service_key`(없으면 MOLIT 키 재사용) + .env.example.
+  - 테스트 `tests/test_academy.py`(4): 다른 필드명 흡수·세분류(외국어/체육)·청주외 제외·이름없음 제외. 네트워크 불필요(정규화 로직만). (총 116→120)
+  - 검증: compileall PASS. ⚠️ `ACADEMY_URL`·필드는 활용신청 후 Swagger로 실제값 확정 필요(tolerant라 대부분 흡수). 실수집은 머신/서버에서.
+  - 문서: DATA_PLACES(수집 실행)·ROADMAP.
+## v1.113 (2026-06-28)
+- **생활·교육·운동 인프라 기반(Place) — 차별화 1단계**(공공데이터로 깊고 정확하게 → 성장모델).
+  - 통합 모델 `Place`(model) + 마이그레이션 0017 — 학원·체육시설·도서관·병원 등을 **한 모델로 normalize**. `source`(public/claimed/ad)·`claimed_by` 자리를 미리 둬 **향후 업체 직접 등록·홍보를 재작업 없이** 얹도록(부록 B 원칙). 좌표 없으면 거리/지도 제외(왜곡 방지).
+  - 서비스 `app/services/places.py`: 학원 분야/과정 텍스트 → 세분류 키워드 분류(`classify_academy`: 입시·외국어·예체능·체육·컴퓨터·기타), 반경 조회(`nearby`, haversine), 지역 요약(`by_region`).
+  - API `app/api/places.py`: `/places/near`·`/places/region/{code}`·`/places/labels`. 단지 상세 응답에 `places` 추가(주변 학원·운동·생활).
+  - 프런트: 단지 상세에 "주변 학원·운동·생활" 섹션(세분류별 개수·거리·공개 수강료).
+  - 문서 `DATA_PLACES.md`: 분야별 **정확한 공공데이터셋 매핑**(학원교습소·체육시설·공공시설개방·도서관·의료기관)·좌표계(⚠️ 의료 EPSG:5174→WGS84)·갱신주기 + 수집기 청사진.
+  - 테스트 `tests/test_places.py`(4): 분류·반경 거리필터·좌표없음 None·지역 집계. (총 112→116)
+  - 검증: compileall·verify_frontend·괄호 균형 PASS. ⚠️ 데이터 적재는 수집기(다음 단계, 키 발급+Swagger 확정) 후. 지금은 데이터 없으면 빈 섹션(안전·additive).
+## v1.112 (2026-06-28)
+- **모바일 앱 느낌 — 핀치 줌/바운스 차단**(웹·PWA·네이티브 공통 적용).
+  - `frontend/index.html` viewport에 `maximum-scale=1.0, user-scalable=no, viewport-fit=cover` 추가 → 손가락 확대/더블탭 줌 차단(웹사이트가 아닌 앱처럼 고정). 노치 안전영역 대응(viewport-fit).
+  - CSS: `overscroll-behavior:none`(당겨서 새로고침·바운스 제거), `-webkit-tap-highlight-color:transparent`(탭 회색 플래시 제거), `text-size-adjust:100%`(글자 자동 확대 방지). 텍스트 선택·스크롤은 유지.
+  - ⚠️ 접근성: user-scalable=no는 저시력 사용자의 확대를 막을 수 있고 iOS 일부 버전은 무시함. 앱 느낌 우선의 트레이드오프.
+## v1.111 (2026-06-28)
+- **메모리(OOM) 근본 수정 — 집계를 DB 레벨 윈도우로**. 배포 후 `/dashboard/summary`·`/overview`가 512MB 초과로 502(OOM)나던 문제 해결.
+  - 원인: `_load`(집계 20여 함수가 사용)가 전체 거래를 메모리에 올린 뒤 파이썬에서 12개월만 거름 + `by_region`/`trend`/`gu_price_ranking`/`recent_trades`가 구별로 **전 기간**을 적재.
+  - 수정: `_load_window(db, pt, months)` 도입 — `contract_date >= cutoff` 를 **SQL where**로 필터. 모든 집계가 필요한 기간만 조회:
+    - `_load` → 최근 12개월(SQL), `city_summary`(전년대비) → 16개월, `by_region`/`gu_price_ranking` → 16개월, `trend` → 표시구간+2, `active_regions` → 8개월, `top_movers`/`recent_trades` → 60개월.
+  - 결과: 무제한 전체조회 0개. 데이터가 수년 쌓여도 메모리 일정(윈도우 상한). `_load_all`은 정의만 유지(미사용).
+  - ⚠️ 의미 변화(의도적): 구별 평균/평단가가 '전 기간 평균'→'최근 16개월'로. 앱의 윈도우 기반 설계('현재 시세')와 일관, 도시 헤드라인과도 정합. 표시 수치가 소폭 달라질 수 있음.
+  - 검증: compileall PASS. ⚠️ pytest 실행/실제 502 해소는 머신·재배포에서 확인(샌드박스는 sqlalchemy 미설치).
+## v1.111 (2026-06-28)
+- **메모리 최적화 — 집계 OOM 근본 수정**(Render 512MB에서 /dashboard/summary·overview 가 512MB 초과로 OOM 502).
+  - 원인: 집계 로더가 거래를 **전체 ORM 엔티티**(행당 ~1KB+ + identity map)로 메모리에 적재.
+  - 수정: `_load_window`와 신규 헬퍼 `_rows_where`가 **집계에서 실제 쓰는 16개 컬럼(`_AGG_COLS`)만** 경량 Row로 조회. 소비 코드(25개 집계 함수)는 `r.deal_amount` 식 속성 접근 그대로 → 변경 없음. 컬럼 전수 조사로 누락 없음 확인(r/x/latest/prev 모두 16컬럼 내, c/cx는 Complex 별도).
+  - 적용 위치: `_load_window`(전 집계 공통) + `by_region`·`trend`·`gu_price_ranking`·`recent_trades`(구별 윈도우 직접 로드). 단일 단지 쿼리(compare_one 등)는 소량이라 유지.
+  - 효과: 집계 시 행당 메모리 대폭 절감 + ORM identity map 미사용 → 512MB에서도 동작 목표.
+  - `render.yaml`: `WEB_CONCURRENCY` 2→1(512MB에선 워커 2개가 메모리 2배). 큰 인스턴스에선 상향.
+  - 테스트: `tests/test_stats_lowmem.py`(2) — 바뀐 함수 전부 호출(컬럼 누락=AttributeError 검출)+by_region 숫자 정확성. (총 110→112)
+  - 검증: compileall PASS. ⚠️ pytest 실행은 머신에서(`uv run -m pytest -q`).
+## v1.110 (2026-06-28)
+- **render.yaml 무료 티어 대응**: 무료에서 미지원인 `preDeployCommand` 제거(마이그레이션은 배포 후 Shell에서 `db_upgrade` 1회 수동 안내). cron(매일 수집)도 무료 미지원이라 주석 처리(유료 전환 시 해제). 웹+Postgres만으로 무료 시작 가능하게 정리.
 ## v1.109 (2026-06-28)
 - **Render 배포 준비(웹/PWA 출시)**.
   - `render.yaml` 블루프린트 추가 — 한 번의 Apply로 ① 웹 서비스(Docker, /health, JWT/ADMIN 자동생성, AUTH_DEV_LOGIN=false, 배포 시 `db_upgrade` 자동) ② 관리형 PostgreSQL ③ 매일 실거래 수집 크론(04:00 KST)을 함께 생성. 비밀값(MOLIT_SERVICE_KEY·CORS_ORIGINS)은 sync:false로 대시보드 입력.

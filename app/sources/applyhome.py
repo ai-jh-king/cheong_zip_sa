@@ -86,6 +86,7 @@ def fetch_subscriptions(limit: int = 10) -> list[dict] | None:
                 "name": _pick(row, F["name"]) or "(주택명 미상)",
                 "location": location or region or "충북",
                 "period": f"{begin or '-'} ~ {end or '-'}",
+                "begin": begin, "end": end,
                 "units": _pick(row, F["units"]),
                 "price": (f"최고 {price_max}" if price_max else None),
                 "competition_range": None,   # 경쟁률(주택형별 API 연동 시 채움)

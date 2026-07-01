@@ -237,3 +237,8 @@ curl -X POST "http://localhost:8000/admin/test/plan?account_id=<ID>&plan=premium
 - `tests/test_account_delete.py`(4): 미인증 401·confirm 없으면 400·cascade 삭제+게시글 익명화·탈퇴 후 토큰 무효(/me 401).
 - 수동: 계정 메뉴 > ‘회원 탈퇴’ → 확인 다이얼로그 → 삭제 후 로그아웃·새로고침. 내 관심/매물/문의 사라지고, 내가 쓴 글은 ‘탈퇴한 사용자’로 표시되는지.
 - 보존 확인: 구독/결제·동의 이력은 남는지(법정 보존). ⚠️ 실 PG 도입 시 결제기록 보존정책 재점검.
+
+## S. 메모리 최적화(경량 Row 로더) — v1.111
+- `tests/test_stats_lowmem.py`(2): 바뀐 로더(_load_window/_rows_where)를 쓰는 집계 함수 전부 호출(예외=컬럼 누락 검출) + by_region 숫자 정확성.
+- 회귀 포인트: 집계가 전체 ORM 객체 대신 `_AGG_COLS`(16개 컬럼)만 조회. **stats.py에서 _load* 결과 행에 새 컬럼을 접근하면 `_AGG_COLS`에 반드시 추가**(누락 시 AttributeError).
+- 운영 확인: Render 메모리 사용량이 집계 요청(/dashboard/summary·overview) 시 급증하지 않는지. OOM 재발하면 인스턴스 상향 또는 윈도우(aggregate_months) 축소 검토.

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # --- 청약홈 / 지도 / 뉴스 / 금융 (후속 마일스톤) ---
     applyhome_service_key: str = ""
+    academy_service_key: str = ""   # NEIS(open.neis.go.kr) 학원교습소 API 키. data.go.kr 키와 다름!
     applyhome_competition_url: str = ""   # (선택) 청약홈 경쟁률·당첨가점 오픈API 엔드포인트(검증 후 입력 시 실연동)
     kakao_rest_api_key: str = ""
     kakao_js_map_key: str = ""

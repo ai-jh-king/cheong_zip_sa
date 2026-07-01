@@ -16,3 +16,4 @@ python-multipart==0.0.9
 pytest==8.3.3
 pywebpush>=1.14.0
 sentry-sdk>=2.0.0    # 에러 모니터링(선택, SENTRY_DSN 설정 시 활성)
+pyproj>=3.6.0        # 의료기관 표준데이터 좌표 EPSG:5174→WGS84 변환(선택, 없으면 해당 좌표만 건너뜀)

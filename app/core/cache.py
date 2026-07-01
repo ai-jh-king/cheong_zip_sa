@@ -85,7 +85,7 @@ def bump_data_version() -> int:
         return _data_version
 
 
-def stat_cached(default_ttl: int = 600, ttl_attr: str = "cache_ttl_stats_sec"):
+def stat_cached(default_ttl: int = 3600, ttl_attr: str = "cache_ttl_stats_sec"):
     """집계 함수 캐시 데코레이터.
     - 첫 인자 db(Session)는 캐시 키에서 제외(요청마다 달라지므로).
     - 키에 data_version 포함 → 수집/지오코딩 시 자동 무효화.

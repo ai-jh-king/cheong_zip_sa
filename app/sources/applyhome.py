@@ -32,6 +32,7 @@ F = {
     "units": ["TOT_SUPLY_HSHLDCO", "공급규모", "총공급세대수"],
     "price_max": ["LTTOT_TOP_AMOUNT", "분양최고금액", "SUPLY_AMOUNT"],
     "url": ["PBLANC_URL", "HMPG_ADRES"],
+    "builder": ["BSNS_MBY_NM", "사업주체명", "시행사"],
 }
 
 
@@ -94,6 +95,8 @@ def fetch_subscriptions(limit: int = 10) -> list[dict] | None:
                 "house_types": None,         # 주택형별 상세(분양가·세대·경쟁률·가점)
                 "status": _status(begin, end),
                 "url": _pick(row, F["url"]),
+                "builder": _pick(row, F["builder"]),
+                "notice_date": _pick(row, F["notice_date"]),
                 "is_sample": False,
             })
         # 최신 공고 우선

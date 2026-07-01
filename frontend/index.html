@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>청주 시세</title>
+<title>청집사 — 청주 부동산</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <!-- PWA (Phase B) -->
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="청주시세" />
+<meta name="apple-mobile-web-app-title" content="청집사" />
 <meta name="mobile-web-app-capable" content="yes" />
 <style>
   :root{--up:#DB342B;--down:#2563D8;--ink:#16212C;--muted:#69737D;--teal:#0E7C71;--line:rgba(20,32,43,.09);
@@ -56,7 +56,7 @@
   .statusdot{font-size:11px;font-weight:700;padding:3px 8px;border-radius:7px;white-space:nowrap;flex:none;}
   .nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(16,24,32,.05);z-index:50;}
   .nav-inner{max-width:480px;margin:0 auto;display:flex;}
-  .nav-btn{flex:1;border:none;background:none;font:inherit;padding:9px 0 11px;cursor:pointer;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;min-width:0;min-height:48px;}
+  .nav-btn{flex:1;border:none;background:none;font:inherit;padding:11px 0 14px;cursor:pointer;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:600;min-width:0;min-height:60px;}
   .nav-btn.on{color:var(--teal);}
   @media(max-width:720px){.hide-sm{display:none;}.filters{grid-template-columns:1fr 1fr;}}
   @media(max-width:380px){.nav-btn{font-size:10px;}}
@@ -64,9 +64,14 @@
   /* --- 추가 UX 유틸 --- */
   .skel{position:relative;overflow:hidden;background:var(--row);border-radius:8px;}
   .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
-    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shimmer 1.3s infinite;}
-  [data-theme=dark] .skel::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);}
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);animation:shimmer 1.25s ease-in-out infinite;}
+  [data-theme=dark] .skel::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);}
   @keyframes shimmer{100%{transform:translateX(100%);}}
+  @media(prefers-reduced-motion:reduce){
+    .skel::after{animation:none;}
+    .skel{animation:skelpulse 1.4s ease-in-out infinite;}
+    @keyframes skelpulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+  }
   .sticky-filter{position:sticky;top:0;z-index:20;}
   .collapse-body{animation:expand .22s ease;}
   @keyframes expand{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}

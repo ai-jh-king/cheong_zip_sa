@@ -1139,6 +1139,7 @@ def price_overview(db: Session, lawd_cd: str | None = None,
     }
 
 
+@stat_cached()
 def landmark_apts(db: Session, property_type: str = "apartment", limit: int = 5,
                   band: str = "all") -> list[dict]:
     """'대장아파트' TOP N — 단지별 대표 매매가(중앙값) 상위. band 지정 시 해당 평형만.

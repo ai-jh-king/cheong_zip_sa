@@ -247,6 +247,20 @@ function SkeletonCard({lines=3}){return (<div className="card" style={{padding:1
   <Skeleton h={16} w="55%"/>
   {Array.from({length:lines}).map((_,i)=><div key={i} style={{marginTop:9}}><Skeleton h={12} w={i%2?"78%":"92%"}/></div>)}
 </div>);}
+function SkeletonRow({thumb}){return (<div style={{display:"flex",alignItems:"center",gap:11,padding:"12px 2px",borderBottom:"1px solid var(--line)"}}>
+  {thumb&&<Skeleton h={44} w={44} r={12} style={{flex:"none"}}/>}
+  <div style={{flex:1,minWidth:0}}><Skeleton h={13} w="62%"/><div style={{height:7}}/><Skeleton h={11} w="40%"/></div>
+  <Skeleton h={14} w={54} style={{flex:"none"}}/>
+</div>);}
+function SkeletonList({rows=6,thumb,card=true}){const body=Array.from({length:rows}).map((_,i)=><SkeletonRow key={i} thumb={thumb}/>);
+  return card?<div className="card" style={{padding:"2px 12px",marginTop:10}}>{body}</div>:<div>{body}</div>;}
+function SkeletonStat(){return (<div className="card" style={{padding:"14px 15px",marginTop:10}}>
+  <Skeleton h={12} w="38%"/><div style={{height:10}}/>
+  <div style={{display:"flex",gap:22,alignItems:"flex-end"}}>
+   <Skeleton h={24} w={112}/>
+   <div style={{marginLeft:"auto"}}><Skeleton h={18} w={70}/></div>
+  </div>
+</div>);}
 function Info({text}){return (<span className="tip"><span className="tipdot">?</span><span className="tiptext">{text}</span></span>);}
 function Sparkline({values,color,height=30}){
   const vals=(values||[]).filter(v=>v!=null);
@@ -493,6 +507,7 @@ function Icon({name,active,size=24}){
  if(name==="bell")return <svg {...p}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10.5 19a1.8 1.8 0 0 0 3 0"/></svg>;
  if(name==="subscription")return <svg {...p}><path d="M4 7h16v4a2 2 0 0 0 0 2v4H4v-4a2 2 0 0 0 0-2z"/><path d="M14 7v10"/></svg>;
  if(name==="bookmark")return <svg {...p} fill={active?TEAL:"none"} stroke={active?TEAL:"#9aa3a8"}><path d="M7 4h10v16l-5-3.2L7 20z"/></svg>;
+ if(name==="more")return <svg {...p}><path d="M4 7h16M4 12h16M4 17h16"/></svg>;
  return null;
 }
 function SecTitle({icon,children}){
@@ -1198,7 +1213,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   
  </div>);
 }
-function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen}){
+function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen}){
  const [mode,setMode]=useState("list"),[selId,setSelId]=useState(null);
  const [cat,setCat]=useState(""),[sort,setSort]=useState("recent"),[q,setQ]=useState(""),[qIn,setQIn]=useState("");
  const [items,setItems]=useState(null),[page,setPage]=useState(1),[hasMore,setHasMore]=useState(false);
@@ -1227,6 +1242,11 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen}){
  const Chip=({k,label})=>(<button onClick={()=>setCat(k)} className={"tog "+(cat===k?"on":"")} style={{whiteSpace:"nowrap"}}>{label}</button>);
  const Tab=({v,label})=>(<button onClick={()=>setView(v)} style={{border:"none",background:"none",borderBottom:"2.5px solid "+(view===v?TEAL:"transparent"),color:view===v?INK:MUTED,fontWeight:800,fontSize:14,padding:"7px 4px",cursor:"pointer"}}>{label}</button>);
  return (<div style={{marginTop:6}}>
+  <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
+   <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?TEAL:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>💬 게시판</button>
+   <button onClick={()=>setSection&&setSection("listing")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section==="listing"?"var(--surface-solid)":"transparent",color:section==="listing"?TEAL:MUTED,boxShadow:section==="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>🏠 매물</button>
+  </div>
+  {section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <div style={{fontWeight:800,fontSize:17}}>게시판</div>
    <span style={{fontSize:12,color:MUTED}}>부동산 소통</span>
@@ -1266,18 +1286,18 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen}){
     <select className="sel" style={{flex:"none",width:96}} value={sort} onChange={e=>setSort(e.target.value)}>
      <option value="recent">최신순</option><option value="popular">인기순</option></select>
    </div>
-   {(!cat&&!q&&best.length>0)&&<div style={{margin:"14px 0 4px"}}>
-    <div style={{fontWeight:800,fontSize:14,margin:"0 2px 8px",display:"flex",alignItems:"center",gap:6}}>🔥 이번 주 베스트</div>
-    <div className="card" style={{padding:"2px 4px"}}>{best.map((p,k)=>{const md=k===0?"🥇":k===1?"🥈":k===2?"🥉":null;return (
-     <div key={"b"+p.id} className="txrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>openPost(p))} onClick={()=>openPost(p)}>
-      <span style={{flex:"none",width:28,textAlign:"center",fontSize:md?18:14,fontWeight:800,color:md?"inherit":MUTED}}>{md||(k+1)}</span>
-      <div style={{minWidth:0,flex:1}}>
-       <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
-       <div style={{fontSize:11.5,color:MUTED,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[(p.gu||"").replace("청주시 ",""),p.complex_name].filter(Boolean).join(" · ")||(p.nickname||"회원")}</div>
-      </div>
-      <span className="num" style={{flex:"none",fontWeight:800,color:MUTED,fontSize:12.5}}>♥ {p.like_count||0}</span>
-     </div>);})}</div>
-    <div style={{height:6,borderBottom:"1px solid rgba(99,120,128,.12)",margin:"8px 0 2px"}}/>
+   {(!cat&&!q&&best.length>0)&&<div style={{margin:"12px 0 4px"}}>
+    <Collapsible title="🔥 이번 주 베스트" right={<span style={{fontSize:12,color:MUTED,fontWeight:700,marginLeft:2}}>{best.length}</span>} defaultOpen={false}>
+     <div style={{padding:"0 6px 6px"}}>{best.map((p,k)=>{const md=k===0?"🥇":k===1?"🥈":k===2?"🥉":null;return (
+      <div key={"b"+p.id} className="txrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>openPost(p))} onClick={()=>openPost(p)}>
+       <span style={{flex:"none",width:28,textAlign:"center",fontSize:md?18:14,fontWeight:800,color:md?"inherit":MUTED}}>{md||(k+1)}</span>
+       <div style={{minWidth:0,flex:1}}>
+        <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
+        <div style={{fontSize:11.5,color:MUTED,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[(p.gu||"").replace("청주시 ",""),p.complex_name].filter(Boolean).join(" · ")||(p.nickname||"회원")}</div>
+       </div>
+       <span className="num" style={{flex:"none",fontWeight:800,color:MUTED,fontSize:12.5}}>♥ {p.like_count||0}</span>
+      </div>);})}</div>
+    </Collapsible>
    </div>}
    <div style={{marginTop:12}}>
     {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
@@ -1290,6 +1310,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen}){
    <div style={{height:16}}/>
   </React.Fragment>)}
   {mode==="detail"&&selId!=null&&<PostSheet id={selId} account={account} onNeedLogin={onNeedLogin} onClose={()=>setMode("list")} onChanged={()=>{load(1);if(view==="mine")loadMine();if(view==="scrap")loadScrap();}} onOpenComplex={onOpenComplex} onEdit={p=>{setEditPost(p);setMode("write");}} onOpenAuthor={openAuthor}/>}
+  </React.Fragment>}
  </div>);
 }
 
@@ -1431,6 +1452,30 @@ class ErrorBoundary extends React.Component{
     return this.props.children;
   }
 }
+function Splash(){
+ const [gone,setGone]=useState(false);
+ const [fade,setFade]=useState(false);
+ useEffect(()=>{
+  const t1=setTimeout(()=>setFade(true),1150);
+  const t2=setTimeout(()=>setGone(true),1550);
+  return ()=>{clearTimeout(t1);clearTimeout(t2);};
+ },[]);
+ if(gone)return null;
+ return ReactDOM.createPortal(
+  <div onClick={()=>setGone(true)} style={{position:"fixed",inset:0,zIndex:9999,background:"linear-gradient(160deg,#1FA594 0%,#0E7C71 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,opacity:fade?0:1,transition:"opacity .38s ease",cursor:"pointer"}}>
+   <div style={{width:104,height:104,borderRadius:26,background:"rgba(255,255,255,.14)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 30px rgba(0,0,0,.18)"}}>
+    <svg width="60" height="60" viewBox="0 0 100 100" aria-hidden="true">
+     <polygon points="50,18 84,48 16,48" fill="#fff"/>
+     <rect x="27" y="46" width="46" height="34" rx="4" fill="#fff"/>
+     <rect x="43" y="60" width="14" height="20" rx="2" fill="#0E7C71"/>
+     <rect x="33" y="53" width="9" height="9" rx="1.5" fill="#0E7C71"/>
+     <rect x="58" y="53" width="9" height="9" rx="1.5" fill="#0E7C71"/>
+    </svg>
+   </div>
+   <div style={{color:"#fff",fontWeight:800,fontSize:30,letterSpacing:"-0.02em",marginTop:4}}>청집사</div>
+   <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>청주 부동산, 한눈에</div>
+  </div>, document.body);
+}
 function App(){
  const [status,setStatus]=useState("loading");
  const [data,setData]=useState(null);
@@ -1455,6 +1500,7 @@ function App(){
  const [loanOpen,setLoanOpen]=useState(false);
  const [agentOpen,setAgentOpen]=useState(false);
  const [openListingId,setOpenListingId]=useState(null);
+ const [boardSection,setBoardSection]=useState("board");   // 게시판 내부: board|listing
  const [notifOpen,setNotifOpen]=useState(false),[unread,setUnread]=useState(0),[openPostId,setOpenPostId]=useState(null);
  const [fresh,setFresh]=useState(null);
  const [legalDoc,setLegalDoc]=useState(null);
@@ -1566,7 +1612,7 @@ function App(){
  const openDetail=openComplex;
  const [priceGu,setPriceGu]=useState("전체");
  const [priceView,setPriceView]=useState("list");   // 시세 탭 내부 뷰: list/map/rank
- const goGu=useCallback((guName)=>{ setPriceGu(guName||"전체"); setPriceView("list"); setSel(null); setTab("price"); window.scrollTo(0,0); },[]);
+ const goGu=useCallback((guName)=>{ setPriceGu(guName||"전체"); setPriceView("list"); setSel(null); setTab("map"); window.scrollTo(0,0); },[]);
  useEffect(()=>{fetch(`${API}/config`).then(r=>r.json())
   .then(c=>{setMapCfg({key:c.naver_map_client_id||"",enabled:!!c.map_enabled});if(c.aggregate_months)AGG_MONTHS=c.aggregate_months;if(c.feature_flags)FEATURES={...FEATURES,...c.feature_flags};}).catch(()=>{});},[]);
 
@@ -1587,8 +1633,9 @@ function App(){
   const rk=await fetch(`${API}/dashboard/ranking?property_type=${type}&limit=300&area_band=${band}`).then(r=>r.json());
   setData(p=>({...p,ranking:rk}));}catch(e){setData(p=>({...p,ranking:demoRanking(type,band)}));}},[]);
 
- const NAV=[["home","홈"],["price","시세"],["subscription","청약"],["listing","매물"],["board","게시판"],["map","지도"]];
+ const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","게시판"],["more","더보기"]];
  return (<UnitCtx.Provider value={unit}><div>
+  <Splash/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
    <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:INK,color:"#fff",boxShadow:"0 -4px 16px rgba(0,0,0,.25)"}}>
     <span style={{fontSize:13.5,fontWeight:700,flex:1}}>새 버전이 준비됐어요</span>
@@ -1596,18 +1643,19 @@ function App(){
     <button onClick={()=>setSwUpdate(false)} aria-label="닫기" style={{border:"none",background:"transparent",color:"#fff",fontSize:20,lineHeight:1,cursor:"pointer",padding:"0 4px"}}>×</button>
    </div>
   </div>}
-  <div style={{background:"linear-gradient(120deg,#0F766E 0%,#12A594 55%,#3BC9A8 100%)",color:"#EAF2F0"}}>
+  <div style={{background:"var(--bg1)",color:INK}}>
    <div className="wrap" style={{paddingBottom:0,display:"flex",alignItems:"center",gap:10,padding:"12px 16px"}}>
-    <span style={{fontWeight:800,fontSize:15.5,letterSpacing:"-0.01em",flex:"none"}}>청주시세</span>
-    <div onClick={()=>setSearchOpen(true)} style={{flex:"0 1 200px",marginLeft:"auto",minWidth:90,display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.92)",borderRadius:10,padding:"7px 11px",cursor:"text"}}>
+    <span style={{fontWeight:800,fontSize:18,letterSpacing:"-0.02em",flex:"none",color:INK}}>청집사</span>
+    <div onClick={()=>setSearchOpen(true)} style={{flex:"0 1 200px",marginLeft:"auto",minWidth:90,display:"flex",alignItems:"center",gap:6,background:"var(--surface-2)",borderRadius:10,padding:"8px 11px",cursor:"text",border:"1px solid var(--line)"}}>
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
     </div>
-    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:15,padding:"6px 9px",borderRadius:8,border:"none",cursor:"pointer",background:"rgba(255,255,255,.16)",color:"#EAF2F0"}}>🔔
+    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:15,padding:"7px 9px",borderRadius:8,border:"1px solid var(--line)",cursor:"pointer",background:"var(--surface-2)",color:INK}}>🔔
      {unread>0&&<span style={{position:"absolute",top:-5,right:-5,minWidth:17,height:17,borderRadius:9,background:"#C8322A",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{unread>99?"99+":unread}</span>}
     </button>}
     <div style={{position:"relative",flex:"none"}}>
-     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{fontSize:18,lineHeight:1,padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:"rgba(255,255,255,.16)",color:"#EAF2F0"}}>☰</button>
+     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{fontSize:18,lineHeight:1,padding:"7px 10px",borderRadius:8,border:"1px solid var(--line)",cursor:"pointer",background:"var(--surface-2)",color:INK}}>☰</button>
+     {acctMenu&&<div onClick={()=>setAcctMenu(false)} style={{position:"fixed",inset:0,zIndex:80}}/>}
      {acctMenu&&<div style={{position:"absolute",right:0,top:"112%",zIndex:90,background:"var(--surface-solid)",borderRadius:12,boxShadow:"0 10px 28px rgba(30,64,90,.22)",padding:6,minWidth:208,color:INK}}>
       <div style={{fontSize:11,color:MUTED,padding:"6px 10px 3px",fontWeight:700}}>설정</div>
       <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{display:"flex",alignItems:"center",width:"100%",textAlign:"left",border:"none",background:"none",color:INK,fontWeight:700,fontSize:13.5,padding:"9px 10px",borderRadius:8,cursor:"pointer"}}>다크 모드<span style={{marginLeft:"auto",color:MUTED,fontWeight:600}}>{theme==="dark"?"켜짐 ☀️":"꺼짐 🌙"}</span></button>
@@ -1632,15 +1680,15 @@ function App(){
    {!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
-   {!data?<div style={{marginTop:12}}><SkeletonCard lines={3}/><SkeletonCard lines={2}/><SkeletonCard lines={3}/></div>:
+   {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
     tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
     tab==="subscription"?<SubscriptionTab/>:
-    tab==="listing"?<ListingsTab account={account} onNeedLogin={()=>setLoginOpen(true)} openId={openListingId} onConsumeOpen={()=>setOpenListingId(null)}/>:
-    tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)}/>:
+    tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}}/>:
     null}
    <footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
@@ -1653,13 +1701,13 @@ function App(){
   </div>
   {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
-    <Icon name={k} active={tab===k}/>{l}</button>))}
+    <Icon name={k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
   {searchOpen&&<SearchOverlay onClose={()=>setSearchOpen(false)}
     board={data&&data.board} recents={recents}
     onComplex={it=>{setSearchOpen(false);openComplex(it);}}
     onGu={g=>{setSearchOpen(false);goGu(g);}}
-    onListing={id=>{setSearchOpen(false);setOpenListingId(id);setTab("listing");window.scrollTo(0,0);}}/>}
+    onListing={id=>{setSearchOpen(false);setOpenListingId(id);setBoardSection("listing");setTab("board");window.scrollTo(0,0);}}/>}
   {notifOpen&&<NotificationsOverlay onClose={()=>setNotifOpen(false)} onAllRead={()=>setUnread(0)}
     onOpenComplex={it=>{setNotifOpen(false);openComplex(it);window.scrollTo(0,0);}}
     onOpenPost={pid=>{setNotifOpen(false);setOpenPostId(pid);setTab("board");window.scrollTo(0,0);}}/>}
@@ -1668,7 +1716,7 @@ function App(){
   {commuteOpen&&<CommuteSheet onClose={()=>setCommuteOpen(false)} onOpen={it=>{setCommuteOpen(false);openComplex(it);}} mapCfg={mapCfg}/>}
   {budgetOpen&&<BudgetSheet onClose={()=>setBudgetOpen(false)} onOpen={it=>{setBudgetOpen(false);openComplex(it);}} favs={favs}/>}
   {loanOpen&&<LoanSheet onClose={()=>setLoanOpen(false)} onOpen={it=>{setLoanOpen(false);openComplex(it);}}/>}
-  {agentOpen&&<AgentDashboard onClose={()=>setAgentOpen(false)} account={account} onGoListings={()=>{setAgentOpen(false);setTab("listing");}} onOpenListing={id=>{setAgentOpen(false);setTab("listing");setOpenListingId(id);}}/>}
+  {agentOpen&&<AgentDashboard onClose={()=>setAgentOpen(false)} account={account} onGoListings={()=>{setAgentOpen(false);setBoardSection("listing");setTab("board");}} onOpenListing={id=>{setAgentOpen(false);setBoardSection("listing");setTab("board");setOpenListingId(id);}}/>}
   {compare.length>0&&!compareOpen&&!sel&&<div style={{position:"fixed",left:0,right:0,bottom:64,zIndex:55,display:"flex",justifyContent:"center",pointerEvents:"none",padding:"0 12px"}}>
    <div style={{pointerEvents:"auto",display:"flex",alignItems:"center",gap:9,background:"var(--surface-solid)",border:"1px solid var(--line)",boxShadow:"0 8px 24px rgba(30,64,90,.2)",borderRadius:999,padding:"7px 9px 7px 15px",maxWidth:"100%"}}>
     <span style={{fontWeight:800,fontSize:13,whiteSpace:"nowrap"}}>비교 {compare.length}개</span>
@@ -1907,16 +1955,22 @@ function LandmarkCarousel({items,onOpen,ptype}){
 }
 function Sheet({title,info,onClose,children,fill}){
  useEffect(()=>{const o=document.body.style.overflow;document.body.style.overflow="hidden";return ()=>{document.body.style.overflow=o;};},[]);
+ const scRef=React.useRef(null);
+ const start=React.useRef(null);
+ const [dragY,setDragY]=useState(0);
+ const onTouchStart=e=>{const t=e.touches[0];start.current={y:t.clientY,atTop:(scRef.current?scRef.current.scrollTop:0)<=0};};
+ const onTouchMove=e=>{if(!start.current)return;const dy=e.touches[0].clientY-start.current.y;if(dy>0&&start.current.atTop)setDragY(dy);};
+ const onTouchEnd=()=>{if(dragY>110)onClose();setDragY(0);start.current=null;};
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:120,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
-   <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:"93vh"}:{maxHeight:"86vh"}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)"}}>
-    <div style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
+   <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:"93vh"}:{maxHeight:"86vh"}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
+    <div style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
     <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px 12px",flex:"none"}}>
      <span style={{fontWeight:800,fontSize:16,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span>
      {info&&<span style={{flex:"none",display:"inline-flex",alignItems:"center"}}><Info text={info}/></span>}
      <span onClick={onClose} aria-label="닫기" role="button" tabIndex={0} onKeyDown={onEnter(onClose)} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600,flex:"none"}}>×</span>
     </div>
-    <div style={{overflowX:"hidden",overflowY:"auto",padding:"0 14px 26px",...(fill?{flex:1,minHeight:0}:{})}}>{children}</div>
+    <div ref={scRef} style={{overflowX:"hidden",overflowY:"auto",padding:"0 14px 26px",...(fill?{flex:1,minHeight:0}:{})}}>{children}</div>
    </div>
   </div>, document.body);
 }
@@ -1963,7 +2017,7 @@ function CommuteSheet({onClose,onOpen,mapCfg}){
 function RankSheet({title,items,metric,onItem,onClose,info}){
  const medal=r=>r===1?"🥇":r===2?"🥈":r===3?"🥉":null;
  return (<Sheet title={title} info={info} onClose={onClose} fill>
-  {items.slice(0,10).map((it,k)=>{const md=medal(it.rank);
+  <MoreList items={(items||[]).slice(0,50)} initial={10} step={10} render={(it,k)=>{const md=medal(it.rank);
    return (<div key={k} className="txrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>{onItem&&onItem(it);onClose&&onClose();})} style={{cursor:"pointer",padding:"13px 6px"}} onClick={()=>{onItem&&onItem(it);onClose&&onClose();}}>
     <span style={{flex:"none",width:30,textAlign:"center",fontSize:md?20:15,fontWeight:800,color:md?"inherit":MUTED}}>{md||it.rank}</span>
     <div style={{minWidth:0,flex:1}}>
@@ -1971,7 +2025,7 @@ function RankSheet({title,items,metric,onItem,onClose,info}){
      <div style={{fontSize:12,color:MUTED,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{["청주시",(it.gu||"").replace("청주시 ",""),it.dong].filter(Boolean).join(" ")}{it.property_type&&it.property_type!=="apartment"?" · "+(TYPE_LABEL[it.property_type]||""):""}</div>
     </div>
     <span style={{flex:"none"}}>{metric(it)}</span>
-   </div>);})}
+   </div>);}}/>
  </Sheet>);
 }
 function ComplexQuickSheet({item,onClose,onDetail}){
@@ -2270,6 +2324,23 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
   </div>}
  </SheetShell>);
 }
+function MoreTab({onCommute,onBudget,onLoan}){
+ const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
+  <div style={{fontSize:28,flex:"none"}}>{icon}</div>
+  <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:15}}>{title}</div><div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{desc}</div></div>
+  <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
+ </div>);
+ return (<div style={{marginTop:6}}>
+  <div style={{margin:"2px 2px 4px"}}>
+   <div style={{fontWeight:800,fontSize:17,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
+   <div style={{fontSize:12,color:MUTED,marginTop:2}}>조건으로 청주 단지를 찾고, 대출까지 한 번에.</div>
+  </div>
+  <Tool icon="🧭" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
+  <Tool icon="💰" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
+  <Tool icon="🏦" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
+  <div style={{fontSize:11,color:MUTED,margin:"14px 2px 0",lineHeight:1.6}}>※ 대출 한도·예산 추천은 공시·입력값 기반 참고용 추정이며, 실제 조건은 금융회사 심사로 달라집니다.</div>
+ </div>);
+}
 function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
@@ -2292,7 +2363,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
  return (<div style={{marginTop:6}}>
   {showIntro&&<div className="card" style={{padding:"14px 15px",marginTop:4,marginBottom:8,position:"relative",background:"linear-gradient(120deg,rgba(15,118,110,.12),rgba(15,118,110,.03))"}}>
    <span onClick={dismissIntro} aria-label="환영 안내 닫기" style={{position:"absolute",top:6,right:12,cursor:"pointer",color:MUTED,fontSize:20,lineHeight:1,fontWeight:600}}>×</span>
-   <div style={{fontWeight:800,fontSize:15}}>청주 시세에 오신 걸 환영해요 👋</div>
+   <div style={{fontWeight:800,fontSize:15}}>청집사에 오신 걸 환영해요 👋</div>
    <div style={{fontSize:12.5,color:MUTED,margin:"3px 0 10px",lineHeight:1.5}}>집 찾기, 이렇게도 할 수 있어요 — 눌러서 바로 시작하세요.</div>
    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
     <button onClick={()=>onCommute&&onCommute()} className="tog" style={{fontSize:12.5}}>🚆 통근시간으로</button>
@@ -2300,8 +2371,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
     <button onClick={()=>onLoan&&onLoan()} className="tog" style={{fontSize:12.5}}>🏦 대출 한도</button>
    </div>
   </div>}
-  {/* 청주 시세 요약(히어로) */}
-  <div className="card" style={{padding:"14px 15px",marginBottom:8}}>
+  {/* 청주 시세 요약(히어로) — 숨김(홈에서 제외, 부활 시 false 제거) */}
+  {false&&<div className="card" style={{padding:"14px 15px",marginBottom:8}}>
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
     <span style={{fontSize:13.5,fontWeight:800}}>청주 아파트 시세</span>
     <span style={{fontSize:11,color:MUTED}}>· 최근 {AGG_MONTHS}개월 평균</span>
@@ -2320,8 +2391,10 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
      {city.trade_count!=null&&<div style={{fontSize:11.5,color:MUTED,marginTop:1}}>매매 {city.trade_count.toLocaleString("ko-KR")}건</div>}
     </div>
    </div>
-   <button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>
-  </div>
+   {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
+  </div>}
+
+  <RecentList recents={recents} onOpen={onOpen}/>
 
   {b.trending&&b.trending.items&&b.trending.items.length>0&&
    <TickerBanner label={b.trending.basis==="surge"?"🔥 거래 급상승":"🔥 거래 활발"} color={UP} bg="rgba(200,50,42,.10)"
@@ -2342,35 +2415,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
     onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:b.property_type||"apartment"})}/>;
   })()}
 
-  <div onClick={()=>onCommute&&onCommute()} onKeyDown={onEnter(()=>onCommute&&onCommute())} role="button" tabIndex={0} aria-label="통근시간으로 단지 찾기" className="card" style={{padding:"14px 15px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:12}}>
-   <div style={{fontSize:26,flex:"none"}}>🧭</div>
-   <div style={{minWidth:0,flex:1}}>
-    <div style={{fontWeight:800,fontSize:14.5}}>통근권으로 집 찾기</div>
-    <div style={{fontSize:12.5,color:MUTED,marginTop:2}}>직장·역까지 시간으로 단지를 찾아보세요</div>
-   </div>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </div>
-
-  <div onClick={()=>onBudget&&onBudget()} onKeyDown={onEnter(()=>onBudget&&onBudget())} role="button" tabIndex={0} aria-label="예산 맞춤 단지 추천" className="card" style={{padding:"14px 15px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:12}}>
-   <div style={{fontSize:26,flex:"none"}}>💰</div>
-   <div style={{minWidth:0,flex:1}}>
-    <div style={{fontWeight:800,fontSize:14.5}}>내 예산 맞춤 추천</div>
-    <div style={{fontSize:12.5,color:MUTED,marginTop:2}}>보유 현금으로 살 수 있는 청주 단지를 찾아드려요</div>
-   </div>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </div>
-
-  <div onClick={()=>onLoan&&onLoan()} onKeyDown={onEnter(()=>onLoan&&onLoan())} role="button" tabIndex={0} aria-label="내 대출 한도 계산" className="card" style={{padding:"14px 15px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:12}}>
-   <div style={{fontSize:26,flex:"none"}}>🏦</div>
-   <div style={{minWidth:0,flex:1}}>
-    <div style={{fontWeight:800,fontSize:14.5}}>내 대출 한도 계산</div>
-    <div style={{fontSize:12.5,color:MUTED,marginTop:2}}>이 시세로 얼마까지 받을 수 있는지 바로 확인하세요</div>
-   </div>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </div>
-
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
-  <RecentList recents={recents} onOpen={onOpen}/>
 
   <TopMovers movers={b.top_movers} onOpen={onOpen}/>
 
@@ -2441,6 +2486,8 @@ function SubDetail({s,onClose}){
    <Row k="청약기간" v={s.period}/>
    <Row k="총 공급" v={s.units?`${s.units}세대`:null}/>
    <Row k="분양가" v={s.price}/>
+   <Row k="시행사" v={s.builder}/>
+   <Row k="모집공고일" v={s.notice_date}/>
    <Row k="경쟁률" v={compTxt||(s.status==="접수예정"?"집계 전":null)}/>
    <Row k="최저가점" v={s.min_score!=null?String(s.min_score):null}/>
   </div>
@@ -2474,6 +2521,7 @@ function SubSheet({s,onClose}){
 function SubscriptionTab(){
  const [data,setData]=useState(null);
  const [filter,setFilter]=useState("전체");
+ const [mtab,setMtab]=useState("bunyang");   // bunyang(분양 정보) | cheongyak(청약 일정)
  const [sel,setSel]=useState(null);
  useEffect(()=>{let on=true;
   fetch(`${API}/subscription?limit=50`).then(r=>r.json())
@@ -2487,14 +2535,31 @@ function SubscriptionTab(){
  const FIL=["전체","접수중","접수예정","마감"];
  const counts={}; FIL.forEach(f=>{counts[f]=f==="전체"?all.length:all.filter(s=>s.status===f).length;});
  const list=filter==="전체"?all:all.filter(s=>s.status===filter);
+ const openList=all.filter(s=>s.status==="접수중"||s.status==="접수예정")
+   .sort((a,b)=>((a.status==="접수중"?0:1)-(b.status==="접수중"?0:1))||String(a.begin||a.period||"").localeCompare(String(b.begin||b.period||"")));
+ const seg=(active)=>({flex:1,border:"none",cursor:"pointer",fontWeight:800,fontSize:13.5,padding:"10px 0",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?TEAL:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.12)":"none"});
  return (<div style={{marginTop:6}}>
-  {data.notice&&<div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:10,padding:"9px 13px",fontSize:12.5,fontWeight:600,lineHeight:1.6,marginBottom:8}}>ⓘ {data.notice} <b>예시</b> 배지 항목은 실제 정보가 아닙니다.</div>}
-  <div className="card sticky-filter" style={{padding:"8px 10px",marginBottom:10,display:"flex",gap:6,flexWrap:"wrap"}}>
-   {FIL.map(f=><button key={f} className={"tog"+(filter===f?" on":"")} onClick={()=>setFilter(f)} style={{padding:"7px 12px"}}>{f}{counts[f]>0?` ${counts[f]}`:""}</button>)}
+  <div style={{margin:"2px 2px 10px"}}>
+   <div style={{fontWeight:800,fontSize:17,letterSpacing:"-0.01em"}}>청주 분양·청약</div>
+   <div style={{fontSize:12,color:MUTED,marginTop:2}}>분양 공고 정보와, 지금 넣을 수 있는 청약 일정을 나눠서 확인하세요.</div>
   </div>
-  {list.length?<MoreList items={list} initial={6} step={6} render={(s,i)=><SubCard key={i} s={s} onOpen={setSel}/>}/>
-   :<Empty action={filter!=="전체"?<button className="tog" onClick={()=>setFilter("전체")}>전체 보기</button>:null}>
-     {filter==="전체"?"현재 청주 지역 청약 공고가 없습니다.":`'${filter}' 상태의 공고가 없습니다.`}</Empty>}
+  <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:10}}>
+   <button onClick={()=>setMtab("bunyang")} style={seg(mtab!=="cheongyak")}>🏢 분양 정보</button>
+   <button onClick={()=>setMtab("cheongyak")} style={seg(mtab==="cheongyak")}>📋 청약 일정{openList.length?` ${openList.length}`:""}</button>
+  </div>
+  {data.notice&&<div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:10,padding:"9px 13px",fontSize:12.5,fontWeight:600,lineHeight:1.6,marginBottom:8}}>ⓘ {data.notice} <b>예시</b> 배지 항목은 실제 정보가 아닙니다.</div>}
+  {mtab==="cheongyak"?<React.Fragment>
+   <div style={{fontSize:12,color:MUTED,margin:"0 2px 8px",lineHeight:1.5}}>지금 접수 중이거나 곧 시작하는 청약이에요. <b>임박한 순</b>으로 보여드립니다.</div>
+   {openList.length?<MoreList items={openList} initial={10} step={10} render={(s,i)=><SubCard key={i} s={s} onOpen={setSel}/>}/>
+    :<Empty>지금 접수 중이거나 예정인 청약이 없습니다. ‘분양 정보’에서 지난 공고를 볼 수 있어요.</Empty>}
+  </React.Fragment>:<React.Fragment>
+   <div className="card sticky-filter" style={{padding:"8px 10px",marginBottom:10,display:"flex",gap:6,flexWrap:"wrap"}}>
+    {FIL.map(f=><button key={f} className={"tog"+(filter===f?" on":"")} onClick={()=>setFilter(f)} style={{padding:"7px 12px"}}>{f}{counts[f]>0?` ${counts[f]}`:""}</button>)}
+   </div>
+   {list.length?<MoreList items={list} initial={10} step={10} render={(s,i)=><SubCard key={i} s={s} onOpen={setSel}/>}/>
+    :<Empty action={filter!=="전체"?<button className="tog" onClick={()=>setFilter("전체")}>전체 보기</button>:null}>
+      {filter==="전체"?"현재 청주 지역 분양 공고가 없습니다.":`'${filter}' 상태의 공고가 없습니다.`}</Empty>}
+  </React.Fragment>}
   {data.disclaimer&&<div style={{fontSize:11,color:MUTED,marginTop:10,lineHeight:1.6}}>{data.disclaimer}</div>}
   {sel&&<SubSheet s={sel} onClose={()=>setSel(null)}/>}
  </div>);
@@ -2665,10 +2730,9 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
    <span style={{fontWeight:800,fontSize:18}}>지도</span>
    <span style={{fontSize:12,color:MUTED}}>{loading?"불러오는 중…":`${markers.length}개 단지`}</span>
   </div>
-  <div role="group" aria-label="거래유형" style={{display:"flex",gap:6,marginBottom:7,flexWrap:"wrap"}}>
+  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
    {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
-  </div>
-  <div role="group" aria-label="주택유형" style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+   <span style={{width:1,height:18,background:"var(--line)",margin:"0 3px",flex:"none"}}/>
    {PROPS.map(([k,l])=><button key={k} onClick={()=>setProp(k)} style={chip(prop===k)}>{l}</button>)}
   </div>
   <div style={{display:"flex",alignItems:"center",gap:9,background:"var(--surface-2)",borderRadius:12,padding:"9px 13px",marginBottom:9}}>
@@ -3060,7 +3124,7 @@ function AreaSection({a,unit,onLoan}){
    {months.length>0&&<div style={{marginTop:14}}><div style={{fontSize:12,color:MUTED,fontWeight:700,marginBottom:4}}>매매 시세 추이</div><DetailLine months={months} values={vals}/></div>}
    {(a.recent||[]).length>0&&<div style={{marginTop:14}}>
     <div style={{fontSize:12,color:MUTED,fontWeight:700,marginBottom:2}}>최근 실거래<Info text="정정=신고 후 금액이 정정된 거래 · 직거래=중개 없이 거래(가족 등 특수관계가 섞일 수 있어 시세 해석 주의) · 이상치=같은 평형 중앙 평단가 대비 ±30% 넘게 벗어난 거래."/>{a.reliability&&a.reliability!=="ok"&&<span className="pill" style={{marginLeft:6,background:"rgba(178,106,0,.14)",color:"#9A6B00",fontWeight:700}}>표본 적음 {a.trade_count}건</span>}</div>
-    <MoreList items={a.recent} initial={5} step={10} render={(r,i)=>{const isTrade=r.deal_type==="trade";
+    <MoreList items={a.recent} initial={10} step={10} render={(r,i)=>{const isTrade=r.deal_type==="trade";
      const amt=isTrade?won(r.deal_amount):r.deal_type==="jeonse"?`보증 ${won(r.deposit)}`:`${won(r.deposit)}/월${r.monthly_rent}만`;
      const dc=isTrade?INK:r.deal_type==="jeonse"?TEAL:"#9A6B00";
      return <div key={i} className="listrow">
@@ -3606,7 +3670,7 @@ function Collapsible({title,icon,right,defaultOpen,children}){
   {open&&<div className="collapse-body">{children}</div>}
  </div>);
 }
-/* 시세: 거래유형별(매매/전세/월세) 섹션 — 5개씩 페이징 */
+/* 시세: 거래유형별(매매/전세/월세) 섹션 — 10개씩 페이징 */
 function TxRow({t,deal,onOpen,unit,compact}){
  const color=deal==="trade"?TEAL:deal==="jeonse"?"#1E5FC4":"#9A6B00";
  const isTrade=t.deal_type==="trade";
@@ -3657,7 +3721,7 @@ function ComplexGroup({g,deal,onOpen,unit}){
    </div>
   </div>
   {open&&<div style={{background:"rgba(99,120,128,.035)"}}>
-   <MoreList items={g.items} initial={4} step={10} render={(t,i)=><TxRow key={i} t={t} deal={deal} onOpen={onOpen} unit={unit} compact/>}/>
+   <MoreList items={g.items} initial={10} step={10} render={(t,i)=><TxRow key={i} t={t} deal={deal} onOpen={onOpen} unit={unit} compact/>}/>
    {onOpen&&<div onClick={()=>onOpen({complex_name:g.complex_name,lawd_cd:g.items[0].lawd_cd,property_type:g.items[0].property_type,dong:g.dong})} style={{textAlign:"center",padding:"9px",fontSize:12,color:TEAL,fontWeight:700,cursor:"pointer"}}>단지 상세 보기 ›</div>}
   </div>}
  </div>);
@@ -3789,8 +3853,8 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
    <div className="card" style={{padding:"14px 15px"}}>
     <div style={{fontSize:12.5,color:MUTED}}>{guLabel} <span style={{fontSize:10.5}}>· {TYPE_LABEL[ptype]||"전체"} · 최근 {AGG_MONTHS}개월</span></div>
     <div style={{display:"flex",alignItems:"flex-end",gap:14,flexWrap:"wrap",marginTop:6}}>
-     <div><div style={{fontSize:11,color:MUTED}}>평균 매매(중앙)</div><div className="num" style={{fontSize:23,fontWeight:800,lineHeight:1.1}}>{summary.median!=null?eok(summary.median):"—"}</div>{summary.dM!=null&&<div style={{fontSize:11,marginTop:1}}>전월 <Delta v={summary.dM}/></div>}</div>
-     <div style={{marginLeft:"auto",textAlign:"right"}}><div style={{fontSize:11,color:MUTED}}>전세가율</div><div className="num" style={{fontSize:17,fontWeight:800,color:TEAL}}>{summary.ratio!=null?summary.ratio+"%":"—"}</div><div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>거래 {summary.count}건</div></div>
+     <div><div style={{fontSize:11,color:MUTED,display:"inline-flex",alignItems:"center",gap:3}}>평균 매매(중앙)<Info text={`선택 지역·유형의 최근 ${AGG_MONTHS}개월 매매 실거래가 중앙값입니다. 평균이 아닌 중앙값이라 초고가·초저가 이상치에 덜 흔들려요. 자료: 국토교통부 실거래가(참고용, 법적 효력 없음).`}/></div><div className="num" style={{fontSize:23,fontWeight:800,lineHeight:1.1}}>{summary.median!=null?eok(summary.median):"—"}</div>{summary.dM!=null&&<div style={{fontSize:11,marginTop:1}}>전월 <Delta v={summary.dM}/></div>}</div>
+     <div style={{marginLeft:"auto",textAlign:"right"}}><div style={{fontSize:11,color:MUTED,display:"inline-flex",alignItems:"center",gap:3}}>전세가율<Info text={`전세 보증금 중앙값 ÷ 매매가 중앙값 × 100(근사). 최근 ${AGG_MONTHS}개월 실거래 기준. 높을수록 매매가 대비 보증금 비중이 커, 시세 하락 시 보증금 회수가 어려워질 수 있어요.`}/></div><div className="num" style={{fontSize:17,fontWeight:800,color:TEAL}}>{summary.ratio!=null?summary.ratio+"%":"—"}</div><div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>거래 {summary.count}건</div></div>
     </div>
    </div>
    <div style={{display:"flex",alignItems:"center",gap:7,background:"var(--chip)",borderRadius:10,padding:"9px 12px",marginTop:10}}>
@@ -3821,7 +3885,7 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
     </div>
    </div>}
    <div style={{marginTop:8}}>
-    {complexes.length?<MoreList items={complexes} initial={12} step={12} render={(c,i)=>(<div key={i} className="txrow" style={{cursor:"pointer"}} tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen&&onOpen({complex_name:c.name,lawd_cd:c.lawd_cd,property_type:c.property_type,gu:c.gu,dong:c.dong}))} onClick={()=>onOpen&&onOpen({complex_name:c.name,lawd_cd:c.lawd_cd,property_type:c.property_type,gu:c.gu,dong:c.dong})}>
+    {ovLoading&&!complexes.length?<SkeletonList rows={6}/>:complexes.length?<MoreList items={complexes} initial={12} step={12} render={(c,i)=>(<div key={i} className="txrow" style={{cursor:"pointer"}} tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen&&onOpen({complex_name:c.name,lawd_cd:c.lawd_cd,property_type:c.property_type,gu:c.gu,dong:c.dong}))} onClick={()=>onOpen&&onOpen({complex_name:c.name,lawd_cd:c.lawd_cd,property_type:c.property_type,gu:c.gu,dong:c.dong})}>
      <div style={{minWidth:0,flex:1}}>
       <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name} {c.contains_sample_data&&<ExBadge/>}</div>
       <div style={{fontSize:12,color:MUTED,marginTop:1}}>{[(c.gu||"").replace("청주시 ",""),c.dong,TYPE_LABEL[c.property_type]].filter(Boolean).join(" · ")}</div>
@@ -3832,7 +3896,7 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
      </div>
     </div>)}/>:<div className="card" style={{padding:18,marginTop:4}}><Empty action={q?<button onClick={()=>setQ("")} style={{border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"9px 16px",borderRadius:10,cursor:"pointer"}}>검색 지우기</button>:null}>{q?"검색 결과가 없어요.":"이 조건의 거래가 아직 없어요. 구·유형을 바꿔보세요."}</Empty></div>}
    </div>
-   <div style={{fontSize:10.5,color:MUTED,margin:"12px 2px 0",lineHeight:1.6}}>※ 대표 시세는 최근 {AGG_MONTHS}개월 실거래 중앙값입니다. 신고 지연·정정·해제로 값이 바뀔 수 있어요. 단지를 누르면 평형별 상세·적정가 체크를 볼 수 있습니다.</div>
+   <div style={{fontSize:10.5,color:MUTED,margin:"12px 2px 0",lineHeight:1.6}}>자료: 국토교통부 실거래가(참고용·법적 효력 없음). 대표 시세=최근 {AGG_MONTHS}개월 매매 실거래 중앙값, 평단가=거래금액÷(전용면적÷3.3058), 전세가율=전세보증금 중앙값÷매매가 중앙값. 신고 지연·정정·해제로 값이 바뀔 수 있어요. 단지를 누르면 평형별 상세·적정가 체크를 볼 수 있습니다.</div>
   </div>}
  </div>);
 }

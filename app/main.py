@@ -209,6 +209,32 @@ def _startup():
         except Exception:  # noqa
             logging.getLogger(__name__).warning("Sentry 초기화 실패(무시) — sentry-sdk 미설치?")
 
+    # 진입 속도 개선: 시작 시 홈 집계를 백그라운드로 미리 계산(캐시 워밍업).
+    # 첫 사용자가 무거운 재계산을 기다리지 않도록. 실패해도 서비스에 영향 없음.
+    def _warm_cache():
+        try:
+            from app.db.session import SessionLocal
+            from app.services import stats
+            db = SessionLocal()
+            try:
+                for pt in ("apartment",):
+                    stats.city_summary(db, pt)
+                    stats.city_trend(db, pt, 12)
+                    stats.gu_price_ranking(db, pt)
+                    stats.recent_trades(db, pt, 4)
+                    stats.trend(db, pt, 12)
+                    stats.trending_complexes(db, pt, 50)
+                    stats.landmark_apts(db, pt, 50)
+                    stats.top_movers(db, pt, 10)
+                    stats.landmark_by_band(db, pt, 5)
+                logging.getLogger(__name__).info("캐시 워밍업 완료")
+            finally:
+                db.close()
+        except Exception:  # noqa
+            logging.getLogger(__name__).warning("캐시 워밍업 실패(무시)")
+    import threading as _wth
+    _wth.Thread(target=_warm_cache, daemon=True).start()
+
 
 @app.get("/health")
 def health(db: Session = Depends(get_db)):

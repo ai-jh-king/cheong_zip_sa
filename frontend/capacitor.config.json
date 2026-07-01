@@ -1,6 +1,6 @@
 {
   "appId": "com.cheongzipsa.app",
-  "appName": "청주시세",
+  "appName": "청집사",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

@@ -76,7 +76,11 @@ def _normalize(row: dict) -> dict | None:
 def fetch_medical() -> list[dict]:
     s = get_settings()
     key = getattr(s, "academy_service_key", "") or getattr(s, "molit_service_key", "")
-    raw = fetch_pages(MEDICAL_URL, key)
+    url = getattr(s, "places_medical_url", "") or ""
+    if not url:
+        logger.warning("의료기관: places_medical_url 미설정 → 수집 생략(활용신청 후 실제 uddi URL을 .env에). 왜곡 방지")
+        return []
+    raw = fetch_pages(url, key)
     out = [n for n in (_normalize(r) for r in raw) if n]
     logger.info("medical: 청주 의료기관 %d건 정규화", len(out))
     return out

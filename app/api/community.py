@@ -41,7 +41,7 @@ def _post_light(p: Post) -> dict:
     return {"id": p.id, "category": p.category, "category_label": CATEGORIES.get(p.category, p.category),
             "title": p.title, "nickname": p.nickname or "회원", "account_id": p.account_id,
             "gu": _gu_name(p.lawd_cd) if p.lawd_cd else None, "lawd_cd": p.lawd_cd,
-            "complex_name": p.complex_name, "property_type": p.property_type,
+            "complex_name": p.complex_name, "property_type": p.property_type, "resident": bool(getattr(p, "resident", False)),
             "thumb": (imgs[0] if imgs else None), "image_count": len(imgs),
             "views": p.views, "like_count": p.like_count, "comment_count": p.comment_count,
             "is_sample": p.is_sample, "created_at": (p.created_at.isoformat() if p.created_at else None)}
@@ -83,6 +83,19 @@ class ActionIn(BaseModel):
     reason: str | None = None
 
 
+def _my_home_of(db: Session, account_id: int) -> dict | None:
+    """계정에 연결된 기기들의 UserPref에서 my_home(우리집)을 찾는다. 없으면 None."""
+    from app.models import DeviceLink, UserPref
+    ids = list(db.scalars(select(DeviceLink.device_id).where(DeviceLink.account_id == account_id)))
+    if not ids:
+        return None
+    for row in db.scalars(select(UserPref).where(UserPref.device_id.in_(ids), UserPref.data.isnot(None))):
+        mh = (row.data or {}).get("my_home")
+        if isinstance(mh, dict) and mh.get("complex_name"):
+            return mh
+    return None
+
+
 @router.get("/categories")
 def categories():
     return {"items": [{"key": k, "label": v} for k, v in CATEGORIES.items()]}
@@ -92,6 +105,7 @@ def categories():
 def list_posts(db: Session = Depends(get_db),
                category: str | None = Query(None),
                gu: str | None = Query(None),
+               complex_name: str | None = Query(None, alias="complex"),
                q: str | None = Query(None),
                sort: str = Query("recent"),
                mine: bool = Query(False),
@@ -108,6 +122,8 @@ def list_posts(db: Session = Depends(get_db),
         qy = qy.where(Post.category == category)
     if gu:
         qy = qy.where(Post.lawd_cd == gu)
+    if complex_name:
+        qy = qy.where(Post.complex_name == complex_name)   # 단지 이야기(단지 상세 섹션)
     if q and q.strip():
         like = f"%{q.strip()}%"
         qy = qy.where(or_(Post.title.like(like), Post.body.like(like)))
@@ -193,6 +209,9 @@ def create_post(body: PostIn, db: Session = Depends(get_db),
     p = Post(account_id=acc.id, device_id=body.device_id, nickname=acc.nickname or "회원",
              category=cat, title=title, body=text, lawd_cd=(body.lawd_cd or None),
              complex_name=(body.complex_name or None), property_type=(body.property_type or None),
+             resident=(lambda mh: bool(mh and body.complex_name and mh.get("complex_name") == body.complex_name
+                                       and (not body.lawd_cd or not mh.get("lawd_cd") or mh.get("lawd_cd") == body.lawd_cd))
+                       )(_my_home_of(db, acc.id) if body.complex_name else None),
              images=(imgs or None), created_at=datetime.utcnow(), updated_at=datetime.utcnow())
     db.add(p)
     db.commit()

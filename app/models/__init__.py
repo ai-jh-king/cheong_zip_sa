@@ -257,6 +257,7 @@ class Post(Base):
     body: Mapped[str] = mapped_column(String(8000))
     lawd_cd: Mapped[str | None] = mapped_column(String(5), nullable=True)  # 지역 태그(선택)
     complex_name: Mapped[str | None] = mapped_column(String(120), nullable=True)  # @단지 연결(선택)
+    resident: Mapped[bool] = mapped_column(Boolean, default=False)  # 작성 시점 "우리집=이 단지" 서버 검증 결과(자가 등록 기반 주민 표시)
     property_type: Mapped[str | None] = mapped_column(String(20), nullable=True)  # 단지 유형(연결 시)
     images: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 첨부 이미지 URL 리스트
     views: Mapped[int] = mapped_column(Integer, default=0)

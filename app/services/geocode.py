@@ -155,6 +155,50 @@ def run_geocode(db: Session, limit: int | None = None) -> dict:
     return {"geocoded": done, "cached": skipped, "failed": failed}
 
 
+def run_geocode_places(db: Session, limit: int | None = None) -> dict:
+    """시설(Place) 중 좌표 없는 것을 지오코딩해 Place.lat/lng 채움.
+    NEIS 학원 등 좌표 미제공 소스 대응. 도로명주소 우선 → 명칭+동 폴백.
+    좌표를 못 찾으면 None 유지(틀린 좌표 저장 금지 — 왜곡 방지)."""
+    from app.models import Place
+    s = get_settings()
+    use_naver = bool(s.geocode_use_naver and s.naver_map_client_id and s.naver_map_client_secret)
+    use_kakao = bool(s.kakao_rest_api_key)
+    if not (use_naver or use_kakao):
+        raise GeocodeKeyMissing(
+            "지오코딩 키가 필요합니다. KAKAO_REST_API_KEY(권장) "
+            "또는 GEOCODE_USE_NAVER=true + 네이버 키.")
+    q = select(Place).where(Place.lat.is_(None))
+    if limit:
+        q = q.limit(limit)
+    rows = db.scalars(q).all()
+    done = failed = 0
+    for i, p in enumerate(rows):
+        hit = None
+        addr = getattr(p, "road_address", None)
+        if addr:   # 도로명주소가 가장 정확
+            if use_kakao:
+                hit = (_kakao_query(s.kakao_rest_api_key, s.kakao_address_url or KAKAO_ADDRESS, addr)
+                       or _kakao_query(s.kakao_rest_api_key, s.kakao_keyword_url or KAKAO_KEYWORD, addr))
+            if not hit and use_naver:
+                hit = _naver_query(s.naver_map_client_id, s.naver_map_client_secret, addr)
+        if not hit:   # 명칭+시군구, 그다음 동 폴백(geocode_one 재사용)
+            res = geocode_one(s, p.name, p.lawd_cd or "43111", getattr(p, "dong_name", None))
+            if res:
+                hit = (res[0], res[1])
+        if hit:
+            p.lat, p.lng = hit[0], hit[1]
+            done += 1
+        else:
+            failed += 1
+        if done and done % 50 == 0:
+            db.commit()
+    db.commit()
+    if done:
+        bump_data_version()  # 시설 좌표 변경 → 지도 POI 캐시 무효화
+    logger.info("시설 지오코딩: 성공 %s · 실패 %s (대상 %s)", done, failed, len(rows))
+    return {"geocoded": done, "failed": failed, "total": len(rows)}
+
+
 def coords_map(db: Session) -> dict:
     """{(단지명, lawd_cd): (lat, lng)} — 좌표 있는 것만."""
     return {(c.name, c.lawd_cd): (c.lat, c.lng)

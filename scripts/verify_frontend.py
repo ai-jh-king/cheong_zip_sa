@@ -79,6 +79,11 @@ def main() -> int:
     check("manifest 링크(PWA)", 'rel="manifest"' in h)
     check("SW 등록 스크립트", "serviceWorker.register('/sw.js')" in h)
 
+    # 6) 최상위 함수 중복 정의 탐지 — 같은 이름 재정의는 앞 정의를 덮어써 기존 사용처가 오동작(실제 사고: JeonseSafety)
+    names = re.findall(r"^function\s+([A-Za-z_]\w*)\s*\(", code, re.M)
+    dups = sorted({n for n in names if names.count(n) > 1})
+    check("최상위 함수 중복 정의 없음", not dups, f"중복={dups}" if dups else "")
+
     print("== 결과:", "PASS ✅" if ok else "FAIL ❌", "==")
     return 0 if ok else 1
 

@@ -29,6 +29,7 @@
 ---
 
 ## 2. 공통 규칙 (반드시 이해)
+- **스키마 관리**: 운영(PostgreSQL)=Alembic 마이그레이션이 권위. 개발/폴백(SQLite)=앱 시작 시 `_ensure_columns`가 **모델(Base.metadata)에서 컬럼을 자동 도출**해 누락분을 ALTER ADD(재발 방지). 신규 컬럼은 모델에 추가하면 SQLite 자동 반영 + 운영은 마이그레이션 파일 필요.
 
 이 4가지는 거의 모든 테이블에 공통으로 적용되는 "왜곡 없음" 장치입니다.
 
@@ -128,6 +129,7 @@
 ## 4. 그 외 테이블 (요약)
 
 ### 매물(UGC) · 커뮤니티
+- **`posts.resident`**(bool, 0019): 작성 시점에 서버가 작성자 prefs.my_home과 @단지 태그를 대조한 결과. 자가 신고 불가(클라이언트 값 안 받음).
 - **`listings`** — 사용자/중개업자가 올린 **등록 매물**. 실거래(`transactions`)와 **분리**(왜곡 방지). 「중개대상물 표시·광고」 고시 명시항목(면적·층·방향·가격·관리비·중개업체 정보 등)을 컬럼으로 담음. `status`(active/traded/hidden).
 - **`inquiries`** — 매물 **문의(리드)**. 사용자가 매물에 남긴 `contact`(연락처·민감)·`message`. **매물 등록자(소유자)만 열람**(`owner_account_id`/`owner_device_id` 비정규화). `consent=True` 필수, `status`(new/read/contacted/closed). 마케팅·제3자 제공 금지. 중개사 대시보드의 "받은 문의"로 노출. (※ 연락처 수집 → 개인정보처리방침에 항목 반영 필요)
 - **회원 탈퇴(DELETE /auth/account)**: 계정+기기연결+개인화(favorites/recent_views/saved_searches/user_prefs)+post_likes/bookmarks/report_logs+notifications/push_subscriptions+내 listings+inquiries(받은+보낸)를 **삭제**, posts/comments는 **익명화**(작성자 식별 제거·스레드 보존), subscriptions/consents는 **법정·증빙 보존**. 원자적(한 트랜잭션).
@@ -141,7 +143,12 @@
 - **`favorites`** — 관심 단지/지역. `device_id` + `target_type`(complex/region) + `target_id`.
 - **`recent_views`** — 최근 본 단지(기기당 상한).
 - **`saved_searches`** — 저장된 시세 검색 필터(JSON).
-- **`user_prefs`** — 기기별 설정(단위·내 동네 등, JSON 1행).
+- **`user_prefs`** — 기기별 설정(단위·내 동네 등, JSON 1행). **`data.my_home`에 우리집(단지명·lawd_cd·유형) 저장** → 로그인 시 기기 병합으로 동기화(비로그인은 프런트 localStorage).
+
+### 청주 특화(하이퍼로컬)
+- **`landmarks`** — 개발 호재. `category`(industry/transport/commercial/residential/public)·`status`(confirmed/ongoing/planned)·`lat/lng`·`summary`·`expected_year`·`source_name/url`·`sort_order`·`is_active`. 시드=`scripts/seed_landmarks`. 출처 필수·집값 단정 금지. (홈 카드·지도 핀·단지상세)
+- **`places`** — 생활·교육·운동 시설. `category`(education/sports/living)·`subcategory`(academy_*/daycare/hospital/library/sports 등)·`lat/lng`·`source`. 시드=`scripts/collect_places`(NEIS·data.go.kr)+geocode. 육아환경·초품아·지도 POI의 원천. **미적재면 관련 UI 숨김**.
+- **`commute_destinations`/`commute_times`** — 통근 거점·소요시간. 직주근접(단지→거점 직선거리, `commute.hub_access`)에 좌표 재사용. 시드=`scripts/seed_commute`(SK하이닉스 청주캠퍼스 포함).
 
 ### 계정 · 운영
 - **`accounts`** — 소셜 로그인 계정. `provider`(kakao/naver)+`provider_uid`(UNIQUE), `role`(user/agent), `nickname`.

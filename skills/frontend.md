@@ -106,3 +106,17 @@
 - 데이터: stats.price_overview(지역)·complex_detail(단지) 재사용. 절대 URL은 `PUBLIC_BASE_URL`(없으면 요청 호스트 추론).
 - `/sitemap.xml`(지역+주요 단지 최대 30/구)·`/robots.txt` 제공. 단지명은 URL quote, 페이지에선 escape.
 - 향후: og:image 동적 생성, SPA 딥링크(공유 링크 탭 시 해당 단지로 바로 진입), 단지/지역 페이지에서 앱 설치 유도.
+
+## v1.135~v1.152 컨벤션 (청주 특화·개인화·UI 정리)
+- **버튼 스타일**: 주요 액션(글쓰기·등록·로그인·계산 등)은 공용 CSS 클래스 **`.btn-primary`**(index.html, 테마대응 var(--teal)·반경12·active 피드백) 사용. 부가 액션은 `.btn-ghost`. **초록 하드코딩(#0F766E 등) 금지** → 다크모드 깨짐. 필터·토글은 토스식(선택만 `--surface-solid`+ink+옅은 그림자, 미선택 투명/뮤트, 경계 없음).
+- **스코프 안전(재발 방지)**: 공용 헬퍼는 **모듈 레벨**(`guOf`·`onEnter`·`eok`·`Delta`·`.btn-primary`). 한 컴포넌트의 지역 `const` 헬퍼를 다른 컴포넌트에서 쓰면 런타임 ReferenceError(=v1.136 게시판 크래시). 오프라인 검증은 이걸 못 잡으니 브라우저 스모크 필수(TESTING.md).
+- **데이터 대기 패턴(왜곡 없음)**: 데이터 없으면 컴포넌트가 `null` 반환(빈 카드/가짜값 금지). 예: `CityIssues`(호재)·`KidsEnv`(육아)·`WorkAccess`(직주근접)·초품아 배지·지도 POI. 데이터 적재 시 자동 표출.
+- **청주 특화 컴포넌트**: `CityIssues`(홈 호재, GET /landmarks) · `MyHomeCard`(우리집, GET /complex/detail) · `KidsEnv`(육아, d.places) · `WorkAccess`(직주근접, d.work_access) · FavList 관심시세(POST /complex/quotes 배치).
+- **지도 전체화면**: `PriceMarkerMap`은 `full` prop 시 `height:calc(100dvh-108px)`(헤더48+네비60). MapHub는 `margin:0 -16px -96px`로 가장자리까지 + 필터/요약을 absolute 오버레이. 하단 요약 바는 네비(60px) 위(`bottom:20`). 지도 탭에선 상단 배너·하단 footer 숨김(App에서 `tab!=="map"` 게이트). POI/호재는 별도 ref 레이어(가격 마커와 독립).
+- **우리집 동기화**: App `myHome` 상태 → `UserPref.data.my_home`(prefs PUT) + localStorage. 로그인 시 prefs 로드로 기기 병합. 등록은 검색 오버레이 `homePick` 모드 재사용.
+
+- **TrendBlock**(단지 시세·거래량 추이): timeseries 월별 {month,avg,count}만으로 렌더(기간 토글은 클라이언트 slice). 등락(전월/전년동월)은 **전체 이력 기준** 계산(뷰 필터와 분리). SVG 색은 var(--line)/MUTED로 다크 대응. Sparkline은 미사용이나 정의 보존.
+
+- **OnboardingWizard**(전입자 온보딩): position:fixed 전체화면 4단계(0 인트로/1 직장/2 예산/3 가족/4 결과). GET /onboarding/options·recommend 호출. 하위 프리미티브 OnbDots(진행도트)·OnbOption(선택 카드)은 모듈 레벨. 결과 카드 탭→openComplex. 첫 방문 1회 자동(App: safeStore cj_onb_seen, 스플래시 후 1.7s), 저장 UserPref.data.onboarding. UI 트렌드: 한 화면 한 질문·큰 탭타겟·.btn-primary 하단 고정.
+
+- **지도 시그널 핀 패턴**: 호재(showLm)·급매(showBg) 각각 독립 ref(lmObjs/bgObjs)+useEffect(토글 의존)로 레이어링. 새 시그널 핀도 동일 패턴(가격 마커와 분리, zIndex 100+). 급매 핀 클릭→openComplex. 현위치=PriceMarkerMap onMapReady(map)로 인스턴스 노출→MapHub goMyLoc(geolocation, 권한 거부 시 안내).

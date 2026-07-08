@@ -20,6 +20,16 @@ def near(lat: float, lng: float,
     return places_svc.nearby(db, lat, lng, radius, per) or {}
 
 
+@router.get("/map")
+def map_places(min_lat: float, max_lat: float, min_lng: float, max_lng: float,
+               categories: str | None = Query(None, description="education,sports,living 중 콤마구분"),
+               db: Session = Depends(get_db)):
+    """지도 영역(bbox) 안 시설 마커. 확대 시 프런트가 현재 화면 범위로 호출.
+    데이터 없으면 places=[] — 구조만 있고 데이터 적재 시 자동 표출."""
+    groups = [c for c in (categories or "").split(",") if c] or None
+    return places_svc.in_bounds(db, min_lat, max_lat, min_lng, max_lng, groups)
+
+
 @router.get("/region/{lawd_cd}")
 def region(lawd_cd: str, db: Session = Depends(get_db)):
     """구(법정동코드 5자리)별 세분류 개수 요약."""

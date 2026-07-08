@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     hf_policy_api_url: str = ""   # (선택) HF 정책대출 금리 오픈API 엔드포인트(검증 후 입력 시 실연동)
     seomin_api_key: str = ""
     seomin_api_url: str = ""   # (선택) 서민금융 '서민금융 한눈에' 오픈API 엔드포인트(검증 후 입력 시 실연동)
+    # 생활시설(Place) 표준데이터 오픈API 엔드포인트 — 활용신청 후 '내 API 페이지'의 실제 URL(uddi 포함)을 입력.
+    # 미설정이면 해당 시설은 수집하지 않음(가짜 URL 호출 금지 = 왜곡 방지). 검증된 데이터셋 ID는 DATA_PLACES.md 참조.
+    places_daycare_url: str = ""   # 전국어린이집표준데이터(15013108) — 위경도·정원·현원 포함(검증)
+    places_sports_url: str = ""    # 전국공공시설개방정보/체육시설표준데이터(15013117 등)
+    places_library_url: str = ""   # 전국도서관표준데이터(15013109)
+    places_medical_url: str = ""   # 전국의료기관표준데이터(15096293) — 좌표 EPSG:5174 주의
     # --- 개인화 2단계: 소셜 로그인(구조만, 키 설정 시 활성화) ---
     kakao_login_rest_key: str = ""        # 카카오 로그인 REST 키(지도 키와 별개 앱일 수 있음)
     naver_login_client_id: str = ""       # 네이버 로그인 Client ID(검색/지도 키와 별개)

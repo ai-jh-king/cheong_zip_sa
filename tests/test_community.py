@@ -42,3 +42,32 @@ def test_report_threshold_hides_post(client, db):
     for i in range(5):                       # REPORT_HIDE=5
         client.post(f"/community/posts/{pid}/report", json={"device_id": f"d{i}"})
     assert client.get(f"/community/posts/{pid}").status_code == 404   # 숨김 처리됨
+
+
+def test_post_resident_badge_requires_matching_my_home(client, db):
+    """주민 뱃지: 자가 신고가 아니라 서버가 '우리집(prefs.my_home)'과 대조해 저장(왜곡 없음)."""
+    from app.models import UserPref
+    # dev-login → 계정 + device 링크 자동 생성(test_account_delete.py 패턴)
+    r = client.post("/auth/dev-login", json={"device_id": "dev-res1", "nickname": "주민1"})
+    tok = r.json().get("token") or r.json().get("access_token")
+    assert tok, f"dev-login 실패: {r.json()}"
+    h = {"Authorization": f"Bearer {tok}"}
+    # 그 기기의 prefs에 우리집 설정
+    db.add(UserPref(device_id="dev-res1",
+                    data={"my_home": {"complex_name": "청주더샵", "lawd_cd": "43113"}}))
+    db.commit()
+    # ① 우리집과 같은 단지 태그 → resident True
+    r1 = client.post("/community/posts", headers=h, json={
+        "title": "우리 단지 주차 얘기", "body": "주차 어렵네요", "category": "free",
+        "complex_name": "청주더샵", "lawd_cd": "43113"})
+    assert r1.status_code == 200, r1.text
+    assert r1.json()["post"].get("resident") is True
+    # ② 다른 단지 태그 → resident False (뱃지 못 받음)
+    r2 = client.post("/community/posts", headers=h, json={
+        "title": "다른 단지 질문", "body": "여기 어때요?", "category": "qa",
+        "complex_name": "다른아파트", "lawd_cd": "43111"})
+    assert r2.status_code == 200 and r2.json()["post"].get("resident") is False
+    # ③ 단지 필터(단지 이야기): complex 파라미터로 해당 단지 글만
+    items = client.get("/community/posts", params={"complex": "청주더샵"}).json()["items"]
+    assert items and all(p["complex_name"] == "청주더샵" for p in items)
+    assert any(p["resident"] for p in items)

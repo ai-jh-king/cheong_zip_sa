@@ -168,3 +168,32 @@ def search_by_commute(db: Session, dest_id: int, mode: str, max_minutes: int,
 def _gu(lawd_cd: str) -> str:
     from app.data.region_codes import DISTRICT_BY_CODE
     return DISTRICT_BY_CODE.get(str(lawd_cd), "")
+
+
+def hub_access(db: Session, lat: float, lng: float, limit_per_cat: int = 3) -> list[dict] | None:
+    """단지 좌표 → 청주 주요 직장·거점까지 직선거리(km).
+    통근권 목적지(CommuteDestination)를 재사용해 좌표 일관성 유지.
+    목적지 미시드/좌표 없음이면 None(프런트 숨김, 왜곡 없음). 직선거리임을 라벨로 명시할 것."""
+    if lat is None or lng is None:
+        return None
+    rows = db.scalars(select(CommuteDestination).where(
+        CommuteDestination.is_active.is_(True),
+        CommuteDestination.lat.isnot(None), CommuteDestination.lng.isnot(None),
+    ).order_by(CommuteDestination.sort_order)).all()
+    if not rows:
+        return None
+    out = []
+    for d in rows:
+        km = round(haversine_m(lat, lng, d.lat, d.lng) / 1000, 1)
+        out.append({"key": d.key, "name": d.name, "category": d.category,
+                    "distance_km": km, "coord_method": d.coord_method or "seed_approx"})
+    # 카테고리별 가까운 순 상한(직장은 전부, 나머지는 limit)
+    out.sort(key=lambda x: x["distance_km"])
+    seen: dict = {}
+    trimmed = []
+    for h in out:
+        c = h["category"]
+        seen[c] = seen.get(c, 0) + 1
+        if c == "job" or seen[c] <= limit_per_cat:
+            trimmed.append(h)
+    return trimmed

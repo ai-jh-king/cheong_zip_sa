@@ -49,44 +49,40 @@ def init_db() -> None:
 
 
 def _ensure_columns() -> None:
-    """기존 테이블에 신규 컬럼을 안전하게 추가(idempotent). create_all은 컬럼 추가를 못 하므로 보강.
-    SQLite(개발) 전용 — 운영(PostgreSQL)은 Alembic 이 스키마를 관리하므로 호출되지 않는다.
-    (raw DDL 문자열은 SQLite 기준이라 PG 에서는 절대 실행하지 않는다)"""
+    """기존 테이블에 신규 컬럼을 안전하게 자동 보강(idempotent). create_all은 컬럼 추가를 못 하므로 보강.
+    **모델(Base.metadata)에서 자동 도출** — 새 컬럼을 모델에 추가하면 별도 등록 없이 SQLite 에 반영된다.
+    (과거엔 수동 목록이라 posts.resident 처럼 누락→'no such column' 사고 발생. 자동화로 재발 차단.)
+    SQLite(개발/폴백) 전용 — 운영(PostgreSQL)은 Alembic 이 스키마 권위 소스이므로 실행하지 않는다."""
+    import logging
     from sqlalchemy import inspect, text
     if engine.dialect.name != "sqlite":
-        return  # 안전망: 비-SQLite 에서는 raw DDL 실행 금지
-    wanted = {
-        "posts": [("images", "JSON"), ("complex_name", "VARCHAR(120)"),
-                  ("property_type", "VARCHAR(20)")],
-        "comments": [("parent_id", "INTEGER")],
-        "notifications": [("complex_name", "VARCHAR(120)"), ("lawd_cd", "VARCHAR(5)"),
-                          ("property_type", "VARCHAR(20)")],
-        "complexes": [("kapt_code", "VARCHAR(20)"), ("dong_count", "INTEGER"),
-                      ("heating", "VARCHAR(40)"), ("total_area", "FLOAT"),
-                      ("builder", "VARCHAR(120)"), ("approval_date", "VARCHAR(20)"),
-                      ("parking", "INTEGER"), ("price_official", "INTEGER"),
-                      ("price_basis_date", "VARCHAR(20)"), ("meta_source", "VARCHAR(40)"),
-                      ("enriched_at", "DATETIME")],
-        "transactions": [("identity_key", "VARCHAR(220)"), ("is_canceled", "BOOLEAN"),
-                         ("canceled_date", "DATE"), ("corrected_at", "DATETIME")],
-    }
+        return  # 안전망: 비-SQLite 에서는 raw DDL 실행 금지(Alembic 관리)
+    log = logging.getLogger("db.ensure_columns")
     try:
+        from app import models  # noqa: F401  (모델 등록 보장)
         insp = inspect(engine)
-        for table, cols in wanted.items():
-            if not insp.has_table(table):
-                continue
-            existing = {c["name"] for c in insp.get_columns(table)}
-            for name, ddl in cols:
-                if name in existing:
+        for table_name, table in Base.metadata.tables.items():
+            if not insp.has_table(table_name):
+                continue  # 신규 테이블은 create_all 이 통째로 생성
+            existing = {c["name"] for c in insp.get_columns(table_name)}
+            for col in table.columns:
+                if col.name in existing:
                     continue
                 try:
-                    with engine.begin() as conn:
-                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
-                        # 신규 boolean 컬럼은 기존 행이 NULL → 0(미해제)로 백필(필터 안전)
-                        if table == "transactions" and name == "is_canceled":
-                            conn.execute(text("UPDATE transactions SET is_canceled = 0 "
-                                              "WHERE is_canceled IS NULL"))
+                    ddl_type = col.type.compile(dialect=engine.dialect)
                 except Exception:
-                    pass
-    except Exception:
-        pass
+                    ddl_type = "TEXT"
+                try:
+                    with engine.begin() as conn:
+                        # SQLite ADD COLUMN 은 NOT NULL(기본값 없음) 불가 → 항상 nullable 로 추가
+                        conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{col.name}" {ddl_type}'))
+                        # boolean/integer 신규 컬럼은 기존 행이 NULL → 필터 안전 위해 0 백필
+                        tn = str(col.type).upper()
+                        if any(k in tn for k in ("BOOL", "INT")):
+                            conn.execute(text(f'UPDATE "{table_name}" SET "{col.name}" = 0 '
+                                              f'WHERE "{col.name}" IS NULL'))
+                    log.info("스키마 자동 보강: %s.%s (%s) 추가", table_name, col.name, ddl_type)
+                except Exception as e:
+                    log.warning("컬럼 보강 실패(무시): %s.%s — %s", table_name, col.name, e)
+    except Exception as e:
+        log.warning("_ensure_columns 스킵: %s", e)

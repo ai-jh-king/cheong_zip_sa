@@ -58,3 +58,23 @@
 - 단지 상세의 인프라 접근성 점수. 입력=`poi.nearby` 결과(반경 1.5km 카테고리별 장소+거리). **임의 장소 생성 금지**(왜곡 없음).
 - 규칙(공개): 카테고리별 '가장 가까운 시설 거리' 기반 — 300m 이내 100점, 1.5km 40점(선형), 반경 내 없음 0점. 카테고리·가중치 `CATEGORIES`(교통0.30·편의0.25·학교0.25·의료0.20) 가중평균=종합(0~100)+등급(최상/좋음/보통/아쉬움). 카테고리별 점수·최단거리·개수 동봉(근거 공개).
 - `living_score(poi)`: poi `None`(키/좌표 없음)→None, 빈 dict(시설 없음)→0점. complex_detail가 좌표+카카오 키 있을 때 `res["living_score"]` 포함. "거리 기준 참고치" 고지 필수.
+
+
+## 전세가율 신호 (rent_gap_signal)
+- 입력: jeonse_ratio(전세보증금 중앙값/매매가 중앙값, %). None이면 신호 없음.
+- 밴드: ≥85 high(갭 매우작음·역전세 주의) / ≥75 elevated(작음) / ≥60 normal / <60 low(큼).
+- 반환: {jeonse_ratio, level, gap_label, note}. complex_detail 응답의 `rent_signal`로 노출, 프런트 `RentSignal` 카드.
+- ⚠️ 왜곡 없음: 가격 방향·역전세를 **단정하지 않음**. 전세가율의 의미(갭·주의점)만 설명 + 면책. 밴드 임계값 조정 시 이 함수만 수정.
+
+
+## 전입자 온보딩 추천 (onboarding.recommend)
+- 조립: search_by_commute(직장 dest_key 근처 아파트) → complex_quotes(최근가·전월대비) → 예산 차액(over_budget_by = price-budget, 판정 아님).
+- 정렬: 가격 있는 것 우선 → 통근시간 짧은 순. 옵션: /onboarding/options(commute category=job).
+- ⚠️ 왜곡 없음: 새 데이터 생성 없음. 통근=직선거리 추정·매매가=중앙값(참고)·예산=차액만 제공(구매력 단정 금지). notice에 '중개·광고 없음' 정체성 고지.
+
+
+## 가격 검증 3종 (pricecheck)
+- quote_check: 최근 N개월(설정 aggregate_months) 해당 단지 trade → median·diff_pct·percentile(이하 거래 비율)·min/max. 표본<3이면 found=False.
+- gu_context: 구별 price_median·ppm_median(평단가)·count — 분양 비교 '판단 재료'만 제공.
+- bargain_radar: 단지×평형(round평) 12개월 중앙값 대비 diff≤-12% 최근 실거래, 표본≥4에서만(착시 방지). 모든 함수 disclaimer 포함(판정 금지).
+- ⚠️ 교훈: stats에 없는 상수(AGG_MONTHS) import는 컴파일 통과·런타임 전체다운 — 새 모듈의 cross-import는 심볼 존재를 grep으로 확인.

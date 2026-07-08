@@ -43,3 +43,9 @@
 - 멱등: app_meta.notify_last_tx_id 커서 이후만 처리. 수신자는 DeviceLink 로 account 연결된 사용자만.
 - 알림 문구는 '건수+대상명'만(사실). 모의(is_sample)·해제(is_canceled) 제외.
 - 프런트: NotificationsOverlay 가 transaction 이면 onOpenComplex 로 단지 상세 이동.
+
+
+## 단지 주민 뱃지·단지 이야기 (v1.158)
+- 작성 시 `_my_home_of(db, account_id)`(DeviceLink→UserPref.data.my_home)와 body.complex_name/lawd_cd 대조 → `Post.resident` 저장. 클라이언트가 resident를 보낼 수 없음(위조 방지).
+- 라벨 정직성: '주민' = 우리집 자가 등록 기반(서류 인증 아님)임을 UI 툴팁·안내문에 명시. 후행 확장: 관리자 검증 시 verified 단계 추가 여지.
+- 목록 필터 `GET /community/posts?complex=<단지명>` → 단지 상세 ComplexTalk가 사용.

@@ -9,11 +9,11 @@
 ## 0. 현재 출발점 (확인된 사실)
 
 - 프런트: **단일 파일 `app/web/index.html`**(~3,800줄), 브라우저에서 **Babel 런타임 변환**, CDN 4종 의존(React·ReactDOM·Babel·Pretendard).
-- **빌드 시스템 없음**(package.json·번들러·TypeScript 없음), **PWA 매니페스트 없음**, 서비스워커 `sw.js` + **웹푸시(VAPID)** 있음.
+- ✅ (v1.166+) **Vite 빌드 완료**(package.json·번들러), **PWA 매니페스트·아이콘·서비스워커·웹푸시(VAPID) 완료**, **Capacitor 설정(capacitor.config.json)·의존성 추가 완료**. → A·B 단계 done. 남은 것은 **C(네이티브 셸 생성·스토어 제출)**. 실행 절차는 `MOBILE_DEPLOY.md`.
 - 백엔드: FastAPI REST, 운영 인프라는 이미 강함(doctor·스케줄러·마이그레이션·모니터링·백업·CI).
 - 데모 폴백 내장(백엔드 없이도 화면 렌더).
 
-> ⚠️ 이 구조 그대로는 어떤 스토어 경로로 가든 부채입니다. **런타임 Babel 제거 + CDN 번들링 + 매니페스트**가 모든 경로의 공통 선행 조건입니다.
+> ✅ 위 공통 선행 조건(번들링·매니페스트)은 완료됨. 지금은 `npx cap add android/ios`부터 시작하면 된다(MOBILE_DEPLOY.md).
 
 ---
 

@@ -3,6 +3,231 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.173 (2026-06-28) — 더보기 '🛡 전세 안전 진단'(앱 내 상세 제공, 단순 링크 아님)
+- **깡통전세 계산기(JeonseGuard)**: 매매 시세·전세 보증금·등기부(을구) 근저당 채권최고액 입력 → **(보증금+선순위)÷시세 비율**을 밴드로 진단(≥80% 위험 신호/70~80 주의/<70 상대적 여유) + 보증보험·특약 행동 안내. 계산식·'채권최고액=통상 원금의 110~130%' 설명, **단정 금지 면책**(경매 배당·법적 판단 아님). 외부 링크(등기부)와 "떼서 이 숫자를 넣으세요"로 연결되는 구조.
+- **전세 계약 단계별 체크리스트**(접이식): 계약 전(등기부·건축물대장·전세가율·임대인 체납 열람)/계약일(당일 재발급·임대인 계좌·특약)/잔금·입주(재확인·전입신고+확정일자·보증보험) — 검증된 일반 절차만, '법률 자문 아님' 고지.
+- **[사고 차단] 이름 충돌**: 기존 단지 상세 전세가율 게이지 `JeonseSafety`와 중복 정의 발생 → 새 컴포넌트 `JeonseGuard` 개명. **verify_frontend에 '최상위 함수 중복 정의 탐지' 추가**(재정의가 앞 정의를 덮어써 기존 화면 오동작하는 유형 영구 차단).
+- 검증: verify_all(중복검사 포함) PASS · pytest 148 · smoke_e2e 18.
+## v1.172 (2026-06-28) — '계약 전 꼭 확인' 외부 공식 링크 확장(7→10종)
+- 추가: **💰 대출·예금 금리 비교**(금융감독원 금융상품 통합비교공시 finlife.fss.or.kr — 앱 대출계산기의 실제 금리 확인처) · **🧾 임대차(전월세) 신고**(국토부 rtms.molit.go.kr) · **🏦 취득·양도세 신고**(홈택스 — 앱 세금 계산기와 연결).
+- 안심전세는 별도 안정 도메인 불확실 → 추측 URL 대신 HUG 항목 설명에 병기(왜곡 없음).
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
+## v1.171 (2026-06-28) — 더보기 '계약 전 꼭 확인'(공식 외부 서비스)
+- **감사**: 앱이 데이터로 못 주는 계약 필수 확인 4종(등기부등본·건축물대장·실거래 원본·공시가격) 안내 부재 확인(기존은 청약홈·HF·HUG만).
+- **더보기에 `OfficialLinks` 신설**: 등기부등본(인터넷등기소)·건축물대장(정부24)·실거래가 공개시스템(국토부)·공시가격 알리미·전세보증(HUG)·청약홈·청주시청 — 7개 공식 서비스 바로가기. "청집사가 대신 확인해줄 수 없는 것" 프레이밍으로 '말릴 수 있는 앱' 정체성 강화 + 기관 무관·무수익 고지.
+- 왜곡 없음: 공식 최상위 도메인만 링크(하위 경로 하드코딩 금지 — 사이트 개편에도 안전). 새 데이터 생성 없음.
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
+## v1.170 (2026-06-28) — 유입(바이럴) 장치 3종
+- **감사**: 더보기·프로필·공유·SEO를 점검 — 시세 카드 공유·SEO 랜딩은 있으나 **공유물에 앱 이름/주소가 없어 확산이 유입으로 연결 안 되는 구멍** 확인(ROADMAP 백로그와 일치).
+- ① **공유 카드 워터마크**: 캔버스 하단 "🏠 청집사 — 청주 부동산을 한눈에" + 접속 도메인(location.host, 배포 도메인 자동 반영). 카톡방 확산→유입 연결.
+- ② **호가검증 결과 공유**: '📤 이 결과 공유하기' — "『단지』 호가 X억, 중앙값 대비 +N%·이하 거래 P%" + 면책 + 링크. navigator.share→클립보드 폴백. **킬러 시그널이 퍼지는 형태**.
+- ③ **더보기 '📣 친구에게 청집사 알리기'**: 중개·광고 없음 정체성 문구 + 링크 공유(전입 지인 타깃).
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
+## v1.169 (2026-06-28) — 메인 기능 결정: '판단이 얹힌 지도' + 지도 편의 개선
+- **[전략 결정] 메인 기능 = 지도, 단 '판단이 얹힌 지도'** — 유입·체류는 지도(부동산 앱의 첫 본능), 차별화는 지도 위 우리만의 시그널('말릴 수 있는 앱'). CLAUDE 8.0·ROADMAP 명문화.
+- **📉 급매 핀 레이어(지도)**: 급매 레이더를 홈 카드에서 지도 토글로 확장. `bargain_radar` 응답에 단지 좌표 포함(Complex 조인, 미지오코딩=None→핀 제외·왜곡 없음). 지도 필터에 '📉 급매' 토글(호재와 동일 레이어 패턴), 핀=파랑 배지(−N%), 클릭→단지 상세. 툴팁에 '사유 있을 수 있음' 고지.
+- **📍 현 위치 버튼**: 지도 우하단 플로팅. geolocation→setCenter+줌15, 권한 거부/실패 시 안내(왜곡 없이 실패 고지). PriceMarkerMap `onMapReady`로 지도 인스턴스 노출.
+- 테스트: 급매 좌표 포함 pytest 1건 추가(148 passed) + e2e에 좌표 체크(18 PASS). 문서: CLAUDE·ROADMAP·skills/frontend.
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
+## v1.168 (2026-06-28) — 앱(스토어) 배포 준비: Capacitor 스캐폴딩
+- **"앱으로 배포하려면?" 실행 준비 완료**(웹은 이미 PWA로 설치형 배포 가능).
+  - `frontend/capacitor.config.json` 신설(appId `com.cheongzipsa.app`, appName 청집사, webDir dist, 스플래시/스킴 설정).
+  - `package.json`에 Capacitor 의존성(@capacitor/core·cli·android·ios·app·status-bar·splash-screen) + 스크립트(cap:sync=build&sync, cap:add:android/ios) 추가. version 1.168.
+  - **`MOBILE_DEPLOY.md` 신설** — 실행 런북: ①PWA 즉시 배포(스토어 불필요) ②Android(cap add/sync/open→Android Studio 서명·AAB→Play) ③iOS(Mac+Xcode→TestFlight) ④필수 3설정(**VITE_API_BASE 절대주소·CORS capacitor origin·네이버 지도 도메인 등록**) ⑤심사 컴플라이언스 ⑥업데이트 운영.
+  - `MOBILE_APP_STRATEGY.md` 낡은 '출발점' 현행화(A·B단계 done → 남은 건 C 네이티브 셸). ROADMAP·CLAUDE 반영.
+  - 왜곡 없음: 네이티브 빌드·심사는 개발자 PC·스토어 계정에서 이뤄짐을 명시(저장소는 준비까지).
+- 검증: verify_all PASS · pytest 147 · smoke_e2e 17.
+## v1.167 (2026-06-28) — 전체 감사(전략·코드·방향성·서비스)
+- **전면 감사 실시**(실코드+실구동): 확장성·성능·왜곡·서비스·문서 5축. 결과 `AUDIT.md` 신설.
+  - 확장성: 지역코드 단일 소스 확인, 하드코딩 드리프트 없음(폴백·픽스처뿐). 사용자 경로 N+1 없음(.in_() 배치 검증). 캐싱 26함수.
+  - 왜곡: 모의데이터 is_sample 격리 + 빈 DB에서 found=False/부족안내/면책 반환을 **실행으로 확인**(지어내지 않음).
+  - 서비스: 배포 인프라·법적 고지 구비. 치명 리스크=운영 SQLite 시 데이터 소실 → PostgreSQL 필수(기존 문서화).
+- **문서 인수인계 최신화**: ROADMAP 현재상태 스냅샷을 **v1.152→v1.166**으로 갱신(작동 기능·검증 3층·부채·우선순위). TESTING·DATA_PLACES 현행 주석. AUDIT.md 종합 판정+선결과제.
+- 검증: verify_all PASS · pytest 147 · smoke_e2e 17. (코드 변경 없음 — 감사·문서)
+## v1.166 (2026-06-28) — 실제 앱 구동 테스트로 실버그 2건 발견·수정
+- 샌드박스에 런타임 의존성(fastapi·sqlalchemy·httpx 등) 설치에 성공 → **앱을 실제 부팅해 pytest(147개) + TestClient e2e 를 처음으로 실행**.
+- **[FIX·중요] 전세가율 신호 왜곡** — v1.156 편집에서 `@stat_cached()` 데코레이터가 `complex_detail`→`rent_gap_signal` 로 **전이**됨. `stat_cached`는 첫 인자를 db로 간주(키 제외)하므로, `rent_gap_signal(jeonse_ratio)`가 **인자와 무관하게 첫 결과만 반환** → 모든 단지 전세가율 신호가 동일값이 되는 왜곡. 데코레이터를 원위치(complex_detail=캐시 필요)로 복원, rent_gap_signal은 순수함수로. pytest 147 all green.
+- **[검증] 게시판 no such column·주민 뱃지** — 실제 구동에서 posts.resident 자가보강(_ensure_columns 모델 자동도출) 및 우리집 서버대조 resident=True 확인.
+- **[신규] `scripts/smoke_e2e`** — TestClient 로 시세→단지상세(전세가율·추이)→호가검증→급매→게시판(주민)→온보딩 17종을 실데이터로 검증(전부 PASS). 검증 3층(정적/단위/통합) 체계를 TESTING.md 에 명문화. 데코레이터 전이 교훈 CLAUDE 기록.
+- 검증: verify_all PASS · pytest 147 passed · smoke_e2e 17 PASS.
+## v1.165 (2026-06-28) — 게시판 no such column·데이터 안 보임 진단·수정
+- **[FIX] 게시판 `no such column: posts.resident`** — v1.158에서 추가한 `posts.resident` 컬럼이 SQLite 자가보강 목록(`_ensure_columns`)에서 누락됨 → SQLite 환경에서 컬럼 미생성.
+  - **근본 해결**: `_ensure_columns`를 **모델(Base.metadata) 자동 도출식**으로 재작성. 앞으로 어떤 신규 컬럼도 SQLite 시작 시 자동 ALTER ADD(+boolean/int 0 백필) → 수동 목록 드리프트로 인한 'no such column' 재발 차단.
+- **[진단] '데이터 전체 안 보임'** — `no such column`이 SQLite 고유 어투인 점에서, 운영이 **DATABASE_URL 미설정 → SQLite 폴백**으로 추정. SQLite 파일은 재배포 시 초기화(영속 디스크 없으면)되어 데이터 소실. 운영 해결책(PostgreSQL 연결 + db_upgrade + 수집/크론)을 OPERATIONS 7 '장애 대응'에 명문화. (코드가 아니라 운영 구성 이슈 — 왜곡 없이 원인 규명)
+- 문서: OPERATIONS(장애 대응)·DATA(스키마 규칙)·CLAUDE 갱신. 검증: verify_all PASS.
+## v1.164 (2026-06-28)
+- **전달/배포 전 단일 정적 게이트 `scripts/verify_all` 신설 — 재발 방지 체계화**. '컴파일은 되는데 앱이 죽는' 사고를 전달 전에 반드시 차단.
+  - `verify_imports` 강화: 기존 import 심볼 검사에 더해 **`module.attr` 접근 검증** 추가 — `stats.complex_detail(...)`처럼 호출부에서 없는 속성을 직접 잡음(이번 사고의 정확한 형태). 통제된 자가 테스트로 import 소실·속성 미정의 2종 모두 탐지 확인.
+  - `verify_all` = compileall + verify_imports + verify_frontend 를 한 번에 실행하고 단일 PASS/FAIL. 라이브 검사(verify_region_codes=실제 MOLIT 호출)는 게이트에서 분리.
+  - 문서화: 이 게이트를 **매 전달 전 필수**로 TESTING(최상단)·CLAUDE(검증 루틴)·OPERATIONS(배포 자가진단)에 명문화. 게이트가 못 잡는 범위(브라우저 스모크·pytest·라이브)도 명시.
+  - 검증: verify_all PASS.
+## v1.163 (2026-06-28) — 🚨 치명적 수정
+- **[CRITICAL] `stats.complex_detail` 정의 소실 복구 — 앱 부팅 실패 버그**. v1.156에서 `rent_gap_signal`을 `complex_detail` 시그니처 앞에 삽입할 때 **`def complex_detail(...)` 줄이 유실**되어, 뒤따르는 본문이 `rent_gap_signal` 함수에 **흡수**됨(return 뒤 dead code라 문법은 정상 → compileall 통과). 결과: `complex_detail` 미정의 → 이를 import하는 `onboarding`(→main) 로드 시 **ImportError로 앱 전체 부팅 실패**, `/complex/detail`·landing도 사망.
+  - 복구: `def complex_detail(...)` 시그니처+docstring 재삽입(본문·반환 rent_signal 온전). AST로 최상위 함수 확인, 타 함수 흡수 사고 없음 전수 확인.
+  - onboarding의 미사용 import(rent_gap_signal·complex_detail) 정리.
+- **[예방] `scripts/verify_imports` 신설** — 순수 AST로 `from app.X import a,b`의 심볼이 실제 정의됐는지 검증(서브모듈 허용). compileall이 못 잡는 두 사고(존재하지 않는 심볼 import=AGG_MONTHS / def 유실로 함수 흡수=complex_detail)를 **릴리스 전에 차단**. 릴리스 체크리스트·CLAUDE·skills/testing에 반영.
+  - 검증: compileall·verify_imports·verify_frontend 모두 PASS.
+## v1.162 (2026-06-28)
+- **가격 검증 3종 — '말릴 수 있는 앱' 창끝 일괄 구현**(백엔드 services/pricecheck + /pricecheck/quote·gu-context·bargains, 프런트 3곳).
+  - ① **호가 검증**(단지 상세 'PriceCheck'): 매물 호가(억) 입력 → 그 단지 최근 실거래 **중앙값 대비 %·이 가격 이하 거래 백분위**·건수·범위. 표본<3이면 부족 안내.
+  - ② **분양 탭 '구별 기존 아파트 시세 맥락'**(GuContextBar): 분양가는 문자열·주택형 미확정이라 평단가 '판정' 대신 **비교 재료(구별 중앙값·평당가)** 를 나란히 제공(왜곡 없음 스코프 조정).
+  - ③ **급매 레이더**(홈 BargainRadar): 같은 평형(round평) 12개월 중앙값 대비 **≤-12% 신고 실거래 사실** 나열(표본≥4에서만·저층/특수사정 고지). 탭 시 단지 상세.
+  - 공통: 판정('적정/바가지/급매') 금지 — 위치·차이·사실 + disclaimer. 집계 윈도우=settings.aggregate_months.
+  - 🛡 사전 차단한 사고: 존재하지 않는 stats.AGG_MONTHS import(컴파일 통과·**런타임 전체 다운**) 발견·수정 — 교훈을 skills/aggregations에 기록.
+  - 테스트 3건(백분위·면책 / 레이더 임계·고지 / 구 맥락 중앙값). 문서: CLAUDE·ROADMAP·README·skills 갱신. 검증: compileall·verify_frontend PASS.
+## v1.161 (2026-06-28)
+- **전입자 온보딩 위저드 — 프런트(Step B) 완성**. 전략('사용자를 먼저 파악해 서비스 제안')의 첫 화면 구현.
+  - `OnboardingWizard`: 전체화면 4단계(인트로→직장→예산→가족→결과), 진행 도트·큰 탭 타겟·한 화면 한 질문(모바일 우선 최신 트렌드), 하단 고정 `.btn-primary`. 결과 카드는 통근분·최근가(억)·전월대비·**예산 차액(자기자본 이내/+N 더 필요)** 표시, 탭 시 단지 상세로.
+  - 진입: **첫 방문 1회 자동 안내**(스플래시 후 1.7s, safeStore `cj_onb_seen`) + 홈 배너(미완료 시) + 마이페이지 카드. 결과 저장 `UserPref.data.onboarding`(로그인 시 기기 동기화).
+  - 왜곡 없음: 인트로·결과에 '중개·광고 없음 → 특정 매물 권유 안 함' 고지, 예산은 판정 아닌 차액, 데이터 없으면 안내.
+  - 스코프 안전: OnbDots/OnbOption/Wizard 모듈 레벨, 의존 심볼(SkeletonList/Empty/Delta 등) 전역 확인. SkeletonList prop 정정.
+  - 문서: CLAUDE·ROADMAP·skills/frontend 갱신. 검증: verify_frontend PASS.
+## v1.160 (2026-06-28)
+- **전략 실행: 전입자 온보딩 추천 — 백엔드(Step A)**. 포지셔닝('중개·광고 수익 0 → 말릴 수 있는 앱') + 신규 수요층(SK하이닉스·오송·오창 발령자)을 겨냥한 '청주가 처음이세요?' 큐레이션.
+  - `services/onboarding.py` + `api/onboarding.py`(main 등록): `GET /onboarding/options`(직장·산단 = commute job 거점), `GET /onboarding/recommend?dest_key=&budget=&has_kids=&max_minutes=`.
+  - **기존 부품 조립(새 데이터 생성 없음)**: search_by_commute(직장 근처 아파트) + complex_quotes(최근가·전월대비) + 예산 **차액(over_budget_by)**. 정렬=가격 있는 것 우선→통근 짧은 순.
+  - **왜곡 없음**: 통근=직선거리 추정·매매가=중앙값(참고)·예산은 판정이 아닌 '차액'만. notice에 '특정 매물 권유하지 않음' 정체성 고지. 거점/데이터 없으면 빈 결과+안내.
+  - 테스트 3건(옵션 목록·조립+정렬+차액·미지의 거점 안전). 프런트 위저드는 백로그(Step B).
+  - 문서: CLAUDE(8.0 전략 포지셔닝 신설)·ROADMAP·README·skills/aggregations 갱신.
+  - 검증: compileall·verify_frontend PASS.
+## v1.159 (2026-06-28)
+- **운영 데이터 자동 적재 설정** — "지금 실행하면 자동 적재인가?" 점검 결과(운영은 수동이었음) 해소.
+  - `scripts/scheduler.py`에 **`--once` 모드**(크론용: 수집+지오코딩 1사이클 후 종료) + 지오코딩에 **시설(Place) 포함**(run_geocode_places 연동 — v1.154 신설분 스케줄러 누락 보완).
+  - **render.yaml 크론 활성화**: `cheongju-collect`(매일 19:00 UTC=한국 04:00, `python -m scripts.scheduler --once`, DATABASE_URL/MOLIT/KAKAO env). 웹 plan을 실제 운영(starter)에 맞춤. Blueprint 미사용자(수동 배포)는 Apply 금지 경고 + 대시보드 Cron Job 생성 절차 안내.
+  - OPERATIONS 3.1 개편(A. 대시보드 크론 생성 — 권장 / B. Blueprint / 확인법 last_collect_at·JobRun). ROADMAP 스냅샷 갱신.
+  - 검증: compileall·verify_frontend·YAML 문법 PASS.
+## v1.158 (2026-06-28)
+- **전체 코드 점검(요청) 결과 및 조치**.
+  - 확장성(충청도): 지역코드 단일 소스 `app/data/region_codes.py` 확인 — 구조 양호. 확장 시 수정 지점 5곳을 ROADMAP에 명문화(백엔드 4곳 + 프런트 GU_NAME/GU_NAMES 중복 → 통합 권장).
+  - 불필요 기능: 미사용 `Sparkline` 컴포넌트 삭제. 숨김 시세탭·레거시 web/index.html은 폴백·부활용 의도적 유지로 판정.
+- **🏠 아파트 인증 소통 — 단지 주민 뱃지 + 단지 이야기 (신규)**.
+  - 백엔드: `posts.resident`(마이그레이션 **0019**). 글 작성 시 서버가 작성자의 '우리집(prefs.my_home, DeviceLink 경유)'과 @단지 태그를 **대조해 저장** — 클라이언트가 뱃지를 위조할 수 없음. `GET /community/posts?complex=` 단지 필터 추가. 직렬화(_post_light)에 resident 포함(목록·상세 공통).
+  - 프런트: PostCard·PostSheet에 **🏠 주민 뱃지**(툴팁·안내로 "자가 등록 기반" 정직 표기 — 서류 인증 아님, 왜곡 없음). 단지 상세에 **💬 단지 이야기**(`ComplexTalk`, 해당 단지 최근 글 5건 + 참여 안내).
+  - 후행 확장 여지: 관리자 서류 검증 시 verified 단계 승격(부록 B 원칙).
+  - 테스트 1건 추가(주민 뱃지 서버 대조: 일치 True/불일치 False/단지 필터 — dev-login 패턴). 문서 6종 갱신(CLAUDE head 0019·ROADMAP 점검결론·README·DATA·skills/community·OPERATIONS).
+  - 검증: compileall·verify_frontend PASS. 배포 시 `python -m scripts.db_upgrade` 필요(0019).
+## v1.157 (2026-06-28)
+- **지침서 2.3(시세 추이 & 등락폭 분석) 완비** — 단지 상세의 단순 스파크라인을 `TrendBlock`으로 교체.
+  - **기간 토글 1년·3년·5년·전체**(데이터가 있는 옵션만 노출, 백엔드 timeseries=전체 이력이라 근거 있음).
+  - **거래량 추이**: 가격 라인 아래 월별 거래건수 막대(X축 공유).
+  - **전월 대비·전년 동월 대비 등락 칩**: 뷰 필터와 무관하게 전체 이력 기준으로 계산(정확성).
+  - 다크 대응(var(--line)·MUTED), 라벨 자동 간격, "거래 있던 달 기준·소표본 주의" 문구(왜곡 없음). Sparkline 정의는 보존(미사용).
+  - 전세가율(갭) 표시는 v1.156 RentSignal로 기이행. 지역(구) 추이 기간 토글은 백로그(홈 12개월 고정 유지, ROADMAP 기록).
+  - 문서: ROADMAP·CLAUDE·skills/frontend 갱신. 검증: verify_frontend PASS.
+## v1.156 (2026-06-28)
+- **청주 특화: 전세가율/역전세 '신호' (RentSignal)** — 데이터로 검증된 청주 최대 화두(갭투자·역전세·양극화)에 대응. 단지 상세에 전세가율(전세 보증금 중앙값 ÷ 매매가 중앙값)을 **갭 크기·주의점**으로 해석한 카드 추가. 세입자·매수자·집주인 모두에게 유용한 맥락.
+  - 백엔드 `stats.rent_gap_signal(jeonse_ratio)`: ≥85 high(갭 매우작음·역전세/깡통전세 주의·보증 확인 안내) / ≥75 elevated / ≥60 normal / <60 low. complex_detail 응답 `rent_signal`.
+  - 프런트 `RentSignal` 카드(거래활발 옆): 전세가율 %·갭 뱃지·설명·**면책**(참고 지표, 가격 방향·역전세 단정 금지).
+  - ⚠️ 왜곡 없음 철저: 예측·단정 표현 배제(테스트로 '반드시/확정' 금지 검증). 기존 jeonse_ratio 재사용 — 신규 데이터 지어내지 않음.
+  - 테스트 1건 추가(밴드 경계·None·단정어 배제). 문서 갱신: CLAUDE·ROADMAP·README·skills/aggregations.
+  - 검증: compileall·verify_frontend PASS.
+## v1.155 (2026-06-28)
+- **시설 API 엔드포인트 config 주입화(왜곡 없음)** — 체육·의료·도서관·어린이집 소스가 **추측 placeholder URL**(uddi:sports 등)을 하드코딩하던 것을, `.env` 설정값(`PLACES_SPORTS_URL`·`PLACES_MEDICAL_URL`·`PLACES_LIBRARY_URL`·`PLACES_DAYCARE_URL`)으로 전환. **미설정 시 수집 생략**(가짜 URL 호출 금지). config.py 필드·.env.example 추가.
+  - 표준데이터 오픈API의 정확한 호출 URL(uddi UUID)은 활용신청 후 본인 API 페이지에만 노출되므로, 하드코딩 대신 주입 방식이 맞음(프로젝트 원칙: 외부 URL은 config).
+  - **웹검증**: 전국어린이집표준데이터 = data.go.kr **15013108**(어린이집명·유형·운영현황·주소·정원수·현원수·위경도·놀이터수·CCTV 확인) → daycare 소스 데이터셋 ID 정정(기존 15059593 오기). 필드 매핑은 기존 tolerant 매핑이 검증 필드명을 이미 포함.
+  - 문서: DATA_PLACES.md에 시설 엔드포인트 설정 방식·검증 데이터셋 표·설정 절차 추가.
+  - 검증: compileall·verify_frontend PASS.
+## v1.154 (2026-06-28)
+- **시설 데이터 파이프라인 완비 — Place 지오코딩 추가(핵심 관문 해소)**. NEIS 학원 등 좌표 미제공 소스를 적재해도 좌표가 없어 지도·거리·육아·초품아에 안 뜨던 문제 해결.
+  - `geocode.run_geocode_places()` 신설: 좌표 없는 Place를 **도로명주소 우선→명칭+동 폴백**으로 지오코딩(Kakao/Naver). 못 찾으면 None 유지(왜곡 없음). 변경 시 캐시 무효화.
+  - `scripts/geocode.py`에 `places`·`all` 서브커맨드 추가(`python -m scripts.geocode places`).
+  - **학원(NEIS) end-to-end 확립**: NEIS 키 → `collect_places academy` → `geocode places` → 육아환경·지도 학원 마커 활성. 절차·소량검증 권장은 DATA_PLACES.md.
+  - 소스 검증 상태 명시(왜곡 없음): 학원(NEIS)·어린이집=검증 / 체육·의료·도서관=엔드포인트(uddi) 확정 대기.
+  - 테스트 2건 추가(in_bounds bbox·카테고리 필터 / geocode 키 없을 때 안전 예외). 문서 갱신: DATA_PLACES·OPERATIONS·CLAUDE·ROADMAP.
+  - 검증: compileall·verify_frontend PASS. (pytest는 사용자 환경 `uv run -m pytest -q`)
+## v1.153 (2026-06-28)
+- **문서 인수인계 수준 전면 갱신(코드 변경 없음)** — v1.135~v1.152의 기능이 CHANGELOG에만 있고 구조 문서가 v1.111~v1.125에 멈춰 있던 격차 해소.
+  - **CLAUDE.md**: 데이터 모델(Landmark/Place/Consent·UserPref.my_home)·레포 구조(신규 서비스/소스/스크립트)·마이그레이션 head 0018·현재상태 8.1(청주 특화·우리집·UI)·8.2(데이터 적재 상태표)·함정(스코프 크래시·오프라인검증 한계·btn-primary) 반영.
+  - **ROADMAP.md**: 최상단에 현재상태 스냅샷(v1.152)+다음 우선순위+기술부채, 완료 로그에 v1.135~152.
+  - **README.md**: 청주 특화 3축·우리집·마이페이지·관심단지 시세·전체화면 지도.
+  - **OPERATIONS.md**: 청주 특화 데이터 적재 절(seed_landmarks/seed_commute/collect_places + 활성화 표).
+  - **TESTING.md**: 오프라인 검증 한계 + 브라우저 스모크 체크리스트(게시판·지도·단지상세·우리집).
+  - **DATA.md**: landmarks/places/commute·user_prefs.my_home 테이블.
+  - **LANDMARKS.md**: 실제 시드 완료·표시 3곳 현행화. **skills/frontend.md**: 버튼클래스·스코프안전·데이터대기·전체화면지도·우리집동기화 컨벤션.
+## v1.152 (2026-06-28)
+- **버튼 일관성 정리 + 다크모드 버그 수정** — 주요 액션 버튼(글쓰기·매물등록·로그인·등록·공유하기 등 10곳)을 공통 `.btn-primary` 클래스로 통일. 제각각이던 초록색값·모서리 반경(9/10/11/12)을 하나로, 눌림 피드백(active) 추가.
+  - 공유하기 버튼이 하드코딩 `#0F766E`라 **다크모드에서 색이 안 바뀌던 버그** 수정(→ var(--teal) 기반). (카카오·네이버 로그인은 브랜드색 유지)
+- **지도 전체화면 레이아웃 수정** — '이 지역 요약' 바가 하단 네비와 어긋나던 문제 보정(bottom 위치·지도 높이 calc를 헤더48+네비60 기준으로 재계산). 지도가 헤더 아래~네비 위 영역을 정확히 채우도록.
+  - 검증: verify_frontend PASS.
+## v1.151 (2026-06-28)
+- **청주 특화: 직주근접 — '🏭 직장·거점 거리'** (단지 상세). 청주 실수요의 핵심인 SK하이닉스·오창·오송 근로자를 위해, 단지에서 청주 주요 거점까지의 **직선거리(km)** 를 표시.
+  - 통근권 목적지(CommuteDestination)를 재사용해 좌표 일관성 유지 → `commute.hub_access()` 신설, detail 응답에 `work_access` 추가.
+  - **시드에 SK하이닉스 청주캠퍼스 추가**(청주 최대 고용주 — 기존 목록에 누락돼 있었음. 좌표는 근사값, --geocode로 승격 가능).
+  - 표시: 직장·산단(전부) / 교통·공공·교육(카테고리별 가까운 3곳). "직선거리이며 통근시간과 다를 수 있음" 명시 + 통근권 도구로 안내. 거점 미시드 시 숨김(왜곡 없음).
+  - 적용 조건: 서버에서 `python -m scripts.seed_commute` 1회 실행(통근 도구와 공유).
+  - 검증: compileall·verify_frontend PASS, 거리 상식 체크(복대동→SK하이닉스 4.0km ✓). pytest는 사용자 환경에서 `uv run -m pytest -q` 확인 요망.
+## v1.150 (2026-06-28)
+- **우리집 로그인 서버 동기화** — 우리집을 사용자 설정(prefs.data.my_home)에 저장. 로드 시 서버값 반영, 변경 시 서버 저장. 로그인하면 기기 병합(device→account)으로 다른 기기에서도 우리집 유지. (비로그인은 로컬만)
+- **관심 단지 시세 변동 표시** — 관심 단지 목록에 **최근 매매가(억) + 전월 대비%**를 표시.
+  - 백엔드: `POST /complex/quotes` — 여러 단지의 최근가·전월대비를 **한 쿼리로 배치 계산**(N개 HTTP 대신 1회). `stats.complex_quotes`.
+  - 프런트: FavList가 관심 단지를 배치 조회해 각 행에 시세·Delta 표시. 데이터 없으면 생략(왜곡 없음).
+  - 검증: compileall·verify_frontend PASS.
+## v1.149 (2026-06-28)
+- **우리집 카드에 시세·변동 표시** — 등록된 우리집 단지의 `/complex/detail`을 조회해 홈 우리집 카드에 **최근 매매가(억) + 변동%**를 바로 노출.
+  - 변동%: timeseries 마지막 2개월로 '전월 대비' 계산, 없으면 '지역 평균 대비'(vs_region)로 폴백. 실거래 없으면 문구로 안내(왜곡 없음). 로딩 상태 표시.
+  - 검증: verify_frontend PASS.
+## v1.148 (2026-06-28)
+- **우리집 등록 + 마이페이지(더보기 개편)** — 실수요자가 '내 집 중심'으로 앱을 쓰도록.
+  - **우리집 등록**: 검색으로 내 아파트 선택 → 로컬 저장(safeStore, 로그인 불필요). 홈 최상단 'MyHomeCard'에 우리집 표시(없으면 등록 버튼) → 탭하면 우리집 시세(단지 상세)로.
+  - **더보기 → 마이페이지**: 프로필 헤더(이름/역할/로그인) + 우리집(등록·변경·삭제·시세보기) + 바로가기(관심/청약/게시판) + 기존 집찾기 도구(통근·예산·대출).
+  - 검색 오버레이를 '우리집 등록' 모드로 재사용(homePick). 데이터/서버 없이 동작, 추후 서버 동기화 가능한 구조.
+  - 검증: verify_frontend PASS(헬퍼 전역 스코프 확인).
+## v1.147 (2026-06-28)
+- **지도 전체화면 활용** — 네이버 지도처럼 지도가 화면을 꽉 채우도록 개편.
+  - 지도 높이를 `calc(100dvh - 122px)`로 키우고 가장자리까지(좌우 여백 제거) 확장.
+  - 거래유형·유형·주변시설·호재 필터를 지도 위 **상단 오버레이**(가로 스크롤 칩)로, '이 지역 요약'은 **하단 오버레이 바**로 이동해 세로 공간을 지도에 양보.
+  - 지도 탭에선 상단 배너·갱신줄·하단 면책 footer를 숨겨(다른 탭은 그대로) 지도 영역 최대화.
+  - 검증: verify_frontend PASS.
+## v1.146 (2026-06-28)
+- **호재를 지도에 핀으로** — 지도 탭에 '🏗 개발 호재' 토글 추가. 켜면 좌표 있는 호재(SK하이닉스 P&T7·방사광가속기·테크노폴리스·OSCO 등)를 상태색 핀으로 표시(줌 무관). 핀 클릭 시 요약·출처 InfoWindow. 가격/시설 마커와 독립 레이어. (호재는 seed_landmarks 실행 후 표시)
+- **초품아 뱃지** — 단지 상세 헤더에 초등학교 도보권이면 배지. 초등학교 ≤400m = '🏫 초품아', ≤700m = '🏫 초등 도보권' + 학교명·거리. 백엔드 school_access(초등 최단거리) 재사용 → POI(학교) 데이터 있으면 표시, 없으면 숨김(왜곡 없음).
+  - 검증: verify_frontend PASS.
+## v1.145 (2026-06-28)
+- **청주 특화 콘텐츠 2종 추가** (실수요자·육아 부모 타겟).
+  - **A. 홈 '🏗 청주는 지금' 개발 이슈 카드(CityIssues)** — /landmarks(호재) 조회해 상태·요약·예상연도·출처와 함께 표출. 데이터 없으면 숨김(왜곡 없음). 투자 판단 아님 고지 포함.
+    - **실제 호재 시드**(scripts/seed_landmarks.py, 출처 확인): SK하이닉스 P&T7(청주테크노폴리스, 19조·2028), 오창 방사광가속기(2028경 가동), 청주테크노폴리스 산단, 북청주역세권(예정), 청주 OSCO(2025 개관). 좌표는 개략 위치, summary는 사실만.
+  - **B. 단지 상세 '🧸 육아 환경' 카드(KidsEnv)** — 반경 내 어린이집·유치원/학원/소아과·병원/도서관/체육/약국 개수 요약. d.places(공공데이터) 사용 → 시설 데이터 적재 시 자동 작동, 없으면 숨김.
+  - 적용: `python -m scripts.seed_landmarks` 실행 시 호재 노출. 육아 카드는 시설 데이터 적재 필요.
+  - 검증: compileall·verify_frontend PASS.
+## v1.144 (2026-06-28)
+- **지도 주변시설(POI) 표출 구조** — 데이터만 적재되면 자동 작동하도록 골격 완성(현재 시설 데이터 없으면 아무것도 안 뜸, 왜곡 없음).
+  - 백엔드: `/places/map?min_lat&max_lat&min_lng&max_lng&categories=` 엔드포인트 + `places.in_bounds()` — 지도 영역(bbox) 내 시설 마커(education/sports/living 필터).
+  - 프런트: 지도 탭에 **주변시설 토글**(🎓 학원 / 🏃 체육 / 🏪 생활). 선택 + **확대(zoom≥15)** 시 현재 화면 범위의 시설을 흰 말풍선 마커로 표출. 카테고리별 색(학원 보라·체육 파랑·생활 청록). idle마다 현재 bbox로 재조회, 상한 200개.
+  - 가격 마커와 독립된 레이어(별도 ref)라 기존 시세 마커에 영향 없음.
+  - ⏭ 남은 것: 시설 데이터 적재(scripts.collect_places + NEIS/공공데이터 키). 적재되면 토글만으로 바로 보임.
+  - 검증: compileall·verify_frontend PASS.
+## v1.143 (2026-06-28)
+- **단지 상세 개편**.
+  - **면적 병합**: 근소한 전용면적 차이(예: 23.1평·23.2평 = 76.3㎡·76.7㎡)를 **같은 평형으로 병합**(round(평) 기준, 대표 전용면적=그룹 중앙값). 다른 앱처럼 평형 단위로 정리. (stats.py 그룹핑 키 변경)
+  - **섹션 재배치**: 거래활발(VolumeSignal)·위치(지도)·인근 인프라를 **상단(최근 매매가 바로 밑)으로** 이동.
+  - **학군 섹션 삭제**(인근 인프라와 중복).
+  - **면적별 상세**: 기본 **접힘** + **평(면적) 오름차순 정렬**(선택 평형이 있으면 펼친 상태로).
+  - 검증: compileall·verify_frontend PASS.
+- (예정) 지도 확대 시 학원·체육시설 등 생활 인프라 마커 표출 — 별도 작업(장소 데이터 적재 필요).
+## v1.142 (2026-06-28)
+- **게시판·매물 다크모드 수정 + 버튼 톤 정리**.
+  - 다크모드 안 먹던 하드코딩 밝은색을 변수/틴트로: 댓글 카드 배경(#fff/#F6FAFA→var(--surface-solid)/(--surface-2)), 중개업자·개인 뱃지(#E7EEF6/#EEF1F1→틴트/var(--chip)), 이미지 플레이스홀더(#EEF1F1→var(--surface-2)), 취소·더보기 테두리(#d3dada→var(--line)), 댓글 취소 배경(#e7efef→var(--surface-2)).
+  - **좋아요·스크랩 버튼**을 영역 나누는 테두리 알약 → **토스식**(테두리 없음, 서피스 배경, 눌리면 은은한 틴트+색). 게시판·매물 공통 원칙 적용.
+  - 주요 CTA(글쓰기·매물 등록·전화 문의)는 강조 유지.
+  - (공유용 이미지 카드의 흰 배경은 의도된 것이라 유지.)
+  - 검증: 괄호 균형·verify_frontend PASS.
+## v1.141 (2026-06-28)
+- **지도 마커 라벨 → 총액(억) 표기** — 매매는 평단가 대신 **매매가 중앙값(총액)을 억 단위**로(예: 5.2억), 전세/월세는 보증금 억. 클러스터도 총액 중앙값으로. 색(가격 히트맵)은 평단가 기준 유지. (백엔드 median_amount 활용)
+- **거래 급상승·대장 아파트 티커 = 상위 5개만 회전** — 펼치기 전 자동 회전 배너는 top 5만 순환, 클릭해 열면 RankSheet에서 **전체(최대 50) 그대로**.
+  - 검증: 괄호 균형·verify_frontend PASS.
+## v1.140 (2026-06-28)
+- **지도 마커 개선(부동산앱 스타일)** — 기존 꼬리 없는 단순 알약 → **말풍선 꼬리(포인터)로 위치를 정확히 가리키는 가격 버블** + 더 또렷한 드롭섀도. 네이버부동산·호갱노노류 룩.
+  - 클러스터(여러 단지): 어두운 알약 → **원형 배지**(개수 + 중앙값), 흰 테두리·그림자.
+  - 가격 히트맵 색(파랑 저가→빨강 고가)은 정보성이라 유지. 단일 마커는 가격대 색 버블+흰 테두리.
+  - 검증: 괄호 균형·verify_frontend PASS.
+## v1.139 (2026-06-28)
+- **버튼 톤 정리(토스식 — 선택만 은은하게, 초록 채움 제거)** — 참고 이미지처럼 필터·토글이 튀지 않고 배경 톤을 따르도록.
+  - 지도 필터 `chip()`: 선택 시 초록(TEAL) 채움 → **서피스 톤 + 옅은 그림자 + 잉크색 텍스트**, 미선택은 투명+뮤트.
+  - 필터 토글 `.tog`: 경계선 제거, 선택 `.tog.on`을 teal 채움 → 서피스+잉크+그림자.
+  - 세그먼트(게시판/매물·분양/청약): 선택 텍스트 TEAL → **잉크색**으로 통일(중립).
+  - **헤더 알림·메뉴 버튼 경계 제거** → 배경에 녹아들게(투명 배경, 테두리 없음).
+  - 주요 액션 버튼(글쓰기·한도 계산 등 primary CTA)은 강조 유지(변경 없음).
+  - 검증: 괄호 균형·verify_frontend PASS.
 ## v1.138 (2026-06-28)
 - **진입 속도 개선(로딩 느림 대응)** — 홈 대시보드(board)가 부르는 집계 9종 중 유일하게 캐시가 없던 `landmark_apts`에 `@stat_cached` 추가(게다가 v1.131에서 5→50개로 키워 매 진입마다 재계산되던 지점).
   - 캐시 TTL 백스톱 600→3600초. 데이터 버전 무효화가 1차라 안전하며, 저트래픽에서 10분마다 재계산되던 것을 방지.

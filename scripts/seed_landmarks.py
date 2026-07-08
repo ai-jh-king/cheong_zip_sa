@@ -25,8 +25,38 @@ from app.models import Landmark
 logging.basicConfig(level=get_settings().log_level)
 logger = logging.getLogger("seed_landmarks")
 
-# 여기에 호재를 채우세요(지금은 비어 있음 → 0건).
+# 실제 청주 개발 호재(출처 확인). 좌표는 개략 위치(㎞ 단위 참고용) — 정밀 지번 아님.
+# 사실만 기재, 집값 상승 단정·투자 권유 금지.
 LANDMARKS: list[dict] = [
+    {"name": "SK하이닉스 P&T7 (첨단 패키징 팹)", "category": "industry",
+     "status": "ongoing", "lat": 36.6805, "lng": 127.4200, "expected_year": 2028,
+     "summary": "청주테크노폴리스(흥덕구 외북동)에 AI 메모리용 첨단 패키징 팹 P&T7 착공. "
+                "약 19조원 투자, 2028년 완공 목표. 완공 후 약 3,000명 근무 예정.",
+     "source_name": "SK하이닉스 뉴스룸", "source_url": "https://news.skhynix.co.kr/skhynix-chungju-pt7/",
+     "sort_order": 1},
+    {"name": "다목적 방사광가속기 (오창)", "category": "industry",
+     "status": "ongoing", "lat": 36.7100, "lng": 127.4300, "expected_year": 2028,
+     "summary": "오창에 구축 중인 다목적 방사광가속기. 포항에 이은 국내 두 번째로, "
+                "2028년경 본격 가동 목표. 약 6조원 규모의 경제효과가 기대됨.",
+     "source_name": "언론보도(inews24)·충북테크노파크", "source_url": "https://m.inews24.com/v/1980077",
+     "sort_order": 2},
+    {"name": "청주테크노폴리스 산업단지", "category": "industry",
+     "status": "ongoing", "lat": 36.6820, "lng": 127.4180, "expected_year": None,
+     "summary": "흥덕구 일대 대규모 산업·주거 복합 개발. SK하이닉스 청주캠퍼스(M15·M15X 등) 인접, "
+                "산업단지 활성화로 인근 정주 여건·인프라 확충 기대.",
+     "source_name": "청주시·나무위키", "source_url": "https://namu.wiki/w/%EC%B2%AD%EC%A3%BC%EC%8B%9C",
+     "sort_order": 3},
+    {"name": "북청주역세권 개발", "category": "transport",
+     "status": "planned", "lat": None, "lng": None, "expected_year": None,
+     "summary": "충북선 북청주역 일대 역세권 개발이 예정되어 있음(세부 계획은 진행 상황에 따라 변동).",
+     "source_name": "청주시·나무위키", "source_url": "https://namu.wiki/w/%EC%B2%AD%EC%A3%BC%EC%8B%9C",
+     "sort_order": 4},
+    {"name": "청주 OSCO (오송역세권 전시장)", "category": "commercial",
+     "status": "confirmed", "lat": 36.6200, "lng": 127.3280, "expected_year": 2025,
+     "summary": "오송역 역세권에 조성된 전시·MICE 시설(청주 OSCO), 2025년 개관. "
+                "전시면적 약 1만㎡, KTX·SRT 오송역과 인접.",
+     "source_name": "나무위키(청주시)", "source_url": "https://namu.wiki/w/%EC%B2%AD%EC%A3%BC%EC%8B%9C",
+     "sort_order": 5},
 ]
 
 

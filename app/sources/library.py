@@ -52,7 +52,11 @@ def _normalize(row: dict) -> dict | None:
 def fetch_libraries() -> list[dict]:
     s = get_settings()
     key = getattr(s, "academy_service_key", "") or getattr(s, "molit_service_key", "")
-    raw = fetch_pages(LIBRARY_URL, key)
+    url = getattr(s, "places_library_url", "") or ""
+    if not url:
+        logger.warning("도서관: places_library_url 미설정 → 수집 생략(활용신청 후 실제 uddi URL을 .env에). 왜곡 방지")
+        return []
+    raw = fetch_pages(url, key)
     out = [n for n in (_normalize(r) for r in raw) if n]
     logger.info("library: 청주 도서관 %d건 정규화", len(out))
     return out

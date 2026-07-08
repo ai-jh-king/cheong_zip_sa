@@ -552,8 +552,32 @@ def compare_one(db: Session, name: str, lawd_cd: str, property_type: str = "apar
     }
 
 
+def rent_gap_signal(jeonse_ratio: float | None) -> dict | None:
+    """전세가율(전세보증금 중앙값/매매가 중앙값)을 실수요자 관점 '참고 신호'로 해석.
+    ⚠️ 왜곡 없음: 가격 예측·역전세 '단정' 금지. 전세가율의 의미(갭 크기·주의점)를 수치와 함께 설명만.
+    청주는 갭투자·역전세가 큰 화두라 세입자·매수자·집주인 모두에게 유용한 맥락."""
+    if jeonse_ratio is None:
+        return None
+    jr = jeonse_ratio
+    if jr >= 85:
+        level, gap = "high", "매우 작음"
+        note = ("전세를 끼면 소액으로 매수할 수 있는 반면, 매매가가 내리면 전세금 반환이 "
+                "어려워지는 역전세·깡통전세 위험도 커집니다. 계약 시 보증금 보호(HUG 보증 등)를 확인하세요.")
+    elif jr >= 75:
+        level, gap = "elevated", "작음"
+        note = "매매가와 전세가 차이(갭)가 작은 편입니다. 소액 투자엔 유리하나 시세·입주물량 변화에 유의하세요."
+    elif jr >= 60:
+        level, gap = "normal", "보통"
+        note = "매매가와 전세가 차이가 보통 수준입니다."
+    else:
+        level, gap = "low", "큼"
+        note = "전세가율이 낮아 갭(실투자금)이 큽니다. 전세가 대비 매매가 여유는 상대적으로 큰 편입니다."
+    return {"jeonse_ratio": jr, "level": level, "gap_label": gap, "note": note}
+
+
 @stat_cached()
 def complex_detail(db: Session, name: str, lawd_cd: str, property_type: str | None = None) -> dict:
+    """(아파트×면적) 단지 상세: 최근가·중앙값·전저점/전고점·전세가율(rent_signal)·추이·거래량·최근거래."""
     q = select(Transaction).where(Transaction.complex_name == name,
                                   Transaction.lawd_cd == lawd_cd,
                                   Transaction.is_canceled.isnot(True))  # 해제분 제외
@@ -613,13 +637,16 @@ def complex_detail(db: Session, name: str, lawd_cd: str, property_type: str | No
         if ppm:
             floor_bands.append({"label": label, "avg_pyeong": round(mean(ppm)), "count": len(ppm)})
 
-    # (아파트 × 면적) 면적별 상세 블록 — 거래 많은 면적 우선
+    # (아파트 × 면적) 면적별 상세 블록 — 근소한 전용면적 차이(예: 76.3㎡·76.6㎡)는
+    # 같은 '평형'으로 병합(round(평) 기준). 대표 전용면적은 그룹 중앙값.
     area_groups: dict = {}
     for r in rows_recent:
         if r.exclusive_area:
-            area_groups.setdefault(round(r.exclusive_area, 1), []).append(r)
-    areas = [_area_block(a, rs) for a, rs in
-             sorted(area_groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))]
+            area_groups.setdefault(round(r.exclusive_area / PYEONG), []).append(r)
+    areas = []
+    for _py, rs in sorted(area_groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        rep_area = round(median([x.exclusive_area for x in rs]), 1)
+        areas.append(_area_block(rep_area, rs))
     area_ppm = {a["area"]: a["ppm_median"] for a in areas}
 
     # 최근 실거래(전 거래유형) — 같은 평형 중앙 평단가 기준 이상치 플래그
@@ -675,6 +702,7 @@ def complex_detail(db: Session, name: str, lawd_cd: str, property_type: str | No
         "trough_amount": trough, "from_trough_pct": from_trough_pct,
         "price_min": price_min, "price_max": price_max, "price_median": price_median,
         "jeonse_ratio": jeonse_ratio, "floor_bands": floor_bands,
+        "rent_signal": rent_gap_signal(jeonse_ratio),
         "trade_count": len(trades_recent),
         "reliability": _reliability(len(trades_recent)),
         "canceled_count": canceled_count,
@@ -1206,3 +1234,42 @@ def recent_by_band(db: Session, property_type: str = "apartment", each: int = 5)
             })
         res.append({"key": k, "label": label, "items": items})
     return res
+
+
+def complex_quotes(db: Session, items: list[dict]) -> dict:
+    """여러 단지(관심/우리집 등)의 최근 매매가·전월대비를 한 번에 계산.
+    한 쿼리로 조회 후 Python 그룹핑. 데이터 없으면 값 None(왜곡 없음)."""
+    pairs = [(it.get("name"), it.get("lawd_cd"), it.get("property_type") or "apartment")
+             for it in (items or []) if it.get("name") and it.get("lawd_cd")][:60]
+    if not pairs:
+        return {"quotes": []}
+    names = {p[0] for p in pairs}
+    lawds = {p[1] for p in pairs}
+    rows = db.scalars(select(Transaction).where(
+        Transaction.deal_type == "trade",
+        Transaction.deal_amount.isnot(None),
+        Transaction.is_canceled.isnot(True),
+        Transaction.complex_name.in_(names),
+        Transaction.lawd_cd.in_(lawds),
+    )).all()
+    groups: dict = {}
+    for r in rows:
+        groups.setdefault((r.complex_name, r.lawd_cd, r.property_type), []).append(r)
+    out = []
+    for (name, lawd, pt) in pairs:
+        rs = groups.get((name, lawd, pt), [])
+        latest = mom = None
+        if rs:
+            monthly: dict = {}
+            for r in rs:
+                if r.contract_date:
+                    monthly.setdefault(_month_key(r.contract_date), []).append(r.deal_amount)
+            ms = sorted(monthly)
+            if ms:
+                med = {m: median(monthly[m]) for m in ms}
+                latest = round(med[ms[-1]])
+                if len(ms) >= 2 and med[ms[-2]]:
+                    mom = round((med[ms[-1]] - med[ms[-2]]) / med[ms[-2]] * 100, 1)
+        out.append({"name": name, "lawd_cd": lawd, "property_type": pt,
+                    "latest_amount": latest, "mom_pct": mom, "trade_count": len(rs)})
+    return {"quotes": out}

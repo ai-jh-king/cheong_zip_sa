@@ -1,23 +1,32 @@
 {
   "name": "cheongju-realestate-web",
   "private": true,
-  "version": "1.65.0",
+  "version": "1.168.0",
   "type": "module",
   "description": "청주 부동산 플랫폼 웹 프런트(Vite 빌드). 백엔드(FastAPI)와 동일 출처로 서빙.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "cap:sync": "cap sync",
+    "cap:sync": "vite build && cap sync",
     "cap:android": "cap open android",
-    "cap:ios": "cap open ios"
+    "cap:ios": "cap open ios",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios"
   },
   "dependencies": {
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/status-bar": "^6.0.1",
+    "@capacitor/splash-screen": "^6.0.2"
   },
   "devDependencies": {
     "vite": "^5.4.0",
-    "@vitejs/plugin-react": "^4.3.1"
+    "@vitejs/plugin-react": "^4.3.1",
+    "@capacitor/cli": "^6.1.2"
   }
 }

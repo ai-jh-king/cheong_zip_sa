@@ -49,6 +49,8 @@ from app.api.community import router as community_router, notif_router
 from app.api.ops import router as ops_router
 from app.api.legal import router as legal_router
 from app.api.commute import router as commute_router
+from app.api.onboarding import router as onboarding_router
+from app.api.pricecheck import router as pricecheck_router
 from app.api.price import router as price_router
 
 app = FastAPI(title="청주 부동산 플랫폼 API", version="0.2.0 (M2)")
@@ -76,6 +78,8 @@ app.include_router(home_router)
 app.include_router(complex_router)
 app.include_router(places_router)
 app.include_router(landmarks_router)
+app.include_router(onboarding_router)
+app.include_router(pricecheck_router)
 app.include_router(loan_router)
 app.include_router(favorites_router)
 app.include_router(personal_router)

@@ -41,3 +41,8 @@ CI(.github/workflows/ci.yml)가 push/PR 마다 compile 체크 + pytest 를 돌�
 - DB 가 필요하면 `db` 픽스처로 시드, 캐시 함수는 호출 전에 `cache.bump_data_version()`로 무효화.
 - 외부 API 는 직접 부르지 말 것(키 비움). 필요하면 응답을 모킹.
 - 카운터/상태 변경은 API 레벨에서 검증(원자성·권한·숨김 임계치).
+
+
+## 내부 import 정적 검증 (scripts/verify_imports)
+- 순수 AST로 `from app.X import a,b` 의 a,b 가 app/X 최상위에 실제 정의됐는지 확인(서브모듈 import 허용). sqlalchemy 등 미의존.
+- compileall/py_compile 이 통과시키는 두 부류의 사고를 잡음: ①존재하지 않는 심볼 import(AGG_MONTHS) ②def 시그니처 유실로 함수가 앞 함수에 흡수돼 정의 소실(complex_detail). 릴리스 전 필수.

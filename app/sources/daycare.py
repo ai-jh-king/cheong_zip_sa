@@ -11,7 +11,7 @@ from app.sources.places_common import pick, to_int, to_float, lawd_of, is_cheong
 
 logger = logging.getLogger(__name__)
 
-DAYCARE_URL = "https://api.odcloud.kr/api/15059593/v1/uddi:daycare"  # ← 확인 필요(어린이집 표준데이터)
+DAYCARE_URL = "https://api.odcloud.kr/api/15013108/v1/uddi:INPUT_REAL_UUID"  # ← 확인 필요(어린이집 표준데이터)
 
 F = {
     "name":    ["어린이집명", "유치원명", "crname", "fcltyNm", "CRNAME"],
@@ -52,7 +52,11 @@ def _normalize(row: dict) -> dict | None:
 def fetch_daycares() -> list[dict]:
     s = get_settings()
     key = getattr(s, "academy_service_key", "") or getattr(s, "molit_service_key", "")
-    raw = fetch_pages(DAYCARE_URL, key)
+    url = getattr(s, "places_daycare_url", "") or ""
+    if not url:
+        logger.warning("어린이집: places_daycare_url 미설정 → 수집 생략(활용신청 후 실제 uddi URL을 .env에). 왜곡 방지")
+        return []
+    raw = fetch_pages(url, key)
     out = [n for n in (_normalize(r) for r in raw) if n]
     logger.info("daycare: 청주 어린이집·유치원 %d건 정규화", len(out))
     return out

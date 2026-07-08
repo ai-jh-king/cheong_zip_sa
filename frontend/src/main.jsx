@@ -262,15 +262,6 @@ function SkeletonStat(){return (<div className="card" style={{padding:"14px 15px
   </div>
 </div>);}
 function Info({text}){return (<span className="tip"><span className="tipdot">?</span><span className="tiptext">{text}</span></span>);}
-function Sparkline({values,color,height=30}){
-  const vals=(values||[]).filter(v=>v!=null);
-  if(vals.length<2) return null;
-  const mn=Math.min(...vals),mx=Math.max(...vals),rng=(mx-mn)||1;
-  return (<div className="sparkwrap" style={{height}}>
-   {vals.map((v,i)=>{const h=Math.max(3,Math.round(((v-mn)/rng)*(height-4))+3);
-    return <div key={i} style={{flex:1,minWidth:2,height:h,background:color||TEAL,opacity:i===vals.length-1?1:.42,borderRadius:2}}/>;})}
-  </div>);
-}
 function Card({label,big,sub}){
  return <div className="card" style={{padding:18}}>
   <div style={{fontSize:13,color:MUTED}}>{label}</div>
@@ -374,7 +365,8 @@ function ShareCard({card,onClose}){
   // footer
   RR(P,H-150,cw,2,1,"rgba(99,120,128,.14)");
   T("자료: 국토교통부 실거래가 · 참고용(법적 효력 없음)",P,H-118,24,"600",MUTc,"left");
-  T("청주 시세 — 청주 부동산 정보",P,H-82,26,"700",TEALc,"left");
+  T("🏠 청집사 — 청주 부동산을 한눈에",P,H-82,28,"800",TEALc,"left");
+  T((typeof location!=="undefined"&&location.host)?location.host:"",W-P,H-82,26,"700",MUTc,"right");
  }
  async function getBlob(){ return await new Promise(res=>ref.current.toBlob(res,"image/png")); }
  function save(){ getBlob().then(b=>{const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`청주시세_${card.name}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);setMsg("이미지를 저장했어요.");}); }
@@ -393,7 +385,7 @@ function ShareCard({card,onClose}){
    {msg&&<div style={{fontSize:12.5,color:"#fff",textAlign:"center"}}>{msg}</div>}
    <div style={{display:"flex",gap:9,width:"100%",maxWidth:360}}>
     <button onClick={save} style={{flex:1,border:"none",borderRadius:11,padding:"13px 0",fontWeight:800,fontSize:14,cursor:"pointer",background:"#fff",color:"#1B2733"}}>이미지 저장</button>
-    <button onClick={share} style={{flex:1,border:"none",borderRadius:11,padding:"13px 0",fontWeight:800,fontSize:14,cursor:"pointer",background:"#0F766E",color:"#fff"}}>공유하기</button>
+    <button onClick={share} className="btn-primary" style={{flex:1,padding:"13px 0"}}>공유하기</button>
    </div>
    <button onClick={onClose} style={{border:"none",background:"none",color:"#cfd8de",fontSize:13.5,fontWeight:700,cursor:"pointer",padding:"4px 10px"}}>닫기</button>
   </div>
@@ -690,7 +682,7 @@ function ListingForm({onCancel,onCreated,account,initial}){
    <LField label="연락처(전화)" req><input style={INP} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="010-0000-0000"/></LField>
 
    {err&&<div style={{color:UP,fontWeight:700,fontSize:13,margin:"6px 0 0"}}>{err}</div>}
-   <button onClick={submit} disabled={busy} style={{marginTop:14,width:"100%",border:"none",background:busy?"#9aa3a8":TEAL,color:"#fff",fontWeight:800,fontSize:15,padding:"13px",borderRadius:12,cursor:busy?"default":"pointer"}}>{busy?(isEdit?"저장 중…":"등록 중…"):(isEdit?"수정 저장":"매물 등록하기")}</button>
+   <button onClick={submit} disabled={busy} className="btn-primary" style={{marginTop:14,width:"100%",fontSize:15,padding:"13px"}}>{busy?(isEdit?"저장 중…":"등록 중…"):(isEdit?"수정 저장":"매물 등록하기")}</button>
    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.6}}>등록 시 표시·광고 명시사항과 허위매물 금지에 동의하는 것으로 간주합니다. 연락처는 매물 상세에 공개됩니다. 입력 정보는 매물 게시 목적에만 사용됩니다.</div>
   </div>
   <div style={{height:16}}/>
@@ -755,13 +747,13 @@ function ListingDetail({x,onBack}){
   
   {photos.length>0
    ? <div style={{display:"flex",gap:8,overflowX:"auto",margin:"8px 0 4px",paddingBottom:4}}>
-      {photos.map((p,i)=>(<div key={i} style={{width:240,height:170,flex:"none",borderRadius:12,background:`#EEF1F1 url(${p}) center/cover`}}/>))}
+      {photos.map((p,i)=>(<div key={i} style={{width:240,height:170,flex:"none",borderRadius:12,background:`var(--surface-2) url(${p}) center/cover`}}/>))}
      </div>
    : <div style={{margin:"8px 0 4px",height:150,borderRadius:12,background:"var(--chip)",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="camera" size={30}/></div>}
   <div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 2px 0",flexWrap:"wrap"}}>
    <span className="pill" style={{background:"rgba(15,118,110,.12)",color:DEAL_COLOR[x.deal_type]||TEAL,fontWeight:800}}>{LP_DEAL[x.deal_type]}</span>
    <span className="pill" style={{background:"var(--chip)",color:MUTED}}>{LP_PROP[x.property_type]}</span>
-   <span className="pill" style={{background:x.poster_role==="agent"?"#E7EEF6":"#EEF1F1",color:x.poster_role==="agent"?"#1E5FC4":MUTED}}>{x.poster_role==="agent"?"중개업자":"개인 직거래"}</span>
+   <span className="pill" style={{background:x.poster_role==="agent"?"rgba(37,99,216,.15)":"var(--chip)",color:x.poster_role==="agent"?"#5A8DE8":MUTED}}>{x.poster_role==="agent"?"중개업자":"개인 직거래"}</span>
    {x.is_sample&&<span className="pill ex">예시</span>}
   </div>
   <div className="num" style={{fontSize:26,fontWeight:800,margin:"6px 2px 0"}}>{listingPrice(x)}</div>
@@ -847,7 +839,7 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
   <Notice>등록 매물은 사용자·중개업자가 올린 정보로 <b>실거래가 아니며</b> 검증되지 않습니다. 허위·과장광고에 주의하고, 계약 전 현장·등기·실거래 시세를 꼭 확인하세요.</Notice>
   {!account&&<div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0 0",background:"rgba(15,118,110,.07)",borderRadius:10,padding:"9px 12px"}}>
    <span style={{fontSize:12.5,color:INK,fontWeight:600}}>로그인하면 내 매물을 계정에 저장·관리할 수 있어요.</span>
-   <button onClick={onNeedLogin} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:700,fontSize:12.5,padding:"7px 12px",borderRadius:9,cursor:"pointer"}}>로그인</button>
+   <button onClick={onNeedLogin} className="btn-primary" style={{marginLeft:"auto",fontSize:12.5,padding:"7px 13px",borderRadius:10}}>로그인</button>
   </div>}
   <div style={{display:"flex",gap:6,alignItems:"center",margin:"10px 0 0",flexWrap:"nowrap"}}>
    <Sel value={fDeal} set={setFDeal} opts={LP_DEALS} ph="전체 거래"/>
@@ -856,14 +848,14 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
   </div>
   <div style={{display:"flex",alignItems:"center",margin:"10px 2px 8px"}}>
    <button className={"tog "+(mine?"on":"")} onClick={()=>setMine(m=>!m)}>{account?"내 매물":"내 등록만"}</button>
-   <button onClick={()=>setMode("form")} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13.5,padding:"9px 14px",borderRadius:10,cursor:"pointer"}}>+ 매물 등록</button>
+   <button onClick={()=>setMode("form")} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 매물 등록</button>
   </div>
   {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
    :items.length?<React.Fragment>
      {items.map(x=><ListingCard key={x.id} x={x} onOpen={y=>{setSel(y);setMode("detail");}}/>)}
      {hasMore&&<button onClick={loadMore} disabled={loadingMore} style={{display:"block",width:"100%",margin:"8px 0 2px",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"11px",borderRadius:10,cursor:loadingMore?"default":"pointer",opacity:loadingMore?.6:1}}>{loadingMore?"불러오는 중…":"더보기"}</button>}
     </React.Fragment>
-   :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} style={{border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13.5,padding:"10px 18px",borderRadius:10,cursor:"pointer"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}
+   :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}
   <div style={{height:16}}/>
   {mode==="detail"&&sel&&<ListingSheet x={sel} onClose={()=>setMode("list")}/>}
  </div>);
@@ -1006,11 +998,12 @@ function PostCard({p,onOpen,onAuthor}){
  const clickA=onAuthor&&p.account_id?(e)=>{e.stopPropagation();onAuthor(p.account_id);}:undefined;
  return (<div className="feedrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(p))} style={{padding:"14px 4px",cursor:"pointer"}} onClick={()=>onOpen(p)}>
   <div style={{display:"flex",gap:10}}>
-   {p.thumb&&<div style={{width:62,height:62,flex:"none",borderRadius:9,background:`#EEF1F1 url(${p.thumb}) center/cover`}}/>}
+   {p.thumb&&<div style={{width:62,height:62,flex:"none",borderRadius:9,background:`var(--surface-2) url(${p.thumb}) center/cover`}}/>}
    <div style={{minWidth:0,flex:1}}>
     <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
      <CatPill cat={p.category}/>{p.gu&&<span style={{fontSize:11.5,color:MUTED}}>{(p.gu||"").replace("청주시 ","")}</span>}
      {p.complex_name&&<span className="pill" style={{background:"var(--chip)",color:MUTED,fontWeight:700}}>📍 {p.complex_name}</span>}
+     {p.resident&&<span className="pill" title="작성 당시 '우리집'으로 등록된 단지의 글(자가 등록 기반)" style={{background:"rgba(15,118,110,.13)",color:TEAL,fontWeight:800}}>🏠 주민</span>}
      {p.is_sample&&<ExBadge/>}
     </div>
     <div style={{fontWeight:700,marginTop:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
@@ -1087,7 +1080,7 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
   </div>}
   {err&&<div style={{color:UP,fontSize:12.5,marginTop:8}}>{err}</div>}
   <div style={{display:"flex",gap:8,marginTop:12}}>
-   <button onClick={onCancel} style={{flex:1,border:"1px solid #d3dada",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer"}}>취소</button>
+   <button onClick={onCancel} style={{flex:1,border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer"}}>취소</button>
    <button onClick={submit} disabled={busy} style={{flex:2,border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",opacity:busy?.6:1}}>{busy?"저장 중…":(edit?"수정":"등록")}</button>
   </div>
   <div style={{height:80}}/>
@@ -1149,7 +1142,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
  const tops=d.comments.filter(c=>!c.parent_id).slice().sort((a,b)=>csort==="asc"?(a.created_at||"").localeCompare(b.created_at||""):(b.created_at||"").localeCompare(a.created_at||""));
  const repliesOf=pid2=>d.comments.filter(c=>c.parent_id===pid2).slice().sort((a,b)=>(a.created_at||"").localeCompare(b.created_at||""));
  const renderCmt=(c,reply)=>{const cmine=account&&c.account_id===account.id;const editing=editingC===c.id;
-  return (<div key={c.id} className="card" style={{padding:"10px 13px",marginBottom:8,marginLeft:reply?20:0,background:reply?"#F6FAFA":"#fff"}}>
+  return (<div key={c.id} className="card" style={{padding:"10px 13px",marginBottom:8,marginLeft:reply?20:0,background:reply?"var(--surface-2)":"var(--surface-solid)"}}>
    <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:MUTED}}>
     {reply&&<span style={{color:TEAL,fontWeight:800}}>↳</span>}<b style={{color:INK}}>{c.nickname||"회원"}</b><span>{timeAgo(c.created_at)}</span>{c.is_sample&&<ExBadge/>}
     <span style={{marginLeft:"auto",display:"flex",gap:10}}>
@@ -1161,7 +1154,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
    {editing?(<div style={{display:"flex",gap:6,marginTop:6}}>
       <input aria-label="댓글 수정" style={{...INP,flex:1}} value={etext} onChange={e=>setEtext(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")saveEdit(c.id);}}/>
       <button onClick={()=>saveEdit(c.id)} style={sb}>저장</button>
-      <button onClick={()=>setEditingC(null)} style={{...sb,background:"#e7efef",color:TEAL}}>취소</button>
+      <button onClick={()=>setEditingC(null)} style={{...sb,background:"var(--surface-2)",color:TEAL}}>취소</button>
      </div>)
     :<div style={{fontSize:14,marginTop:4,whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{c.body}</div>}
    {replyTo===c.id&&!reply&&<div style={{display:"flex",gap:6,marginTop:8}}>
@@ -1182,6 +1175,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
     <button onClick={delPost} style={{border:"none",background:"none",color:UP,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>삭제</button>
    </span>}
   </div>
+  {p.resident&&<div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(15,118,110,.10)",color:TEAL,fontWeight:800,fontSize:12,borderRadius:9,padding:"5px 11px",margin:"8px 0 0"}}>🏠 단지 주민의 글 <span style={{fontWeight:600,color:MUTED}}>· 작성 당시 '우리집' 등록 기준</span></div>}
   <div style={{fontSize:15,lineHeight:1.7,color:INK,margin:"14px 2px",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.body}</div>
   {(p.images&&p.images.length>0)&&<div style={{display:"flex",gap:8,overflowX:"auto",margin:"4px 0 12px"}}>
    {p.images.map((u,i)=>(<div key={i} style={{width:230,height:165,flex:"none",borderRadius:12,background:`#EEF1F1 url(${u}) center/cover`}}/>))}
@@ -1190,8 +1184,8 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
     style={{display:"flex",alignItems:"center",gap:8,width:"100%",border:"1px solid rgba(15,118,110,.3)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:800,fontSize:14,padding:"12px 14px",borderRadius:12,cursor:"pointer",margin:"2px 0 12px"}}>
    📍 {p.complex_name} 시세 보기 <span style={{marginLeft:"auto"}}>›</span></button>}
   <div style={{display:"flex",alignItems:"center",gap:10,margin:"4px 0 14px"}}>
-   <button onClick={toggleLike} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid "+(liked?UP:"#d3dada"),background:liked?"#FBECEA":"#fff",color:liked?UP:INK,fontWeight:800,fontSize:13.5,padding:"9px 16px",borderRadius:22,cursor:"pointer"}}><Icon name="heart" active={liked} size={16}/> {likeN}</button>
-   <button onClick={toggleBookmark} style={{display:"flex",alignItems:"center",gap:6,border:"1px solid "+(bookmarked?TEAL:"#d3dada"),background:bookmarked?"rgba(15,118,110,.08)":"#fff",color:bookmarked?TEAL:INK,fontWeight:800,fontSize:13.5,padding:"9px 16px",borderRadius:22,cursor:"pointer"}}><Icon name="bookmark" active={bookmarked} size={16}/> {bookmarked?"스크랩됨":"스크랩"}</button>
+   <button onClick={toggleLike} style={{display:"flex",alignItems:"center",gap:6,border:"none",background:liked?"rgba(219,52,43,.10)":"var(--surface-2)",color:liked?UP:MUTED,fontWeight:800,fontSize:13.5,padding:"9px 15px",borderRadius:11,cursor:"pointer"}}><Icon name="heart" active={liked} size={16}/> {likeN}</button>
+   <button onClick={toggleBookmark} style={{display:"flex",alignItems:"center",gap:6,border:"none",background:bookmarked?"rgba(15,118,110,.10)":"var(--surface-2)",color:bookmarked?TEAL:MUTED,fontWeight:800,fontSize:13.5,padding:"9px 15px",borderRadius:11,cursor:"pointer"}}><Icon name="bookmark" active={bookmarked} size={16}/> {bookmarked?"스크랩됨":"스크랩"}</button>
    <button onClick={()=>report("post",id)} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>🚩 신고</button>
   </div>
   <Notice>게시글은 사용자가 작성한 <b>의견</b>으로 실거래·공식정보가 아닙니다. 가격·전망 등은 시세·소식 탭의 공식 데이터로 확인하세요.</Notice>
@@ -1206,7 +1200,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   {tops.map(c=>(<React.Fragment key={c.id}>{renderCmt(c,false)}{repliesOf(c.id).map(r=>renderCmt(r,true))}</React.Fragment>))}
   {account?(<div style={{display:"flex",gap:8,marginTop:8}}>
     <input style={{...INP,flex:1}} value={ctext} onChange={e=>setCtext(e.target.value)} placeholder="댓글을 입력하세요" onKeyDown={e=>{if(e.key==="Enter")postComment(ctext,null,()=>setCtext(""));}}/>
-    <button onClick={()=>postComment(ctext,null,()=>setCtext(""))} disabled={busy} style={{border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"0 18px",borderRadius:11,cursor:"pointer",flex:"none"}}>등록</button>
+    <button onClick={()=>postComment(ctext,null,()=>setCtext(""))} disabled={busy} className="btn-primary" style={{padding:"0 18px",flex:"none"}}>등록</button>
    </div>)
    :(<button onClick={onNeedLogin} style={{width:"100%",border:"1px dashed "+TEAL,background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:13.5,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:8}}>로그인하고 댓글 남기기</button>)}
   <div style={{height:80}}/>
@@ -1243,14 +1237,14 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
  const Tab=({v,label})=>(<button onClick={()=>setView(v)} style={{border:"none",background:"none",borderBottom:"2.5px solid "+(view===v?TEAL:"transparent"),color:view===v?INK:MUTED,fontWeight:800,fontSize:14,padding:"7px 4px",cursor:"pointer"}}>{label}</button>);
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
-   <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?TEAL:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>💬 게시판</button>
-   <button onClick={()=>setSection&&setSection("listing")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section==="listing"?"var(--surface-solid)":"transparent",color:section==="listing"?TEAL:MUTED,boxShadow:section==="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>🏠 매물</button>
+   <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?INK:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>💬 게시판</button>
+   <button onClick={()=>setSection&&setSection("listing")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section==="listing"?"var(--surface-solid)":"transparent",color:section==="listing"?INK:MUTED,boxShadow:section==="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>🏠 매물</button>
   </div>
   {section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <div style={{fontWeight:800,fontSize:17}}>게시판</div>
    <span style={{fontSize:12,color:MUTED}}>부동산 소통</span>
-   <button onClick={()=>account?setMode("write"):onNeedLogin()} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13.5,padding:"9px 14px",borderRadius:10,cursor:"pointer"}}>+ 글쓰기</button>
+   <button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 글쓰기</button>
   </div>
   <div style={{display:"flex",gap:14,borderBottom:"1px solid rgba(99,120,128,.14)",margin:"8px 0 0"}}>
    <Tab v="all" label="전체글"/><Tab v="scrap" label="스크랩"/><Tab v="mine" label="내 활동"/>
@@ -1303,9 +1297,9 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
     {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
      :items.length?(<React.Fragment>
        {items.map(p=><PostCard key={p.id} p={p} onOpen={openPost} onAuthor={openAuthor}/>)}
-       {hasMore&&<button onClick={()=>{const n=page+1;setPage(n);load(n);}} style={{width:"100%",border:"1px solid #d3dada",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:2}}>더 보기</button>}
+       {hasMore&&<button onClick={()=>{const n=page+1;setPage(n);load(n);}} style={{width:"100%",border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:2}}>더 보기</button>}
       </React.Fragment>)
-     :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>account?setMode("write"):onNeedLogin()} style={{border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13.5,padding:"10px 18px",borderRadius:10,cursor:"pointer"}}>+ 글쓰기</button>}>아직 게시글이 없습니다. 첫 글을 남겨보세요.</Empty></div>}
+     :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px"}}>+ 글쓰기</button>}>아직 게시글이 없습니다. 첫 글을 남겨보세요.</Empty></div>}
    </div>
    <div style={{height:16}}/>
   </React.Fragment>)}
@@ -1476,6 +1470,109 @@ function Splash(){
    <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>청주 부동산, 한눈에</div>
   </div>, document.body);
 }
+function OnbDots({n,i}){
+ return (<div style={{display:"flex",gap:6,justifyContent:"center"}}>
+  {Array.from({length:n}).map((_,k)=><div key={k} style={{width:k===i?22:7,height:7,borderRadius:4,background:k===i?TEAL:"var(--surface-2)",transition:"width .2s"}}/>)}
+ </div>);
+}
+function OnbOption({active,onClick,children,sub}){
+ return (<button onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left",border:active?`1.5px solid ${TEAL}`:"1.5px solid var(--line)",background:active?"rgba(15,118,110,.08)":"var(--surface-solid)",borderRadius:14,padding:"15px 16px",cursor:"pointer",marginBottom:9}}>
+  <div style={{minWidth:0,flex:1}}>
+   <div style={{fontWeight:800,fontSize:15.5,color:INK}}>{children}</div>
+   {sub&&<div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{sub}</div>}
+  </div>
+  <div style={{width:22,height:22,borderRadius:11,flex:"none",border:active?"none":"2px solid var(--line)",background:active?TEAL:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:900}}>{active?"✓":""}</div>
+ </button>);
+}
+function OnboardingWizard({onClose,onDone,onOpenComplex}){
+ const [step,setStep]=useState(0);
+ const [jobs,setJobs]=useState(null);
+ const [dest,setDest]=useState(null);
+ const [budget,setBudget]=useState(undefined);   // undefined=미선택, null=몰라요, number=만원
+ const [kids,setKids]=useState(null);
+ const [res,setRes]=useState(null);
+ const [loading,setLoading]=useState(false);
+ useEffect(()=>{fetch(`${API}/onboarding/options`).then(r=>r.json()).then(j=>setJobs(j.destinations||[])).catch(()=>setJobs([]));},[]);
+ const BUD=[[20000,"2억 이하"],[30000,"2~3억대"],[40000,"3~4억대"],[60000,"4억 이상"],[null,"아직 잘 모르겠어요"]];
+ const run=()=>{ setLoading(true); setStep(4);
+  const q=`dest_key=${encodeURIComponent(dest&&dest.key||"")}&has_kids=${kids?"true":"false"}${(budget!=null)?`&budget=${budget}`:""}&max_minutes=40&limit=8`;
+  fetch(`${API}/onboarding/recommend?${q}`).then(r=>r.json()).then(j=>{setRes(j);setLoading(false);}).catch(()=>{setRes({items:[],notice:"결과를 불러오지 못했어요."});setLoading(false);});
+ };
+ const gap=(v)=>{ if(v==null)return null; if(v<=0)return {t:"자기자본 이내",c:TEAL}; return {t:`+${eok(v)} 더 필요`,c:MUTED}; };
+ const wrap={position:"fixed",inset:0,zIndex:200,background:"var(--surface)",display:"flex",flexDirection:"column"};
+ const body={flex:1,overflowY:"auto",padding:"8px 20px 20px",WebkitOverflowScrolling:"touch"};
+ const foot={padding:"12px 20px calc(16px + env(safe-area-inset-bottom))",borderTop:"1px solid var(--line)",background:"var(--surface)"};
+ const Q=({t,s})=>(<div style={{margin:"18px 2px 16px"}}><div style={{fontWeight:800,fontSize:21,letterSpacing:"-0.02em",lineHeight:1.3}}>{t}</div>{s&&<div style={{fontSize:13,color:MUTED,marginTop:6,lineHeight:1.5}}>{s}</div>}</div>);
+ return (<div style={wrap}>
+  <div style={{display:"flex",alignItems:"center",padding:"14px 16px 6px"}}>
+   {step>0&&step<4?<button onClick={()=>setStep(step-1)} aria-label="뒤로" style={{border:"none",background:"transparent",fontSize:20,cursor:"pointer",color:INK,padding:4}}>‹</button>:<div style={{width:28}}/>}
+   <div style={{flex:1}}>{step<4&&<OnbDots n={4} i={step}/>}</div>
+   <button onClick={onClose} style={{border:"none",background:"transparent",color:MUTED,fontWeight:700,fontSize:13,cursor:"pointer",padding:4}}>{step===4?"닫기":"나중에"}</button>
+  </div>
+
+  {step===0&&<React.Fragment>
+   <div style={body}>
+    <div style={{fontSize:44,marginTop:14}}>🧭</div>
+    <Q t={"청주가 처음이세요?"} s={"직장·예산·가족만 알려주시면, 당신에게 맞는 청주 단지와 조심할 점을 정리해드려요. 3가지면 끝나요."}/>
+    <div style={{background:"rgba(15,118,110,.07)",borderRadius:12,padding:"12px 14px",fontSize:12.5,color:INK,lineHeight:1.6}}>💡 청집사는 <b>중개·광고 수익이 없어요.</b> 그래서 '이거 사세요'가 아니라, <b>조심할 점까지</b> 솔직하게 알려드릴 수 있어요.</div>
+   </div>
+   <div style={foot}><button onClick={()=>setStep(1)} className="btn-primary" style={{width:"100%"}}>시작하기</button></div>
+  </React.Fragment>}
+
+  {step===1&&<React.Fragment>
+   <div style={body}>
+    <Q t={"어디로 출퇴근하세요?"} s={"직장·산업단지 기준으로 가까운 단지를 찾아드려요."}/>
+    {jobs===null?<SkeletonList rows={4}/>:jobs.length?jobs.map(j=>(
+     <OnbOption key={j.key} active={dest&&dest.key===j.key} onClick={()=>setDest(j)} sub={j.gu||undefined}>{j.name}</OnbOption>
+    )):<Empty>직장 거점 데이터가 아직 없어요(seed_commute 필요). ‘해당 없음’으로 둘러볼 수 있어요.</Empty>}
+    <OnbOption active={dest&&dest.key==="_none"} onClick={()=>setDest({key:"_none",name:"해당 없음"})} sub="그냥 청주를 둘러볼게요">해당 없음 / 아직 미정</OnbOption>
+   </div>
+   <div style={foot}><button disabled={!dest} onClick={()=>dest&&dest.key==="_none"?(onClose&&onClose()):setStep(2)} className="btn-primary" style={{width:"100%"}}>다음</button></div>
+  </React.Fragment>}
+
+  {step===2&&<React.Fragment>
+   <div style={body}>
+    <Q t={"보유 자금은 어느 정도세요?"} s={"지금 가진 현금 기준이에요. 대출은 별도로, 결과에서 ‘얼마 더 필요한지’를 보여드려요."}/>
+    {BUD.map(([v,l])=><OnbOption key={String(v)} active={budget===v} onClick={()=>setBudget(v)}>{l}</OnbOption>)}
+   </div>
+   <div style={foot}><button disabled={budget===undefined} onClick={()=>setStep(3)} className="btn-primary" style={{width:"100%"}}>다음</button></div>
+  </React.Fragment>}
+
+  {step===3&&<React.Fragment>
+   <div style={body}>
+    <Q t={"함께 사는 자녀가 있나요?"} s={"있으면 어린이집·학원·초품아 같은 육아 환경을 더 챙겨서 볼게요."}/>
+    <OnbOption active={kids===true} onClick={()=>setKids(true)} sub="어린이집·학원·초등 도보권을 우선 고려">네, 자녀가 있어요 🧸</OnbOption>
+    <OnbOption active={kids===false} onClick={()=>setKids(false)}>아니요 / 해당 없음</OnbOption>
+   </div>
+   <div style={foot}><button disabled={kids===null} onClick={run} className="btn-primary" style={{width:"100%"}}>결과 보기</button></div>
+  </React.Fragment>}
+
+  {step===4&&<React.Fragment>
+   <div style={body}>
+    <div style={{margin:"10px 2px 14px"}}>
+     <div style={{fontWeight:800,fontSize:21,letterSpacing:"-0.02em"}}>{dest&&dest.name&&dest.key!=="_none"?`${dest.name} 근처, 당신을 위한 청주`:"당신을 위한 청주"}</div>
+     <div style={{fontSize:12.5,color:MUTED,marginTop:5}}>{kids?"육아 환경까지 고려한 ":""}통근·시세 기준 참고 추천이에요.</div>
+    </div>
+    {loading?<SkeletonList rows={4}/>:(res&&res.items&&res.items.length)?res.items.map((x,i)=>{const g=gap(x.over_budget_by);return (
+     <div key={i} onClick={()=>onOpenComplex&&onOpenComplex({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:x.property_type,gu:x.gu})} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpenComplex&&onOpenComplex({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:x.property_type,gu:x.gu}))} className="card" style={{padding:"13px 15px",marginBottom:9,cursor:"pointer"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+       <span style={{fontWeight:800,fontSize:15,minWidth:0,flex:1,overflowWrap:"anywhere"}}>{x.name}</span>
+       {x.minutes!=null&&<span style={{fontSize:11.5,color:MUTED,flex:"none"}}>🚗 {x.minutes}분</span>}
+      </div>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,marginTop:6,flexWrap:"wrap"}}>
+       {x.latest_amount!=null?<span className="num" style={{fontWeight:800,fontSize:16}}>{eok(x.latest_amount)}</span>:<span style={{fontSize:12.5,color:MUTED}}>최근 실거래 없음</span>}
+       {x.mom_pct!=null&&<span style={{fontSize:11.5}}>전월 <Delta v={x.mom_pct}/></span>}
+       {g&&<span style={{marginLeft:"auto",fontSize:11.5,fontWeight:800,color:g.c}}>{g.t}</span>}
+      </div>
+      <div style={{fontSize:11,color:MUTED,marginTop:4}}>{[x.gu,TYPE_LABEL[x.property_type]].filter(Boolean).join(" · ")} · 탭하면 상세·전세가율·주변정보 ›</div>
+     </div>);
+    }):<Empty>{res&&res.notice?res.notice:"조건에 맞는 단지를 찾지 못했어요. 실거래·거점 데이터가 쌓이면 채워져요."}</Empty>}
+    {res&&res.notice&&res.items&&res.items.length>0&&<div style={{fontSize:11,color:MUTED,marginTop:6,lineHeight:1.6}}>ⓘ {res.notice}</div>}
+   </div>
+   <div style={foot}><button onClick={()=>{onDone&&onDone({dest_key:dest&&dest.key,dest_name:dest&&dest.name,budget:(budget===undefined?null:budget),has_kids:!!kids,done:true,ts:Date.now()});}} className="btn-primary" style={{width:"100%"}}>완료 · 홈으로</button></div>
+  </React.Fragment>}
+ </div>);
+}
 function App(){
  const [status,setStatus]=useState("loading");
  const [data,setData]=useState(null);
@@ -1501,6 +1598,15 @@ function App(){
  const [agentOpen,setAgentOpen]=useState(false);
  const [openListingId,setOpenListingId]=useState(null);
  const [boardSection,setBoardSection]=useState("board");   // 게시판 내부: board|listing
+ const [myHome,setMyHome]=useState(()=>{try{const v=safeStore.get("cj_myhome");return v?JSON.parse(v):null;}catch(e){return null;}});
+ const [homePick,setHomePick]=useState(false);   // 검색 오버레이가 '우리집 등록' 모드인지
+ const saveMyHome=useCallback((h)=>{setMyHome(h);try{safeStore.set("cj_myhome",h?JSON.stringify(h):"");}catch(e){}},[]);
+ const [onbOpen,setOnbOpen]=useState(false);
+ const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
+ const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
+ useEffect(()=>{ let seen; try{seen=safeStore.get("cj_onb_seen");}catch(e){} if(seen||onb)return;
+  const t=setTimeout(()=>setOnbOpen(true),1700); return ()=>clearTimeout(t); },[]);   // 첫 방문 1회 자동 안내(스플래시 후)
+ const openHomePick=useCallback(()=>{setHomePick(true);setSearchOpen(true);},[]);
  const [notifOpen,setNotifOpen]=useState(false),[unread,setUnread]=useState(0),[openPostId,setOpenPostId]=useState(null);
  const [fresh,setFresh]=useState(null);
  const [legalDoc,setLegalDoc]=useState(null);
@@ -1561,7 +1667,7 @@ function App(){
   }).catch(function(){});
  },[]);
  useEffect(()=>{
-  fetch(`${API}/me/prefs?device_id=${DEV}`,{headers:authHeader()}).then(r=>r.json()).then(j=>{const d=j.data||{};if(d.unit)setUnit(d.unit);if(d.my_gu)setMyGu(d.my_gu);}).catch(()=>{}).finally(()=>{prefsLoaded.current=true;});
+  fetch(`${API}/me/prefs?device_id=${DEV}`,{headers:authHeader()}).then(r=>r.json()).then(j=>{const d=j.data||{};if(d.unit)setUnit(d.unit);if(d.my_gu)setMyGu(d.my_gu);if(d.my_home)saveMyHome(d.my_home);if(d.onboarding)saveOnb(d.onboarding);}).catch(()=>{}).finally(()=>{prefsLoaded.current=true;});
   fetch(`${API}/me/recent?device_id=${DEV}`,{headers:authHeader()}).then(r=>r.json()).then(j=>setRecents(j.items||[])).catch(()=>{});
   fetch(`${API}/me/searches?device_id=${DEV}`,{headers:authHeader()}).then(r=>r.json()).then(j=>setSearches(j.items||[])).catch(()=>{});
  },[DEV,account]);
@@ -1576,8 +1682,8 @@ function App(){
   if(typeof id==="number")fetch(`${API}/me/searches/${id}?device_id=${DEV}`,{method:"DELETE",headers:authHeader()}).catch(()=>{});
  },[DEV]);
  useEffect(()=>{ if(!prefsLoaded.current)return;
-  fetch(`${API}/me/prefs`,{method:"PUT",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({device_id:DEV,data:{unit,my_gu:myGu}})}).catch(()=>{});
- },[unit,myGu,DEV]);
+  fetch(`${API}/me/prefs`,{method:"PUT",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({device_id:DEV,data:{unit,my_gu:myGu,my_home:myHome,onboarding:onb}})}).catch(()=>{});
+ },[unit,myGu,myHome,onb,DEV]);
  const isFav=useCallback(tid=>favs.some(f=>f.target_id===tid),[favs]);
  const toggleFav=useCallback((item)=>{
   const tid=favId(item);
@@ -1650,11 +1756,11 @@ function App(){
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
     </div>
-    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:15,padding:"7px 9px",borderRadius:8,border:"1px solid var(--line)",cursor:"pointer",background:"var(--surface-2)",color:INK}}>🔔
+    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK}}>🔔
      {unread>0&&<span style={{position:"absolute",top:-5,right:-5,minWidth:17,height:17,borderRadius:9,background:"#C8322A",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{unread>99?"99+":unread}</span>}
     </button>}
     <div style={{position:"relative",flex:"none"}}>
-     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{fontSize:18,lineHeight:1,padding:"7px 10px",borderRadius:8,border:"1px solid var(--line)",cursor:"pointer",background:"var(--surface-2)",color:INK}}>☰</button>
+     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{fontSize:19,lineHeight:1,padding:"7px 10px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK}}>☰</button>
      {acctMenu&&<div onClick={()=>setAcctMenu(false)} style={{position:"fixed",inset:0,zIndex:80}}/>}
      {acctMenu&&<div style={{position:"absolute",right:0,top:"112%",zIndex:90,background:"var(--surface-solid)",borderRadius:12,boxShadow:"0 10px 28px rgba(30,64,90,.22)",padding:6,minWidth:208,color:INK}}>
       <div style={{fontSize:11,color:MUTED,padding:"6px 10px 3px",fontWeight:700}}>설정</div>
@@ -1676,36 +1782,40 @@ function App(){
    </div>
   </div>
   <div className="wrap">
-   <Banner status={status} data={data}/>
-   {!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
+   {tab!=="map"&&<Banner status={status} data={data}/>}
+   {tab!=="map"&&!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)}/>:
     null}
-   <footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
+   {tab!=="map"&&<footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
     <div style={{marginTop:8}}>
      <button onClick={()=>setLegalDoc("privacy")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:11.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>개인정보처리방침</button>
      <span style={{margin:"0 7px",color:"#cbd5d8"}}>·</span>
      <button onClick={()=>setLegalDoc("terms")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:11.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>이용약관</button>
     </div>
-   </footer>
+   </footer>}
   </div>
   {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
-  {searchOpen&&<SearchOverlay onClose={()=>setSearchOpen(false)}
+  {onbOpen&&<OnboardingWizard
+    onClose={()=>{setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}}}
+    onDone={(o)=>{saveOnb(o);setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}setTab("home");window.scrollTo(0,0);}}
+    onOpenComplex={(m)=>{setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}openComplex(m);}}/>}
+  {searchOpen&&<SearchOverlay onClose={()=>{setSearchOpen(false);setHomePick(false);}}
     board={data&&data.board} recents={recents}
-    onComplex={it=>{setSearchOpen(false);openComplex(it);}}
+    onComplex={it=>{setSearchOpen(false);if(homePick){setHomePick(false);saveMyHome({complex_name:it.complex_name||it.name,lawd_cd:it.lawd_cd,property_type:it.property_type||"apartment",gu:it.gu,dong:it.dong});}else{openComplex(it);}}}
     onGu={g=>{setSearchOpen(false);goGu(g);}}
     onListing={id=>{setSearchOpen(false);setOpenListingId(id);setBoardSection("listing");setTab("board");window.scrollTo(0,0);}}/>}
   {notifOpen&&<NotificationsOverlay onClose={()=>setNotifOpen(false)} onAllRead={()=>setUnread(0)}
@@ -1799,6 +1909,14 @@ function TourSheet({complexes,onClose,onOpen}){
 /* ---------------- 홈: 대시보드 ---------------- */
 function FavList({favs,onOpen,onToggleFav,onGu,onToggleRegion}){
  const [tourOpen,setTourOpen]=useState(false);
+ const [quotes,setQuotes]=useState({});
+ const cxSig=(favs||[]).filter(f=>f.target_type!=="region").map(f=>`${f.name}|${(f.meta||{}).lawd_cd}`).join(",");
+ useEffect(()=>{ let on=true;
+  const items=(favs||[]).filter(f=>f.target_type!=="region").map(f=>{const m=f.meta||{};return {name:f.name||m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type||"apartment"};}).filter(x=>x.name&&x.lawd_cd);
+  if(!items.length){setQuotes({});return;}
+  fetch(`${API}/complex/quotes`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})}).then(r=>r.json()).then(j=>{ if(!on)return; const map={}; (j.quotes||[]).forEach(q=>{map[`${q.name}|${q.lawd_cd}|${q.property_type}`]=q;}); setQuotes(map); }).catch(()=>{});
+  return ()=>{on=false;};
+ },[cxSig]);
  if(!favs||!favs.length)return null;
  const regions=favs.filter(f=>f.target_type==="region");
  const complexes=favs.filter(f=>f.target_type!=="region");
@@ -1820,11 +1938,16 @@ function FavList({favs,onOpen,onToggleFav,onGu,onToggleRegion}){
     <button onClick={()=>setTourOpen(true)} style={{width:"100%",border:"none",background:"rgba(15,118,110,.1)",color:TEAL,fontWeight:800,fontSize:13.5,borderRadius:10,padding:"10px 0",cursor:"pointer",marginBottom:8}}>🧭 임장 도우미 — {complexes.length}곳 코스·체크리스트</button>
     {complexes.map((f,i)=>{const m=f.meta||{};const it={complex_name:f.name||m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type,gu:m.gu,dong:m.dong};
      return <div key={i} className="listrow">
-      <div style={{minWidth:0,cursor:"pointer"}} onClick={()=>onOpen&&onOpen(it)}>
+      <div style={{minWidth:0,flex:1,cursor:"pointer"}} onClick={()=>onOpen&&onOpen(it)}>
        <span style={{fontWeight:600}}>{f.name}</span>
        <span style={{color:MUTED,fontSize:12,marginLeft:6}}>{m.gu?guOf(m.gu):""}{m.dong?` · ${m.dong}`:""}{m.property_type?` · ${TYPE_LABEL[m.property_type]||""}`:""}</span>
       </div>
-      <button onClick={()=>onToggleFav&&onToggleFav(it)} style={{marginLeft:"auto",border:"none",background:"none",cursor:"pointer",padding:4}} title="관심 해제"><Icon name="star" active size={18}/></button>
+      {(()=>{const q=quotes[`${it.complex_name}|${it.lawd_cd}|${it.property_type||"apartment"}`];return q&&q.latest_amount!=null?(
+       <span style={{flex:"none",display:"flex",alignItems:"center",gap:6,marginRight:2}}>
+        <span className="num" style={{fontWeight:800,fontSize:13.5}}>{eok(q.latest_amount)}</span>
+        {q.mom_pct!=null&&<span style={{fontSize:11}}><Delta v={q.mom_pct}/></span>}
+       </span>):null;})()}
+      <button onClick={()=>onToggleFav&&onToggleFav(it)} style={{flex:"none",border:"none",background:"none",cursor:"pointer",padding:4}} title="관심 해제"><Icon name="star" active size={18}/></button>
      </div>;})}
    </div>
   </Collapsible>}
@@ -2057,12 +2180,14 @@ function ComplexQuickSheet({item,onClose,onDetail}){
  </Sheet>);
 }
 function TickerBanner({label,color,bg,items,metric,onItem,info,title}){
- const n=(items||[]).length;
+ const all=items||[];
+ const ticker=all.slice(0,5);   // 펼치기 전 티커는 상위 5개만 회전
+ const n=ticker.length;
  const [i,setI]=useState(0);
  const [sheet,setSheet]=useState(false);
  useEffect(()=>{ if(sheet||n<=1)return; const t=setInterval(()=>setI(p=>(p+1)%n),3500); return ()=>clearInterval(t); },[sheet,n]);
  if(!n) return null;
- const cur=items[i%n];
+ const cur=ticker[i%n];
  return (<div className="card" style={{padding:0,marginTop:8,overflow:"hidden"}}>
   <div onClick={()=>setSheet(true)} tabIndex={0} role="button" onKeyDown={onEnter(()=>setSheet(true))} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 13px",cursor:"pointer"}}>
    <span className="pill" style={{background:bg,color,fontWeight:800,fontSize:11.5,flex:"none"}}>{label}</span>
@@ -2070,7 +2195,7 @@ function TickerBanner({label,color,bg,items,metric,onItem,info,title}){
    <span style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,minWidth:0}}>{cur.name} {cur.contains_sample_data&&<ExBadge/>}</span>
    <span style={{flex:"none",display:"flex",alignItems:"center",gap:6}}>{metric(cur)}<span style={{color:MUTED,fontSize:15}}>›</span></span>
   </div>
-  {sheet&&<RankSheet title={title||label} items={items} metric={metric} onItem={onItem} onClose={()=>setSheet(false)} info={info}/>}
+  {sheet&&<RankSheet title={title||label} items={all} metric={metric} onItem={onItem} onClose={()=>setSheet(false)} info={info}/>}
  </div>);
 }
 function TopMovers({movers,onOpen}){
@@ -2301,7 +2426,7 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
     </div>}
     <div style={{display:"flex",alignItems:"center",margin:"4px 2px 8px"}}>
      <span style={{fontWeight:800,fontSize:14}}>내 매물</span>
-     <button onClick={onGoListings} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"8px 13px",borderRadius:10,cursor:"pointer"}}>+ 매물 등록</button>
+     <button onClick={onGoListings} className="btn-primary" style={{marginLeft:"auto",fontSize:13,padding:"8px 13px"}}>+ 매물 등록</button>
     </div>
     {a.length?a.map(x=>(<div key={x.id} onClick={()=>onOpenListing&&onOpenListing(x.id)} className="card" style={{padding:"10px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
        <div style={{minWidth:0,flex:1}}>
@@ -2324,24 +2449,378 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
   </div>}
  </SheetShell>);
 }
-function MoreTab({onCommute,onBudget,onLoan}){
+function JeonseGuard(){
+ const [price,setPrice]=useState(""),[dep,setDep]=useState(""),[lien,setLien]=useState("");
+ const [open,setOpen]=useState(false);
+ const P=parseFloat(price)||0, D=parseFloat(dep)||0, L=parseFloat(lien)||0;
+ const ratio=(P>0&&D>0)?Math.round((D+L)/P*1000)/10:null;
+ let band=null;
+ if(ratio!=null){
+  if(ratio>=80)band={c:"#C8322A",t:"위험 신호",m:"집이 경매로 넘어가면 보증금을 다 돌려받지 못할 수 있는 구간이에요. 보증보험(HUG) 가입 가능 여부를 꼭 확인하고, 계약을 다시 생각해보세요."};
+  else if(ratio>=70)band={c:"#C77A1A",t:"주의",m:"여유가 크지 않아요. 근저당 말소 특약, 보증보험 가입을 권해요."};
+  else band={c:"#0F766E",t:"상대적 여유",m:"통상적 기준으로는 여유가 있는 편이에요. 그래도 계약 당일 등기부를 다시 확인하세요."};
+ }
+ const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 12px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const CHECK=[
+  ["계약 전",["등기부등본 열람 — 소유자가 임대인과 일치하는지, 근저당·가압류가 있는지(을구의 채권최고액을 아래 진단에 입력)","건축물대장 — 위반건축물 여부(정부24)","이 앱에서 단지 전세가율 확인 — 매매가 대비 보증금이 과한지","임대인 국세·지방세 체납 열람 신청(계약 전 임대인 동의로 가능)"]],
+  ["계약일",["등기부등본 당일 재발급 — 계약 직전 변동 확인","임대인 본인 확인(신분증) · 계약금은 임대인 명의 계좌로","특약 예: '잔금일까지 근저당 말소', '전입·확정일자 전 추가 담보 설정 금지'"]],
+  ["잔금·입주",["잔금 직전 등기부 한 번 더 확인","이사 당일 전입신고 + 확정일자(주민센터/정부24) — 우선변제권 확보","전세보증금 반환보증(HUG 등) 가입 검토 — 역전세 대비"]],
+ ];
+ return (<div style={{marginTop:16}}>
+  <div style={{margin:"0 2px 6px"}}>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>🛡 전세 안전 진단</div>
+   <div style={{fontSize:12,color:MUTED,marginTop:2}}>등기부등본의 숫자를 넣으면, 경매 시 보증금 회수 여유를 계산해드려요.</div>
+  </div>
+  <div className="card" style={{padding:"14px 15px"}}>
+   <div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>매매 시세(억)</span><input inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} placeholder="예: 3.0 (단지 상세 참고)" style={inp}/></div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>전세 보증금(억)</span><input inputMode="decimal" value={dep} onChange={e=>setDep(e.target.value)} placeholder="예: 2.5" style={inp}/></div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>근저당 채권최고액(억)</span><input inputMode="decimal" value={lien} onChange={e=>setLien(e.target.value)} placeholder="등기부 을구 · 없으면 0" style={inp}/></div>
+   </div>
+   {ratio!=null&&band&&<div style={{marginTop:11,background:"var(--surface-2)",borderRadius:11,padding:"11px 13px"}}>
+    <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+     <span style={{fontSize:12.5,color:MUTED}}>보증금+선순위 ÷ 시세</span>
+     <span className="num" style={{fontWeight:800,fontSize:19,color:band.c}}>{ratio}%</span>
+     <span style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:band.c}}>{band.t}</span>
+    </div>
+    <div style={{fontSize:12.5,color:INK,marginTop:6,lineHeight:1.55}}>{band.m}</div>
+    <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>계산식: (보증금+근저당 채권최고액)÷매매 시세. 채권최고액은 통상 대출원금의 110~130%로 설정돼요. <b>참고 지표</b>이며 경매 배당·법적 판단을 단정하지 않습니다. 시세는 이 앱 단지 상세의 최근 실거래를 참고하세요.</div>
+   </div>}
+   <button onClick={()=>setOpen(v=>!v)} style={{marginTop:11,width:"100%",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>{open?"체크리스트 접기 ▲":"📋 전세 계약 단계별 체크리스트 ▼"}</button>
+   {open&&<div style={{marginTop:8}}>
+    {CHECK.map(([t,items],i)=>(<div key={i} style={{marginTop:i?10:2}}>
+     <div style={{fontSize:12.5,fontWeight:800,color:TEAL,marginBottom:4}}>{t}</div>
+     {items.map((it,k)=><div key={k} style={{display:"flex",gap:7,fontSize:12.5,color:INK,lineHeight:1.55,padding:"3px 0"}}><span style={{flex:"none",color:MUTED}}>☐</span><span style={{minWidth:0}}>{it}</span></div>)}
+    </div>))}
+    <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>일반적인 절차 안내이며 법률 자문이 아닙니다. 개별 사안은 공인중개사·법률 전문가와 확인하세요.</div>
+   </div>}
+  </div>
+ </div>);
+}
+function OfficialLinks(){
+ const LINKS=[
+  ["📜","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
+  ["🏗","건축물대장 발급","위반건축물·용도 확인 — 정부24","https://www.gov.kr"],
+  ["📊","실거래가 원본 조회","국토교통부 실거래가 공개시스템","https://rt.molit.go.kr"],
+  ["🏷","공시가격 알리미","주택 공시가격(보유세 기준) 확인","https://www.realtyprice.kr"],
+  ["🛡","전세보증금 반환보증","역전세 대비 보증보험·안심전세 앱 — HUG","https://www.khug.or.kr"],
+  ["💰","대출·예금 금리 비교","금융상품 통합비교공시 — 금융감독원","https://finlife.fss.or.kr"],
+  ["🧾","임대차(전월세) 신고","부동산거래관리시스템 — 국토교통부","https://rtms.molit.go.kr"],
+  ["🏦","취득·양도세 신고","국세청 홈택스","https://www.hometax.go.kr"],
+  ["🏢","청약홈","청약 신청·자격 확인 — 한국부동산원","https://www.applyhome.co.kr"],
+  ["🏛","청주시청 부동산 정보","고시·공고·도시계획","https://www.cheongju.go.kr"],
+ ];
+ return (<div style={{marginTop:16}}>
+  <div style={{margin:"0 2px 6px"}}>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>🔎 계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>
+   <div style={{fontSize:12,color:MUTED,marginTop:2}}>청집사가 대신 확인해줄 수 없는 것들이에요. 계약 전 아래 공식 서비스에서 직접 확인하세요.</div>
+  </div>
+  <div className="card" style={{padding:"4px 15px"}}>
+   {LINKS.map(([ic,t,d,u],i)=>(<a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<LINKS.length-1?"1px solid var(--line)":"none",textDecoration:"none"}}>
+    <span style={{fontSize:19,flex:"none"}}>{ic}</span>
+    <span style={{minWidth:0,flex:1}}>
+     <span style={{display:"block",fontWeight:700,fontSize:13.5,color:INK}}>{t}</span>
+     <span style={{display:"block",fontSize:11.5,color:MUTED,marginTop:1}}>{d}</span>
+    </span>
+    <span style={{fontSize:10.5,color:MUTED,flex:"none"}}>{u.replace("https://www.","").replace("https://","")} ↗</span>
+   </a>))}
+  </div>
+  <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
+ </div>);
+}
+function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard}){
  const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
   <div style={{fontSize:28,flex:"none"}}>{icon}</div>
   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:15}}>{title}</div><div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{desc}</div></div>
   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
  </div>);
+ const Quick=({icon,label,onClick})=>(<button onClick={onClick} style={{flex:1,border:"none",background:"var(--surface-2)",borderRadius:12,padding:"13px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+  <span style={{fontSize:22}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
+ </button>);
+ const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
-  <div style={{margin:"2px 2px 4px"}}>
-   <div style={{fontWeight:800,fontSize:17,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
+  <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
+   <div style={{width:52,height:52,borderRadius:26,flex:"none",background:"linear-gradient(135deg,var(--teal),#14a08f)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:22}}>{(nm[0]||"게")}</div>
+   <div style={{minWidth:0,flex:1}}>
+    <div style={{fontWeight:800,fontSize:17}}>{nm}</div>
+    <div style={{fontSize:12,color:MUTED,marginTop:2}}>{account?(account.role==="agent"?"중개업자":"개인 회원"):"로그인하면 관심·알림을 저장해요"}</div>
+   </div>
+   {!account&&<button onClick={onLogin} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>로그인</button>}
+  </div>
+  <div className="card" style={{padding:"14px 15px",marginTop:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:myHome?8:2}}>
+    <span style={{fontWeight:800,fontSize:14.5}}>🏠 우리집</span>
+    {myHome&&<button onClick={onClearHome} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12,cursor:"pointer"}}>삭제</button>}
+   </div>
+   {myHome?(
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <div onClick={onOpenHome} role="button" tabIndex={0} onKeyDown={onEnter(onOpenHome)} style={{minWidth:0,flex:1,cursor:"pointer"}}>
+      <div style={{fontWeight:800,fontSize:15.5,overflowWrap:"anywhere"}}>{myHome.complex_name||"우리집"}</div>
+      <div style={{fontSize:12,color:MUTED,marginTop:1}}>{[guOf(myHome.gu),myHome.dong].filter(Boolean).join(" · ")||"청주"} · 시세 보기 ›</div>
+     </div>
+     <button onClick={onRegisterHome} style={{flex:"none",border:"1px solid var(--line)",background:"var(--surface-2)",color:TEAL,fontWeight:700,fontSize:12,padding:"7px 12px",borderRadius:9,cursor:"pointer"}}>변경</button>
+    </div>
+   ):(
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <div style={{fontSize:12.5,color:MUTED,flex:1}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 볼 수 있어요.</div>
+     <button onClick={onRegisterHome} style={{flex:"none",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"9px 15px",borderRadius:10,cursor:"pointer"}}>등록</button>
+    </div>
+   )}
+  </div>
+  <div onClick={onOnboard} role="button" tabIndex={0} onKeyDown={onEnter(onOnboard)} className="card" style={{padding:"14px 15px",marginTop:10,cursor:"pointer",background:"linear-gradient(100deg, rgba(15,118,110,.13), rgba(15,118,110,.03))",display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:24,flex:"none"}}>🧭</span>
+   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:14.5}}>청주가 처음이세요?</div><div style={{fontSize:12,color:MUTED,marginTop:2}}>직장·예산 기반 맞춤 단지 추천 · 3분</div></div>
+   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
+  </div>
+  <div style={{display:"flex",gap:8,marginTop:10}}>
+   <Quick icon="⭐" label="관심 단지" onClick={()=>go&&go("home")}/>
+   <Quick icon="🏢" label="청약" onClick={()=>go&&go("subscription")}/>
+   <Quick icon="💬" label="게시판" onClick={()=>go&&go("board")}/>
+  </div>
+  <div style={{margin:"18px 2px 4px"}}>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>조건으로 청주 단지를 찾고, 대출까지 한 번에.</div>
   </div>
   <Tool icon="🧭" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
   <Tool icon="💰" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
   <Tool icon="🏦" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
+  <JeonseGuard/>
+  <OfficialLinks/>
+  <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.\n${location.origin}`;
+    if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
+    else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>alert("소개 문구를 복사했어요!")).catch(()=>{});}}}
+   className="card" style={{width:"100%",padding:"14px 15px",marginTop:12,border:"1px dashed rgba(15,118,110,.4)",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+   <span style={{fontSize:24,flex:"none"}}>📣</span>
+   <span style={{minWidth:0,flex:1}}>
+    <span style={{display:"block",fontWeight:800,fontSize:14.5,color:INK}}>친구에게 청집사 알리기</span>
+    <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>청주로 이사 오는 지인에게 공유해주세요</span>
+   </span>
+   <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
+  </button>
   <div style={{fontSize:11,color:MUTED,margin:"14px 2px 0",lineHeight:1.6}}>※ 대출 한도·예산 추천은 공시·입력값 기반 참고용 추정이며, 실제 조건은 금융회사 심사로 달라집니다.</div>
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan}){
+function ComplexTalk({name,lawd}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{ if(!name)return; let on=true; setD(null);
+  fetch(`${API}/community/posts?complex=${encodeURIComponent(name)}&per=5`).then(r=>r.json()).then(j=>{if(on)setD(j&&j.items?j.items:[]);}).catch(()=>{if(on)setD([]);});
+  return ()=>{on=false;};
+ },[name,lawd]);
+ if(!name||d===null)return null;
+ return (<Collapsible icon="search" defaultOpen={d.length>0} title={`💬 단지 이야기${d.length?` (${d.length})`:""}`}>
+  <div style={{padding:"4px 14px 12px"}}>
+   {d.length?d.map((p,i)=>(<div key={p.id||i} style={{padding:"8px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
+    <div style={{display:"flex",alignItems:"center",gap:6}}>
+     {p.resident&&<span style={{fontSize:10.5,fontWeight:800,color:TEAL,background:"rgba(15,118,110,.12)",borderRadius:6,padding:"2px 7px",flex:"none"}}>🏠 주민</span>}
+     <span style={{fontWeight:700,fontSize:13.5,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</span>
+     <span style={{marginLeft:"auto",fontSize:11,color:MUTED,flex:"none"}}>💬{p.comment_count??0} ❤️{p.like_count??0}</span>
+    </div>
+   </div>)):<div style={{fontSize:12.5,color:MUTED,padding:"6px 0"}}>아직 이 단지의 글이 없어요. 첫 글의 주인공이 되어보세요!</div>}
+   <div style={{fontSize:11.5,color:MUTED,marginTop:8,lineHeight:1.6}}>게시판 탭에서 글쓰기 시 <b>@단지</b>로 이 단지를 태그하면 여기에 모여요. '우리집'으로 등록한 단지 글엔 <b>🏠 주민</b> 뱃지가 붙어요(자가 등록 기반 표시).</div>
+  </div>
+ </Collapsible>);
+}
+function PriceCheck({name,lawd,pt}){
+ const [v,setV]=useState(""),[r,setR]=useState(null),[busy,setBusy]=useState(false);
+ const run=()=>{const eokV=parseFloat(v); if(!eokV||eokV<=0)return; setBusy(true);
+  fetch(`${API}/pricecheck/quote?name=${encodeURIComponent(name)}&lawd_cd=${lawd}&property_type=${pt||"apartment"}&asking=${Math.round(eokV*10000)}`)
+   .then(x=>x.json()).then(j=>{setR(j);setBusy(false);}).catch(()=>{setR(null);setBusy(false);});};
+ return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
+  <div style={{fontWeight:800,fontSize:14.5}}>💬 이 가격, 괜찮은 거예요?</div>
+  <div style={{fontSize:12,color:MUTED,marginTop:2}}>어디서 본 매물 호가를 넣으면, 이 단지 최근 실거래에서 어디쯤인지 알려드려요.</div>
+  <div style={{display:"flex",gap:8,marginTop:10}}>
+   <input inputMode="decimal" value={v} onChange={e=>setV(e.target.value)} placeholder="예: 3.2" style={{flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 13px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK}}/>
+   <span style={{alignSelf:"center",fontWeight:800,color:MUTED}}>억</span>
+   <button onClick={run} disabled={busy} className="btn-primary" style={{flex:"none",padding:"0 18px"}}>{busy?"확인중":"확인"}</button>
+  </div>
+  {r&&(r.found
+   ?<div style={{marginTop:10,background:"var(--surface-2)",borderRadius:11,padding:"11px 13px"}}>
+     <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+      <span style={{fontSize:12.5,color:MUTED}}>중앙값 대비</span>
+      <span className="num" style={{fontWeight:800,fontSize:18,color:r.diff_pct>0?UP:r.diff_pct<0?DOWN:INK}}>{r.diff_pct>0?"+":""}{r.diff_pct}%</span>
+      <span style={{fontSize:12.5,color:MUTED}}>· 이 가격 이하 거래 {r.percentile}%</span>
+     </div>
+     <div style={{fontSize:12,color:INK,marginTop:5,lineHeight:1.55}}>최근 {r.months}개월 {r.count}건 · 중앙값 {eok(r.median)} · 범위 {eok(r.min)}~{eok(r.max)}</div>
+     <button onClick={()=>{const t=`『${name}』 호가 ${eok(Math.round(parseFloat(v)*10000))} — 최근 ${r.months}개월 실거래 중앙값(${eok(r.median)}) 대비 ${r.diff_pct>0?"+":""}${r.diff_pct}% · 이 가격 이하 거래 ${r.percentile}%\n(참고용·적정가 단정 아님)\n🏠 청집사 ${location.origin}`;
+       if(navigator.share){navigator.share({title:"호가 검증 — 청집사",text:t}).catch(()=>{});}
+       else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>alert("결과를 복사했어요. 카톡 등에 붙여넣기!")).catch(()=>{});}}}
+      style={{marginTop:9,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-solid)",color:TEAL,fontWeight:800,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>📤 이 결과 공유하기</button>
+     <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{r.disclaimer}</div>
+    </div>
+   :<div style={{marginTop:10,fontSize:12.5,color:MUTED}}>{r.note}</div>)}
+ </div>);
+}
+function GuContextBar(){
+ const [d,setD]=useState(null);
+ useEffect(()=>{fetch(`${API}/pricecheck/gu-context`).then(r=>r.json()).then(setD).catch(()=>setD(null));},[]);
+ if(!d||!d.items||!d.items.length)return null;
+ return (<div className="card" style={{padding:"11px 13px",marginBottom:10}}>
+  <div style={{fontSize:12,fontWeight:800,marginBottom:6}}>📊 참고: 구별 기존 아파트 시세(최근 {d.months}개월)</div>
+  <div style={{display:"flex",gap:6,overflowX:"auto"}}>
+   {d.items.map(g=>(<div key={g.lawd_cd} style={{flex:"none",background:"var(--surface-2)",borderRadius:10,padding:"8px 11px"}}>
+    <div style={{fontSize:11,color:MUTED,fontWeight:700}}>{g.gu}</div>
+    <div className="num" style={{fontWeight:800,fontSize:13.5}}>{eok(g.price_median)}</div>
+    <div style={{fontSize:10.5,color:MUTED}}>평당 {Math.round(g.ppm_median).toLocaleString()}만</div>
+   </div>))}
+  </div>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{d.disclaimer}</div>
+ </div>);
+}
+function BargainRadar({onOpen}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(setD).catch(()=>setD(null));},[]);
+ if(!d||!d.items||!d.items.length)return null;
+ return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
+  <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontWeight:800,fontSize:15}}>📉 낮은 가격 거래 포착</span><span style={{fontSize:11.5,color:MUTED}}>최근 {d.months}개월</span></div>
+  <div style={{fontSize:11.5,color:MUTED,margin:"2px 0 4px"}}>같은 평형 중앙값보다 크게 낮게 신고된 실거래예요(사유가 있을 수 있어요).</div>
+  <MoreList items={d.items} initial={3} step={3} render={(x,i)=>(
+   <div key={i} onClick={()=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:"apartment",gu:x.gu})} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:"apartment",gu:x.gu}))} style={{padding:"9px 0",borderTop:i>0?"1px solid var(--line)":"none",cursor:"pointer"}}>
+    <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+     <span style={{fontWeight:800,fontSize:13.5}}>{x.name}</span>
+     <span style={{fontSize:11.5,color:MUTED}}>{x.gu} · {x.pyeong}평{x.floor!=null?` · ${x.floor}층`:""}</span>
+     <span className="num" style={{marginLeft:"auto",fontWeight:800,fontSize:13.5,color:DOWN}}>{x.diff_pct}%</span>
+    </div>
+    <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{eok(x.amount)} <span style={{opacity:.7}}>(중앙값 {eok(x.median)})</span> · {x.date}</div>
+   </div>)}/>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{d.disclaimer}</div>
+ </div>);
+}
+function RentSignal({sig}){
+ if(!sig||sig.jeonse_ratio==null)return null;
+ const warn=sig.level==="high"||sig.level==="elevated";
+ const c=warn?"#C77A1A":sig.level==="low"?TEAL:MUTED;
+ const bg=warn?"rgba(199,122,26,.12)":sig.level==="low"?"rgba(15,118,110,.10)":"var(--surface-2)";
+ const emoji=sig.level==="high"?"⚠️":sig.level==="low"?"💧":"📊";
+ return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
+  <div style={{display:"flex",alignItems:"center",gap:8}}>
+   <span style={{fontWeight:800,fontSize:14.5}}>전세가율</span>
+   <span className="num" style={{fontWeight:800,fontSize:19,color:c}}>{sig.jeonse_ratio}%</span>
+   <span style={{marginLeft:"auto",fontSize:12,fontWeight:800,color:c,background:bg,borderRadius:8,padding:"3px 10px"}}>갭 {sig.gap_label}</span>
+  </div>
+  <div style={{fontSize:12.5,color:INK,marginTop:7,lineHeight:1.55}}>{emoji} {sig.note}</div>
+  <div style={{fontSize:11,color:MUTED,marginTop:6,lineHeight:1.5}}>전세가율 = 전세 보증금 중앙값 ÷ 매매가 중앙값(최근 실거래 기준). <b>참고 지표</b>이며 개별 계약·시점에 따라 다릅니다. 가격 방향·역전세를 단정하지 않습니다.</div>
+ </div>);
+}
+function WorkAccess({items}){
+ if(!items||!items.length)return null;   // 거점 미시드면 숨김(왜곡 없음)
+ const CAT_ICON={job:"🏭",transit:"🚄",public:"🏛",education:"🎓",medical:"🏥"};
+ const CAT_LABEL={job:"직장·산단",transit:"교통",public:"공공",education:"교육",medical:"의료"};
+ const jobs=items.filter(h=>h.category==="job");
+ const rest=items.filter(h=>h.category!=="job");
+ const Row=({h})=>(<div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
+  <span style={{fontSize:15,flex:"none"}}>{CAT_ICON[h.category]||"📍"}</span>
+  <span style={{fontWeight:600,fontSize:13.5,minWidth:0,flex:1,overflowWrap:"anywhere"}}>{h.name}</span>
+  <span className="num" style={{fontWeight:800,fontSize:13.5,flex:"none"}}>{h.distance_km}km</span>
+ </div>);
+ return (<Collapsible icon="map" defaultOpen={true} title="🏭 직장·거점 거리">
+  <div style={{padding:"4px 14px 12px"}}>
+   {jobs.length>0&&<React.Fragment>
+    <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"4px 0 2px"}}>주요 직장 · 산업단지</div>
+    {jobs.map((h,i)=><Row key={h.key||i} h={h}/>)}
+   </React.Fragment>}
+   {rest.length>0&&<React.Fragment>
+    <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"10px 0 2px"}}>교통 · 공공 · 교육</div>
+    {rest.map((h,i)=><Row key={h.key||i} h={h}/>)}
+   </React.Fragment>}
+   <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.5}}>단지에서 각 거점까지 <b>직선거리</b>예요(도로 거리·통근시간과 다를 수 있음). 통근시간 기준 탐색은 더보기 → 통근권으로 집 찾기에서.</div>
+  </div>
+ </Collapsible>);
+}
+function KidsEnv({places}){
+ if(!places||!Object.keys(places).length)return null;
+ const cnt=(k)=>places[k]&&places[k].count?places[k].count:0;
+ const academy=Object.keys(places).filter(k=>k.indexOf("academy_")===0).reduce((s,k)=>s+cnt(k),0);
+ const rows=[["어린이집·유치원",cnt("daycare"),"🧸"],["학원",academy,"📚"],["소아과·병원",cnt("hospital"),"🏥"],["도서관",cnt("library"),"📖"],["체육시설",cnt("sports"),"🏃"],["약국",cnt("pharmacy"),"💊"]];
+ const total=rows.reduce((s,r)=>s+r[1],0);
+ if(!total)return null;   // 육아 관련 시설 데이터 없으면 표시 안 함(왜곡 없음)
+ return (<Collapsible icon="search" defaultOpen={true} title="🧸 육아 환경">
+  <div style={{padding:"6px 14px 12px"}}>
+   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+    {rows.map(([l,n,e])=>(<div key={l} style={{background:"var(--surface-2)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
+     <div style={{fontSize:18}}>{e}</div>
+     <div className="num" style={{fontWeight:800,fontSize:16,color:n>0?INK:MUTED,marginTop:1}}>{n>0?n:"—"}</div>
+     <div style={{fontSize:11,color:MUTED,marginTop:1}}>{l}</div>
+    </div>))}
+   </div>
+   <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.5}}>반경 약 1.2km 내 공공데이터 기준 개수예요. 실제 대기·정원·학군은 해당 기관·교육청에 확인하세요.</div>
+  </div>
+ </Collapsible>);
+}
+function MyHomeCard({home,onOpen,onRegister}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{ if(!home){setD(null);return;} let on=true; setD(null);
+  const q=`name=${encodeURIComponent(home.complex_name||"")}&lawd_cd=${home.lawd_cd||""}&property_type=${home.property_type||"apartment"}`;
+  fetch(`${API}/complex/detail?${q}`).then(r=>r.json()).then(j=>{if(on)setD(j&&j.found?j:null);}).catch(()=>{if(on)setD(null);});
+  return ()=>{on=false;};
+ },[home&&home.complex_name,home&&home.lawd_cd,home&&home.property_type]);
+ if(!home)return (
+  <div className="card" style={{padding:"14px 15px",marginTop:8,display:"flex",alignItems:"center",gap:12}}>
+   <div style={{fontSize:26,flex:"none"}}>🏠</div>
+   <div style={{minWidth:0,flex:1}}>
+    <div style={{fontWeight:800,fontSize:14.5}}>우리집 등록하기</div>
+    <div style={{fontSize:12,color:MUTED,marginTop:2}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 봐요</div>
+   </div>
+   <button onClick={onRegister} style={{flex:"none",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"9px 15px",borderRadius:10,cursor:"pointer"}}>등록</button>
+  </div>);
+ let mom=null;
+ if(d&&d.timeseries&&d.timeseries.length>=2){const ts=d.timeseries,a=ts[ts.length-2].avg,b=ts[ts.length-1].avg;if(a&&b)mom=Math.round((b-a)/a*1000)/10;}
+ const region=d&&d.vs_region?d.vs_region.pct:null;
+ const latest=d?d.latest_amount:null;
+ return (
+  <div className="card" style={{padding:"14px 15px",marginTop:8}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+    <span style={{fontWeight:800,fontSize:14.5}}>🏠 우리집</span>
+    <button onClick={onRegister} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12,cursor:"pointer"}}>변경</button>
+   </div>
+   <div onClick={()=>onOpen&&onOpen(home)} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpen&&onOpen(home))} style={{cursor:"pointer"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+     <div style={{minWidth:0,flex:1}}>
+      <div style={{fontWeight:800,fontSize:16,overflowWrap:"anywhere"}}>{home.complex_name||"우리집"}</div>
+      <div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{[guOf(home.gu),home.dong,TYPE_LABEL[home.property_type]].filter(Boolean).join(" · ")||"청주"}</div>
+     </div>
+     <span style={{color:TEAL,fontWeight:800,fontSize:13,flex:"none"}}>시세 ›</span>
+    </div>
+    <div style={{display:"flex",alignItems:"baseline",gap:9,marginTop:9,paddingTop:9,borderTop:"1px solid var(--line)"}}>
+     <span style={{fontSize:11.5,color:MUTED,flex:"none"}}>최근 매매가</span>
+     {d===null
+      ? <span className="num" style={{fontSize:18,fontWeight:800,color:MUTED}}>불러오는 중…</span>
+      : latest!=null
+       ? <React.Fragment><span className="num" style={{fontSize:20,fontWeight:800,lineHeight:1}}>{eok(latest)}</span>
+         {mom!=null&&<span style={{fontSize:12}}>전월 <Delta v={mom}/></span>}
+         {mom==null&&region!=null&&<span style={{fontSize:12}}>지역대비 <Delta v={region}/></span>}</React.Fragment>
+       : <span style={{fontSize:12.5,color:MUTED}}>최근 실거래가 없어 시세를 낼 수 없어요</span>}
+    </div>
+   </div>
+  </div>);
+}
+function CityIssues(){
+ const [items,setItems]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/landmarks`).then(r=>r.json()).then(j=>{if(on)setItems(Array.isArray(j)?j:[]);}).catch(()=>{if(on)setItems([]);});
+  return ()=>{on=false;};},[]);
+ if(!items||!items.length)return null;   // 데이터 없으면 표시 안 함(왜곡 없음)
+ return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
+  <div style={{display:"flex",alignItems:"center",gap:6}}>
+   <span style={{fontWeight:800,fontSize:15}}>🏗 청주는 지금</span>
+   <span style={{fontSize:11.5,color:MUTED}}>개발 이슈</span>
+  </div>
+  <div style={{fontSize:11.5,color:MUTED,margin:"2px 0 6px"}}>청주 부동산에 영향을 줄 만한 개발 이슈예요. 출처를 함께 확인하세요.</div>
+  <MoreList items={items} initial={3} step={3} render={(L,i)=>{
+   const sc=L.status==="confirmed"?TEAL:L.status==="ongoing"?"#C77A1A":MUTED;
+   return (<div key={L.id||i} style={{padding:"9px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+     <span style={{fontSize:10.5,fontWeight:800,color:"#fff",background:sc,borderRadius:6,padding:"2px 7px"}}>{L.status_label}</span>
+     <span style={{fontWeight:800,fontSize:14}}>{L.name}</span>
+     <span style={{fontSize:11.5,color:MUTED}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}</span>
+    </div>
+    {L.summary&&<div style={{fontSize:12.5,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
+    {L.source_name&&<div style={{fontSize:11,color:MUTED,marginTop:3}}>출처: {L.source_url?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:TEAL}}>{L.source_name}</a>:L.source_name}</div>}
+   </div>);
+  }}/>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
+ </div>);
+}
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -2394,7 +2873,21 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
   </div>}
 
+  {!onbDone&&<button onClick={onOnboard} style={{width:"100%",textAlign:"left",border:"none",cursor:"pointer",borderRadius:16,padding:"15px 16px",marginTop:8,background:"linear-gradient(100deg, rgba(15,118,110,.14), rgba(15,118,110,.04))",display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:26,flex:"none"}}>🧭</span>
+   <span style={{minWidth:0,flex:1}}>
+    <span style={{display:"block",fontWeight:800,fontSize:14.5,color:INK}}>청주가 처음이세요?</span>
+    <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>직장·예산만 알려주면 맞춤 단지를 찾아드려요 · 3분</span>
+   </span>
+   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
+  </button>}
+  <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
+
   <RecentList recents={recents} onOpen={onOpen}/>
+
+  <CityIssues/>
+
+  <BargainRadar onOpen={onOpen}/>
 
   {b.trending&&b.trending.items&&b.trending.items.length>0&&
    <TickerBanner label={b.trending.basis==="surge"?"🔥 거래 급상승":"🔥 거래 활발"} color={UP} bg="rgba(200,50,42,.10)"
@@ -2537,7 +3030,7 @@ function SubscriptionTab(){
  const list=filter==="전체"?all:all.filter(s=>s.status===filter);
  const openList=all.filter(s=>s.status==="접수중"||s.status==="접수예정")
    .sort((a,b)=>((a.status==="접수중"?0:1)-(b.status==="접수중"?0:1))||String(a.begin||a.period||"").localeCompare(String(b.begin||b.period||"")));
- const seg=(active)=>({flex:1,border:"none",cursor:"pointer",fontWeight:800,fontSize:13.5,padding:"10px 0",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?TEAL:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.12)":"none"});
+ const seg=(active)=>({flex:1,border:"none",cursor:"pointer",fontWeight:800,fontSize:13.5,padding:"10px 0",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?INK:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.12)":"none"});
  return (<div style={{marginTop:6}}>
   <div style={{margin:"2px 2px 10px"}}>
    <div style={{fontWeight:800,fontSize:17,letterSpacing:"-0.01em"}}>청주 분양·청약</div>
@@ -2547,6 +3040,7 @@ function SubscriptionTab(){
    <button onClick={()=>setMtab("bunyang")} style={seg(mtab!=="cheongyak")}>🏢 분양 정보</button>
    <button onClick={()=>setMtab("cheongyak")} style={seg(mtab==="cheongyak")}>📋 청약 일정{openList.length?` ${openList.length}`:""}</button>
   </div>
+  <GuContextBar/>
   {data.notice&&<div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:10,padding:"9px 13px",fontSize:12.5,fontWeight:600,lineHeight:1.6,marginBottom:8}}>ⓘ {data.notice} <b>예시</b> 배지 항목은 실제 정보가 아닙니다.</div>}
   {mtab==="cheongyak"?<React.Fragment>
    <div style={{fontSize:12,color:MUTED,margin:"0 2px 8px",lineHeight:1.5}}>지금 접수 중이거나 곧 시작하는 청약이에요. <b>임박한 순</b>으로 보여드립니다.</div>
@@ -2618,14 +3112,20 @@ function useNaver(clientId,enabled){
  },[clientId,enabled]);
  return {ready,err};
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, onMapReady, full}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const ref=React.useRef(null);
  const mapObj=React.useRef(null);
  const markerObjs=React.useRef([]);
+ const poiObjs=React.useRef([]);
+ const lmObjs=React.useRef([]);
+ const bgObjs=React.useRef([]);   // 급매(낮은가격 거래) 핀
  const fitDone=React.useRef("");
  const [tick,setTick]=useState(0);
+ const POI_META={education:{c:"#7A5AF8",e:"🎓"},sports:{c:"#2563D8",e:"🏃"},living:{c:"#0E7C71",e:"🏪"}};
  const label=(v)=>deal==="trade"?Number(v).toLocaleString():eok(v);
+ const money=(m)=>m==null?"—":(m/10000>=100?Math.round(m/10000)+"억":(m/10000).toFixed(1).replace(/\.0$/,"")+"억");
+ const mlabel=(it)=>{const amt=deal==="trade"?(it.t==="c"?it.amt:it.median_amount):it.value;return money(amt);};
  const colorFor=(v)=>{const pal=["#4F86C6","#56A36B","#E0B341","#E08C3B","#D2543B"];
   if(!bands||!bands.length)return pal[2]; let i=0; while(i<bands.length&&v>bands[i])i++; return pal[Math.min(i,4)];};
  // 지도 1회 생성 + idle(디바운스) 리스너 + 언마운트 정리
@@ -2639,7 +3139,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   const listener=n.maps.Event.addListener(mapObj.current,"idle",()=>{clearTimeout(t);t=setTimeout(()=>setTick(x=>x+1),350);});
   setTick(x=>x+1);
   return ()=>{ clearTimeout(t); try{n.maps.Event.removeListener(listener);}catch(e){}
-   markerObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); markerObjs.current=[]; };
+   markerObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); markerObjs.current=[];
+   poiObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); poiObjs.current=[];
+   lmObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); lmObjs.current=[]; };
  },[ready]);
  // 마커 렌더(틱/마커/필터 변화 시) — 보이는 영역만 클러스터링 + 뷰포트 요약
  useEffect(()=>{
@@ -2664,12 +3166,13 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    items=Object.values(cells).map(arr=>{ if(arr.length===1)return {t:"s",...arr[0]};
     const la=arr.reduce((s,m)=>s+m.lat,0)/arr.length, ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;
     const vs=arr.map(m=>m.value).sort((a,b)=>a-b);
-    return {t:"c",lat:la,lng:ln,count:arr.length,value:vs[Math.floor(vs.length/2)]};});}
+    const as=arr.map(m=>m.median_amount).filter(x=>x!=null).sort((a,b)=>a-b);
+    return {t:"c",lat:la,lng:ln,count:arr.length,value:vs[Math.floor(vs.length/2)],amt:as.length?as[Math.floor(as.length/2)]:null};});}
   markerObjs.current.forEach(mk=>mk.setMap(null)); markerObjs.current=[];
   items.forEach(it=>{
    const html=it.t==="c"
-    ?`<div style="transform:translate(-50%,-50%);background:rgba(26,33,40,.86);color:#fff;font-weight:800;font-size:11.5px;padding:5px 9px;border-radius:14px;white-space:nowrap;box-shadow:0 1px 5px rgba(0,0,0,.4);border:2px solid #fff;text-align:center">${it.count}곳<br/><span style="font-size:9.5px;opacity:.85">${label(it.value)}</span></div>`
-    :`<div style="transform:translate(-50%,-100%);background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11px;padding:3px 7px;border-radius:11px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35);border:1.5px solid #fff">${label(it.value)}</div>`;
+    ?`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;height:46px;background:rgba(15,118,110,.96);color:#fff;border-radius:50%;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.32);text-align:center"><div style="font-weight:800;font-size:13.5px;line-height:1">${it.count}</div><div style="font-size:8.5px;opacity:.92;line-height:1.25;font-weight:700">${mlabel(it)}</div></div>`
+    :`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
    const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)}});
    n.maps.Event.addListener(mk,"click",()=>{
     if(it.t==="c"){map.setZoom(Math.min(map.getZoom()+2,16));map.panTo(new n.maps.LatLng(it.lat,it.lng));}
@@ -2678,9 +3181,67 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    markerObjs.current.push(mk);
   });
  },[ready,tick,markers,fitKey]);
+ // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
+ // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
+ useEffect(()=>{
+  if(!ready||!mapObj.current||!window.naver)return;
+  const n=window.naver, map=mapObj.current;
+  const clearPoi=()=>{poiObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});poiObjs.current=[];};
+  if(!poiCats||!poiCats.length||map.getZoom()<15){clearPoi();return;}
+  let alive=true;
+  const b=map.getBounds(); if(!b)return;
+  const sw=b.getSW?b.getSW():(b.getMin&&b.getMin()), ne=b.getNE?b.getNE():(b.getMax&&b.getMax());
+  if(!sw||!ne)return;
+  const url=`${API}/places/map?min_lat=${sw.lat()}&max_lat=${ne.lat()}&min_lng=${sw.lng()}&max_lng=${ne.lng()}&categories=${poiCats.join(",")}`;
+  fetch(url).then(r=>r.json()).then(j=>{ if(!alive)return; clearPoi();
+   (j.places||[]).slice(0,200).forEach(p=>{ if(p.lat==null||p.lng==null)return;
+    const meta=POI_META[p.category]||{c:"#69737D",e:"📍"};
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:var(--surface-solid,#fff);border:1.5px solid ${meta.c};border-radius:12px;padding:2px 7px 2px 5px;box-shadow:0 1px 4px rgba(0,0,0,.22);white-space:nowrap"><span style="font-size:10px">${meta.e}</span><span style="font-size:10px;font-weight:700;color:${meta.c};max-width:88px;overflow:hidden;text-overflow:ellipsis">${p.name}</span></div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(p.lat,p.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:40});
+    poiObjs.current.push(mk);
+   });
+  }).catch(()=>{});
+  return ()=>{alive=false;};
+ },[ready,tick,poiCats]);
+ // 개발 호재(Landmark) 핀 — 토글 시 좌표 있는 호재를 지도에 표시(줌 무관). 클릭 시 요약·출처.
+ useEffect(()=>{
+  if(!ready||!mapObj.current||!window.naver)return;
+  const n=window.naver, map=mapObj.current;
+  const clearLm=()=>{lmObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});lmObjs.current=[];};
+  if(!showLm){clearLm();return;}
+  let alive=true;
+  fetch(`${API}/landmarks`).then(r=>r.json()).then(list=>{ if(!alive)return; clearLm();
+   (Array.isArray(list)?list:[]).forEach(L=>{ if(L.lat==null||L.lng==null)return;
+    const sc=L.status==="confirmed"?"#0E7C71":L.status==="ongoing"?"#C77A1A":"#69737D";
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${sc};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">🏗 ${L.name}</div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(L.lat,L.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:100});
+    n.maps.Event.addListener(mk,"click",()=>{try{new n.maps.InfoWindow({content:`<div style="padding:9px 12px;max-width:240px;font-size:12px;line-height:1.55"><b>${L.name}</b><br/>${L.summary||""}${L.source_name?`<br/><span style='color:#888'>출처: ${L.source_name}</span>`:""}</div>`,borderWidth:0}).open(map,mk);}catch(e){}});
+    lmObjs.current.push(mk);
+   });
+  }).catch(()=>{});
+  return ()=>{alive=false;};
+ },[ready,showLm]);
+ // 📉 급매(중앙값 대비 크게 낮은 실거래) 핀 — '판단이 얹힌 지도'의 핵심 시그널. 사실+고지(왜곡 없음).
+ useEffect(()=>{
+  if(!ready||!mapObj.current||!window.naver)return;
+  const n=window.naver, map=mapObj.current;
+  const clearBg=()=>{bgObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});bgObjs.current=[];};
+  if(!showBg){clearBg();return;}
+  let alive=true;
+  fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{ if(!alive)return; clearBg();
+   ((j&&j.items)||[]).forEach(B=>{ if(B.lat==null||B.lng==null)return;
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:#1E5FC4;color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">📉 ${B.diff_pct}%</div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(B.lat,B.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:110});
+    n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:B.name,lawd_cd:B.lawd_cd,property_type:"apartment",gu:B.gu}); });
+    bgObjs.current.push(mk);
+   });
+  }).catch(()=>{});
+  return ()=>{alive=false;};
+ },[ready,showBg]);
+ useEffect(()=>{ if(ready&&mapObj.current&&onMapReady)onMapReady(mapObj.current); },[ready]);
  if(!mapCfg.enabled)return <Notice>지도를 보려면 서버 <b>.env</b> 에 <b>NAVER_MAP_CLIENT_ID</b> 를 넣고 새로고침하세요. (네이버 클라우드 플랫폼 Maps의 Client ID)</Notice>;
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
- return <div ref={ref} style={{width:"100%",height:"62vh",borderRadius:14,overflow:"hidden",background:"var(--chip)"}}/>;
+ return <div ref={ref} style={{width:"100%",height:full?"calc(100dvh - 108px)":"62vh",minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
 }
 function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompare}){
  const [sort,setSort]=useState("price");
@@ -2707,6 +3268,20 @@ function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompa
 function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [deal,setDeal]=useState("trade");
  const [prop,setProp]=useState("apartment");
+ const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
+ const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
+ const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
+ const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
+ const mapRef=useRef(null);                  // 현위치 이동용 지도 인스턴스
+ const [locBusy,setLocBusy]=useState(false);
+ const goMyLoc=()=>{ if(!navigator.geolocation||!mapRef.current||!window.naver){alert("현재 위치를 사용할 수 없어요. 위치 권한을 확인해주세요.");return;}
+  setLocBusy(true);
+  navigator.geolocation.getCurrentPosition(pos=>{ setLocBusy(false);
+   try{const ll=new window.naver.maps.LatLng(pos.coords.latitude,pos.coords.longitude);
+    mapRef.current.setCenter(ll); mapRef.current.setZoom(15);
+   }catch(e){}
+  },()=>{setLocBusy(false);alert("위치를 가져오지 못했어요. 브라우저 위치 권한을 허용해주세요.");},{timeout:8000});
+ };
  const [data,setData]=useState(null);
  const [loading,setLoading]=useState(true);
  const [viewport,setViewport]=useState(null);
@@ -2718,35 +3293,45 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  },[deal,prop]);
  const DEALS=[["trade","매매"],["jeonse","전세"],["wolse","월세"]];
  const PROPS=[["apartment","아파트"],["officetel","오피스텔"],["rowhouse","빌라"]];
- const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:700,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?TEAL:"var(--surface-2)",color:active?"#fff":MUTED});
+ const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:active?800:600,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?INK:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.14)":"none"});
  const markers=(data&&data.markers)||[];
  const bands=(data&&data.bands)||[];
  const gsum=(data&&data.summary)||null;
  const fmtV=(v)=>v==null?"—":(deal==="trade"?`${Number(v).toLocaleString()}만원/평`:eok(v));
  const vc=viewport?viewport.count:(gsum?gsum.count:markers.length);
  const vm=viewport?viewport.median:(gsum?gsum.median:null);
- return (<div>
-  <div style={{display:"flex",alignItems:"baseline",gap:8,margin:"2px 2px 9px"}}>
-   <span style={{fontWeight:800,fontSize:18}}>지도</span>
-   <span style={{fontSize:12,color:MUTED}}>{loading?"불러오는 중…":`${markers.length}개 단지`}</span>
+ return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
+  <PriceMarkerMap markers={markers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} onMapReady={m=>{mapRef.current=m;}} full={true}/>
+  {/* 상단 오버레이: 필터(가로 스크롤) */}
+  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",flexDirection:"column",gap:6,padding:"0 10px",pointerEvents:"none"}}>
+   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
+    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
+     {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
+     <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
+     {PROPS.map(([k,l])=><button key={k} onClick={()=>setProp(k)} style={chip(prop===k)}>{l}</button>)}
+    </div>
+   </div>
+   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
+    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
+     {[["education","🎓 학원"],["sports","🏃 체육"],["living","🏪 생활"]].map(([k,l])=><button key={k} onClick={()=>togglePoi(k)} style={{...chip(poiCats.includes(k)),fontSize:12}}>{l}</button>)}
+     <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
+     <button onClick={()=>setShowLm(v=>!v)} style={{...chip(showLm),fontSize:12}}>🏗 호재</button>
+     <button onClick={()=>setShowBg(v=>!v)} style={{...chip(showBg),fontSize:12}} title="같은 평형 중앙값 대비 크게 낮게 신고된 실거래(사유 있을 수 있음)">📉 급매</button>
+    </div>
+   </div>
   </div>
-  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-   {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
-   <span style={{width:1,height:18,background:"var(--line)",margin:"0 3px",flex:"none"}}/>
-   {PROPS.map(([k,l])=><button key={k} onClick={()=>setProp(k)} style={chip(prop===k)}>{l}</button>)}
+  <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":"📍"}</button>
+  {/* 하단 오버레이: 이 지역 요약 */}
+  <div style={{position:"absolute",left:10,right:10,bottom:20,zIndex:6}}>
+   <div style={{display:"flex",alignItems:"center",gap:9,background:"var(--surface-solid)",borderRadius:12,padding:"10px 13px",boxShadow:"0 3px 14px rgba(16,24,32,.2)"}}>
+    <span style={{fontSize:12,color:MUTED,fontWeight:700}}>이 지역</span>
+    <span style={{fontWeight:800,fontSize:14.5}}>{vc}곳</span>
+    <span style={{marginLeft:"auto",fontSize:12,color:MUTED}}>{deal==="trade"?"평단가":"보증금"} 중앙값</span>
+    <span style={{fontWeight:800,fontSize:14.5,color:TEAL}}>{fmtV(vm)}</span>
+    <button onClick={()=>setListOpen(true)} style={{flex:"none",marginLeft:4,border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:12,padding:"7px 13px",borderRadius:9,cursor:"pointer"}}>목록</button>
+   </div>
   </div>
-  <div style={{display:"flex",alignItems:"center",gap:9,background:"var(--surface-2)",borderRadius:12,padding:"9px 13px",marginBottom:9}}>
-   <span style={{fontSize:12,color:MUTED,fontWeight:700}}>이 지역</span>
-   <span style={{fontWeight:800,fontSize:14.5}}>{vc}곳</span>
-   <span style={{marginLeft:"auto",fontSize:12,color:MUTED}}>{deal==="trade"?"평단가 중앙값":"보증금 중앙값"}</span>
-   <span style={{fontWeight:800,fontSize:14.5,color:TEAL}}>{fmtV(vm)}</span>
-   <button onClick={()=>setListOpen(true)} style={{flex:"none",marginLeft:6,border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:12,padding:"6px 11px",borderRadius:8,cursor:"pointer"}}>목록</button>
-  </div>
-  <PriceMarkerMap markers={markers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport}/>
   {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:markers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
-  <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.6}}>
-   마커는 좌표가 확인된 단지의 <b>{deal==="trade"?"평단가(만원/평) 중앙값":"보증금 중앙값"}</b>이며, 색이 진할수록 높은 가격대입니다. 줌아웃하면 <b>묶음(곳 수)</b>으로, 줌인하면 개별 단지로 표시됩니다. "이 지역" 요약은 보이는 영역 기준 · 좌표 미확인 단지 제외(왜곡 방지) · 최근 {AGG_MONTHS}개월 실거래 참고용.
-  </div>
  </div>);
 }
 function RankMap({items,mapCfg}){
@@ -2851,6 +3436,52 @@ function HeatTab({ptype,mapCfg,onOpen,onGu}){
 }
 
 /* ---------------- 단지 상세 (M3) ---------------- */
+function TrendBlock({ts}){
+ // 지침서 2.3: 시세 시계열(1·3·5년·전체 토글) + 거래량 추이 + 전월/전년 등락. 데이터는 timeseries(월별 avg·count) 재사용.
+ const full=(ts||[]).filter(t=>t&&t.avg!=null);
+ const defRng=full.length>12?"36":"12";
+ const [rng,setRng]=useState(defRng);
+ if(full.length<2)return null;
+ const opts=[["12","1년"],["36","3년"],["60","5년"],["all","전체"]]
+   .filter(([k])=>k==="12"||(k==="36"&&full.length>12)||(k==="60"&&full.length>36)||(k==="all"&&full.length>60));
+ const view=rng==="all"?full:full.slice(-Number(rng));
+ // 전월/전년 등락(전체 이력 기준 — 뷰 필터와 무관하게 정확히)
+ const last=full[full.length-1], prev=full[full.length-2];
+ const mom=(last&&prev&&prev.avg)?Math.round((last.avg-prev.avg)/prev.avg*1000)/10:null;
+ let yoy=null;
+ if(last){const [y,m]=last.month.split("-");const tgt=`${Number(y)-1}-${m}`;const past=full.find(t=>t.month===tgt);
+  if(past&&past.avg)yoy=Math.round((last.avg-past.avg)/past.avg*1000)/10;}
+ // 차트 좌표(가격 라인 + 거래량 막대, X 공유)
+ const W=520,L=46,R=10,pT=8,pB=140,vT=152,vB=196,H=212,n=view.length;
+ const X=i=>L+(W-L-R)*(n<=1?0.5:i/(n-1));
+ const av=view.map(t=>t.avg),mn=Math.min(...av),mx=Math.max(...av),sp=(mx-mn)||1;
+ const Y=v=>pT+(pB-pT)*(1-(v-mn)/sp);
+ const cmax=Math.max(...view.map(t=>t.count||0),1);
+ const bw=Math.max(2,Math.min(14,(W-L-R)/n*0.55));
+ const lbEvery=Math.max(1,Math.ceil(n/6));
+ return (<div style={{marginTop:12}}>
+  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+   <span style={{fontSize:12,color:MUTED,fontWeight:700}}>매매가·거래량 추이</span>
+   <span style={{marginLeft:"auto",display:"flex",gap:4}}>
+    {opts.map(([k,l])=><button key={k} onClick={()=>setRng(k)} style={{border:"none",cursor:"pointer",fontSize:11.5,fontWeight:rng===k?800:600,padding:"4px 9px",borderRadius:8,background:rng===k?"var(--surface-solid)":"transparent",color:rng===k?INK:MUTED,boxShadow:rng===k?"0 1px 3px rgba(30,64,90,.14)":"none"}}>{l}</button>)}
+   </span>
+  </div>
+  {(mom!=null||yoy!=null)&&<div style={{display:"flex",gap:12,margin:"7px 0 2px",fontSize:12.5}}>
+   {mom!=null&&<span>전월 대비 <Delta v={mom}/></span>}
+   {yoy!=null&&<span>전년 동월 대비 <Delta v={yoy}/></span>}
+  </div>}
+  <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:220}}>
+   {[mn,mn+sp/2,mx].map((t,i)=>(<g key={i}><line x1={L} x2={W-R} y1={Y(t)} y2={Y(t)} stroke="var(--line)"/>
+     <text x="0" y={Y(t)+3} fontSize="10" fill={MUTED}>{(t/10000).toFixed(2)}억</text></g>))}
+   <polyline fill="none" stroke={TEAL} strokeWidth="2.4" points={view.map((t,i)=>`${X(i)},${Y(t.avg)}`).join(" ")}/>
+   {n<=24&&view.map((t,i)=><circle key={i} cx={X(i)} cy={Y(t.avg)} r="2.6" fill={TEAL}/>)}
+   {view.map((t,i)=>{const h=(t.count||0)/cmax*(vB-vT);return <rect key={i} x={X(i)-bw/2} y={vB-h} width={bw} height={Math.max(h,(t.count||0)>0?2:0)} rx="1.5" fill={TEAL} opacity="0.42"/>;})}
+   <text x="0" y={vT+8} fontSize="10" fill={MUTED}>거래량</text>
+   {view.map((t,i)=>i%lbEvery===0?<text key={i} x={X(i)} y={H-3} fontSize="10" fill={MUTED} textAnchor="middle">{t.month.slice(2).replace("-",".")}</text>:null)}
+  </svg>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:2}}>월평균 매매가(거래 있던 달 기준)·월 거래건수. 표본이 적은 달은 변동이 커 보일 수 있어요.</div>
+ </div>);
+}
 function DetailLine({months,values}){
  const W=520,H=180,L=46,R=10,T=10,B=22;
  const all=values.filter(v=>v!=null);
@@ -3300,6 +3931,10 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   ppm:repArea?repArea.ppm_median:ppmComplex, jr:jr, count:repArea?repArea.trade_count:d.trade_count,
   ts:(repArea?repArea.timeseries:d.timeseries)||[], sample:d.contains_sample_data, agg:AGG_MONTHS};
  const goLoan=a=>{setLoanArea(a);setTimeout(()=>{const el=document.getElementById("detail-loan");if(el)el.scrollIntoView({behavior:"smooth"});},60);};
+ const _elem=d.school_access&&d.school_access.elementary;
+ const _elemD=_elem&&_elem.distance!=null?_elem.distance:null;
+ const chopuma=_elemD!=null&&_elemD<=400;      // 초품아: 초등학교 도보 ~5분(≤400m)
+ const elemWalk=_elemD!=null&&_elemD<=700;      // 초등 도보권(≤700m)
  const loanInit=loanArea?(loanArea.latest_amount||loanArea.price_median):(useAreas[0]?(useAreas[0].latest_amount||useAreas[0].price_median):null);
  return (<div style={{marginTop:6}}>
   
@@ -3307,6 +3942,12 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    <div style={{minWidth:0}}>
     <div style={{fontSize:20,fontWeight:800,overflowWrap:"anywhere",lineHeight:1.25}}>{d.name} {d.contains_sample_data&&<span className="pill ex">모의</span>}</div>
     <div style={{fontSize:13,color:MUTED,marginTop:3}}>{guOf(d.gu)} · {d.dong||"—"} · {TYPE_LABEL[d.property_type]||"—"}{d.build_year?` · ${d.build_year}년`:""}</div>
+    {(chopuma||elemWalk)&&<div style={{marginTop:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+     {chopuma
+      ?<span className="pill" style={{background:"rgba(15,118,110,.13)",color:TEAL,fontWeight:800,fontSize:11.5}}>🏫 초품아</span>
+      :<span className="pill" style={{background:"var(--chip)",color:MUTED,fontWeight:700,fontSize:11.5}}>🏫 초등 도보권</span>}
+     {_elem&&_elem.name&&<span style={{fontSize:11.5,color:MUTED}}>{_elem.name} {distM(_elemD)}</span>}
+    </div>}
    </div>
    {onToggleCompare&&<button onClick={()=>onToggleCompare({complex_name:d.name,lawd_cd:sel.lawd_cd,property_type:d.property_type,gu:d.gu,dong:d.dong})}
      title="비교 담기" style={{marginLeft:"auto",flex:"none",border:"1px solid var(--line)",borderRadius:9,padding:"7px 11px",cursor:"pointer",fontWeight:800,fontSize:12.5,
@@ -3339,10 +3980,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
     <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>평단가 {d.vs_region.complex_ppm?.toLocaleString?.()||d.vs_region.complex_ppm} vs {d.vs_region.gu_ppm?.toLocaleString?.()||d.vs_region.gu_ppm} 만원/평</span>
    </div>}
-   {(d.timeseries||[]).length>1&&<div style={{marginTop:12}}>
-    <div style={{fontSize:11,color:MUTED,marginBottom:4}}>최근 {(d.timeseries||[]).length}개월 매매가 추이</div>
-    <Sparkline values={(d.timeseries||[]).map(t=>t.avg)} color={TEAL}/>
-   </div>}
+   {(d.timeseries||[]).length>1&&<TrendBlock ts={d.timeseries}/>}
    <div style={{height:1,background:"rgba(99,120,128,.12)",margin:"13px 0 11px"}}/>
    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"11px 10px"}}>
     <DMetric label="매매 거래" val={`${d.trade_count}건`}/>
@@ -3356,6 +3994,26 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     {d.canceled_count>0&&<span>신고 후 <b>해제(취소) {d.canceled_count}건</b>은 시세 집계에서 제외했습니다.</span>}
    </div>
   </div>}
+  <VolumeSignal volume={d.volume}/>
+  <RentSignal sig={d.rent_signal}/>
+  <PriceCheck name={d.name} lawd={d.lawd_cd||sel.lawd_cd} pt={d.property_type||sel.property_type}/>
+  <Collapsible icon="map" defaultOpen={true} title="위치">
+   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
+  </Collapsible>
+  {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
+   <div style={{padding:"4px 14px"}}>
+    {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
+     <span style={{fontWeight:700,minWidth:48,flex:"none"}}>{label}</span>
+     <div style={{minWidth:0}}>
+      {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))
+       :<span style={{color:MUTED,fontSize:12.5}}>반경 내 없음</span>}
+     </div>
+    </div>))}
+    {d.poi&&d.poi["중개업소"]&&<div style={{fontSize:11,color:MUTED,padding:"6px 2px 8px"}}>※ 중개업소는 단지 인근 참고 정보이며, 위 실거래를 중개한 업소가 아닙니다.</div>}
+   </div>
+  </Collapsible>}
+  <WorkAccess items={d.work_access}/>
+  <ComplexTalk name={d.name} lawd={d.lawd_cd||sel.lawd_cd}/>
   <button onClick={()=>setCardOpen(true)} style={{width:"100%",marginTop:12,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"13px 0",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>📤 이 시세 카드 공유하기</button>
   {cardOpen&&<ShareCard card={card} onClose={()=>setCardOpen(false)}/>}
   {d.complex_meta&&<Collapsible icon="search" defaultOpen={true} title="단지 정보">
@@ -3376,37 +4034,15 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     <div style={{fontSize:11,color:MUTED,marginTop:9}}>자료: 공동주택관리정보(K-apt)·국토부 공동주택 공시가격 · 아파트 한정 · 누락 항목은 미제공</div>
    </div>
   </Collapsible>}
-  {d.school_access&&<Collapsible icon="search" defaultOpen={false} title="학군(통학 접근성)">
-   <div style={{padding:"8px 14px 12px"}}>
-    <div style={{fontSize:13.5,marginBottom:6}}>반경 1.5km 내 학교 <b>{d.school_access.count}곳</b>{d.school_access.nearest&&d.school_access.nearest.name?` · 최단 ${d.school_access.nearest.name} ${distM(d.school_access.nearest.distance)}`:""}</div>
-    {[["초등",d.school_access.elementary],["중학",d.school_access.middle],["고등",d.school_access.high]].map(([l,s])=>(
-     <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:13,borderBottom:"1px solid rgba(99,120,128,.08)",paddingBottom:4,marginBottom:4}}>
-      <span style={{color:MUTED}}>{l}</span><span style={{fontWeight:600,textAlign:"right"}}>{s?`${s.name} · ${distM(s.distance)}`:"—"}</span>
-     </div>))}
-    <div style={{fontSize:11,color:MUTED,marginTop:6}}>{d.school_access.note}. 학업성취도가 아닌 거리 기준 참고치입니다.</div>
-   </div>
-  </Collapsible>}
   <ExternalListings d={d}/>
-  <VolumeSignal volume={d.volume}/>
-  <div style={{fontSize:13.5,fontWeight:800,margin:"18px 2px 0",display:"flex",alignItems:"center",gap:6}}><Icon name="search" active size={17}/>면적별 상세 <span style={{fontWeight:500,color:MUTED,fontSize:12}}>(아파트 × 면적)</span></div>
-  {useAreas.length?useAreas.map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)}/>)
-   :<div className="card" style={{padding:14,marginTop:8}}><Empty>면적 정보가 있는 거래가 없습니다.</Empty></div>}
-  <Collapsible icon="map" defaultOpen={true} title="위치">
-   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
+  <Collapsible icon="search" defaultOpen={narrowed} title={`면적별 상세${narrowed?" (선택 평형)":""}`}>
+   <div style={{padding:"2px 0"}}>
+   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)}/>)
+    :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
+   </div>
   </Collapsible>
   {d.living_score&&<LivingScore data={d.living_score}/>}
-  {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
-   <div style={{padding:"4px 14px"}}>
-    {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
-     <span style={{fontWeight:700,minWidth:48,flex:"none"}}>{label}</span>
-     <div style={{minWidth:0}}>
-      {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))
-       :<span style={{color:MUTED,fontSize:12.5}}>반경 내 없음</span>}
-     </div>
-    </div>))}
-    {d.poi&&d.poi["중개업소"]&&<div style={{fontSize:11,color:MUTED,padding:"6px 2px 8px"}}>※ 중개업소는 단지 인근 참고 정보이며, 위 실거래를 중개한 업소가 아닙니다.</div>}
-   </div>
-  </Collapsible>}
+  <KidsEnv places={d.places}/>
   {d.places&&Object.keys(d.places).length>0&&<Collapsible icon="search" defaultOpen={true} title="주변 학원·운동·생활">
    <div style={{padding:"4px 14px"}}>
     {Object.entries(d.places).sort((a,b)=>b[1].count-a[1].count).map(([sub,info])=>(<div key={sub} className="listrow" style={{alignItems:"flex-start"}}>

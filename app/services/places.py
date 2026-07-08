@@ -151,3 +151,25 @@ def fit_score(db: Session, lat: float, lng: float, weights: dict, radius: int = 
         total_s += w * sub_s
     overall = round(total_s / total_w) if total_w > 0 else None
     return {"overall": overall, "radius": radius, "categories": cats}
+
+
+def in_bounds(db: Session, min_lat: float, max_lat: float,
+              min_lng: float, max_lng: float,
+              groups: list[str] | None = None, limit: int = 500) -> dict:
+    """지도 영역(bounding box) 안의 시설 마커 목록. groups로 대분류(education/sports/living) 필터.
+    데이터가 없으면 places=[] (구조만 존재 → 데이터 적재 시 자동 표출)."""
+    if None in (min_lat, max_lat, min_lng, max_lng):
+        return {"places": []}
+    q = select(Place.name, Place.category, Place.subcategory,
+               Place.lat, Place.lng, Place.source).where(
+        Place.lat.isnot(None), Place.lng.isnot(None),
+        Place.lat.between(min_lat, max_lat),
+        Place.lng.between(min_lng, max_lng))
+    if groups:
+        q = q.where(Place.category.in_(groups))
+    rows = db.execute(q.limit(limit)).all()
+    return {"places": [
+        {"name": r.name, "category": r.category, "subcategory": r.subcategory,
+         "label": CATEGORY_LABELS.get(r.subcategory, r.subcategory),
+         "lat": r.lat, "lng": r.lng, "source": r.source}
+        for r in rows]}

@@ -33,11 +33,13 @@ def _cycle() -> None:
         else:
             log.info("수집 건너뜀(키 없음 또는 비활성)")
         try:
-            from app.services.geocode import run_geocode, GeocodeKeyMissing
+            from app.services.geocode import run_geocode, run_geocode_places, GeocodeKeyMissing
 
             def _geo():
                 try:
-                    return run_geocode(db)
+                    r1 = run_geocode(db)                 # 단지
+                    r2 = run_geocode_places(db)          # 시설(학원 등 좌표 미제공 소스)
+                    return {"complex": r1, "places": r2}
                 except GeocodeKeyMissing:
                     return {"skipped": "no_key"}
             log.info("지오코딩 결과: %s", record_job(db, "geocode", _geo))
@@ -51,8 +53,14 @@ def _cycle() -> None:
                 log.warning("백업 실패: %s", e)   # record_job 이 이미 기록·경보함
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    import sys as _sys
+    argv = argv if argv is not None else _sys.argv[1:]
     init_db()
+    if "--once" in argv:            # 크론(Cron Job)용: 1사이클 실행 후 종료
+        log.info("단발 실행(--once) — 수집+지오코딩 1사이클")
+        _cycle()
+        return 0
     s = get_settings()
     interval = max(1, s.scheduler_interval_hours) * 3600
     log.info("스케줄러 시작 — 주기 %s시간(웹 워커와 분리된 단일 프로세스로 실행하세요)",

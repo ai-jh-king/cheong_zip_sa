@@ -2,9 +2,13 @@
   "appId": "com.cheongzipsa.app",
   "appName": "청집사",
   "webDir": "dist",
+  "backgroundColor": "#0F766E",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "iosScheme": "https"
   },
+  "android": { "allowMixedContent": false },
+  "ios": { "contentInset": "always" },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 800,

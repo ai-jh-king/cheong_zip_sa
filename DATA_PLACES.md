@@ -1,4 +1,5 @@
 # 생활·교육·운동 시설 데이터 출처 (Place) — 명세 & 수집 청사진
+> (v1.166 기준: 학원 NEIS·어린이집 15013108 검증 / 체육·도서관·의료 URL 주입 대기)
 
 > 통합 모델 `Place`(model)에 아래 공공데이터를 normalize해 적재한다. **모든 값은 공식 공공데이터**(왜곡 없음).
 > 좌표 없는 행은 거리/지도 제외. 분류는 `app/services/places.classify_academy()` 키워드 매핑.
@@ -50,6 +51,20 @@
 - `source="claimed"`: 업체가 직접 등록·보강(시간표·실수강료·사진). `claimed_by`=업체 계정.
 - `source="ad"`: 광고/제휴(표기 의무·객관성 고지). 현재 OFF, 자리만.
 
+## ⚙️ 시설 API 엔드포인트 설정 방식 (왜곡 없음 · config 주입)
+> 표준데이터 오픈API의 **정확한 호출 URL(uddi UUID 포함)은 활용신청 후 '마이페이지 > 오픈API > 상세'** 에만 나온다(공개 검색으로 특정 불가). 따라서 코드에 URL을 하드코딩하지 않고 **`.env` 로 주입**한다. **미설정이면 해당 시설은 수집하지 않음**(가짜 URL 호출 금지).
+
+| 시설 | `.env` 키 | 검증된 데이터셋(ID) | 좌표 |
+|---|---|---|---|
+| 학원(교육) | `ACADEMY_SERVICE_KEY`(NEIS 키) | ✅ NEIS `acaInsTiInfo` (코드에 URL 내장·검증) | 없음→`geocode places` |
+| 어린이집 | `PLACES_DAYCARE_URL` + data.go.kr 키 | ✅ 전국어린이집표준데이터 **15013108**(어린이집명·유형·운영현황·주소·정원수·현원수·**위경도**·놀이터수·CCTV) | ✅ 위경도 포함 |
+| 체육 | `PLACES_SPORTS_URL` + 키 | 전국공공시설개방/체육시설(15013117 등) | ✅(대개) |
+| 도서관 | `PLACES_LIBRARY_URL` + 키 | 전국도서관표준데이터 15013109 | ✅ |
+| 의료 | `PLACES_MEDICAL_URL` + 키 | 전국의료기관표준데이터 15096293 | ⚠️ EPSG:5174 변환 |
+
+**설정 절차(예: 어린이집)**: data.go.kr 15013108 활용신청 → 승인 후 '마이페이지 > 오픈API'에서 **요청 URL(…/api/15013108/v1/uddi:xxxxxxxx)** 복사 → `.env` 에 `PLACES_DAYCARE_URL=<그 URL>` → `python -m scripts.collect_places daycare` → `python -m scripts.geocode places`(위경도 있으면 생략 가능).
+> ⚠️ 최초 적재 전 응답 1페이지 샘플을 개발자와 대조해 필드 매핑(F) 확인 권장(왜곡 방지).
+
 ## 수집 실행 (v1.114~)
 - 키: `.env`에 `ACADEMY_SERVICE_KEY`(없으면 `MOLIT_SERVICE_KEY` 재사용 시도). 데이터셋 활용신청 필요.
 - 적재:
@@ -59,8 +74,17 @@
   - `python -m scripts.collect_places library` → 도서관
   - `python -m scripts.collect_places daycare` → 어린이집·유치원
   - `python -m scripts.collect_places all` → 전부(학원·체육·의료·도서관·어린이집)
-- 좌표 없는 학원: `python -m scripts.geocode` 로 보강(주소→좌표). 좌표 없으면 거리/지도 제외(목록엔 노출).
+- 좌표 없는 시설(NEIS 학원 등): **`python -m scripts.geocode places`** 로 보강(도로명주소→좌표, Place.lat/lng 채움). 좌표 없으면 거리/지도 제외(목록엔 노출). 단지+시설 한번에: `python -m scripts.geocode all`.
 - ⚠️ `app/sources/academy.py`의 `ACADEMY_URL`·필드 후보(F)는 **Swagger로 실제 경로/필드 확정** 후 보강. tolerant 매핑이라 흔한 이름은 자동 흡수.
+
+### ✅ 학원(NEIS) end-to-end 절차 (검증된 유일 경로 — 지금 실행 가능)
+> 육아·초품아·지도 POI 중 **교육(학원)** 부분이 이 절차로 즉시 활성. (다른 시설은 아래 검증표대로 엔드포인트 확정 후)
+1. **NEIS 키 발급**(무료): open.neis.go.kr → 회원가입 → 인증키 신청(즉시). data.go.kr 키와 **별개**.
+2. `.env` 에 `ACADEMY_SERVICE_KEY=<NEIS 키>`.
+3. `python -m scripts.collect_places academy` → 청주 학원 적재(좌표 없음).
+4. `python -m scripts.geocode places` → 좌표 부여(KAKAO_REST_API_KEY 필요).
+5. 확인: 단지 상세 '🧸 육아 환경'에 학원 수 표시 / 지도 '🎓 학원' 토글+확대 시 마커.
+> ⚠️ 3번 최초 실행 전, 소량 검증 권장: NEIS 응답 1페이지 샘플을 개발자에게 공유 → 필드(F) 매핑 일치 확인 후 전체 적재(왜곡 방지).
 
 ## ✅ API 검증 상태 (실측 확인 — 2026-06)
 > "진짜 API 활용 가능한 데이터만" 원칙. 페이지 직접 확인 결과.

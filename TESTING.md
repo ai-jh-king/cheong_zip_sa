@@ -1,4 +1,5 @@
 # TESTING — 테스트·검증 방법 (전 레이어 기록)
+> (v1.166 기준: 3층 검증 verify_all/pytest 147/smoke_e2e 17 운영 중)
 
 > 이 프로젝트를 어떻게 테스트/검증하는지 **한곳에 기록**합니다. 인수인계·릴리스 전 점검의 단일 출처.
 > 원칙: 왜곡 없음 · 무엇을 어디서(샌드박스/개발 머신/실기기) 돌리는지 명시 · 통과 기준 명확.
@@ -103,13 +104,38 @@ cd .. && export WEB_DIR="$(pwd)/frontend/dist" && uvicorn app.main:app --port 80
 
 ---
 
+## 🧪 검증 3층 (정적 → 단위 → 통합)
+1. **정적**: `python -m scripts.verify_all` (문법·import/속성 심볼·프런트). 의존성 불필요, 어디서나.
+2. **단위/회귀**: `pytest` (147+). 실제 함수·API 로직. (실행: 런타임 의존성 필요)
+3. **통합(실제 앱)**: `python -m scripts.smoke_e2e` — TestClient 로 실제 HTTP 요청 + 샘플 데이터로 사용자 여정(시세→단지상세→호가검증→급매→게시판 주민뱃지→온보딩) 17종 검증.
+> ⚠️ 정적 게이트가 못 잡고 **실제 구동에서만 드러난 실제 사고**: ①`@stat_cached`가 잘못된 함수에 전이돼 전세가율 신호가 모든 단지 동일값(왜곡) ②게시판 컬럼 누락. → 배포 전 2·3층까지 반드시.
+
+## ✅ 전달/배포 전 필수 게이트 (한 줄)
+```
+python -m scripts.verify_all
+```
+`compileall`(문법) + `verify_imports`(존재하지 않는 심볼 import·`module.attr` 접근 — 앱 부팅 실패 차단) + `verify_frontend`(프런트 괄호·구조)를 한 번에. **PASS 아니면 전달 금지.**
+- 이 게이트는 "compileall은 통과하는데 런타임에 앱이 죽는" 두 사고(존재하지 않는 심볼 import=AGG_MONTHS / def 유실로 함수 흡수=complex_detail)를 실제로 잡는다(자가 테스트 통과).
+- 게이트가 보장 못 하는 것(별도): 브라우저 스모크(ReferenceError·렌더), `pytest`(DB 로직), `verify_region_codes`(라이브 MOLIT).
+
 ## 릴리스 전 체크리스트 (매 전달 시)
-1. `python -m compileall app` (백엔드 무손상)
-2. `pytest` (회귀 green)
-3. `python -m scripts.verify_frontend` (프런트 무결성 PASS)
+1. **`python -m scripts.verify_all`** (문법+import/속성 심볼+프런트 — 단일 게이트, PASS 필수)
+2. `pytest` (회귀 green — 사용자 환경)
+3. (게이트에 포함됨) verify_frontend / verify_imports 개별 실행도 가능. **`verify_imports`** (app.* 내부 import 심볼 해석 — 존재하지 않는 심볼 import로 인한 **런타임 부팅 실패**를 사전 차단. compileall이 못 잡는 사고. 실제 사고: complex_detail 누락·AGG_MONTHS)
 4. 레거시/백엔드/`main.jsx` 본문 무변경 의도 확인(비파괴 작업 시 diff)
-5. `VERSION`·`CHANGELOG.md` 갱신, 산출물 `_vMAJOR_MINOR` 접미사
-> 빌드/실기기/심사 항목은 **개발 머신·기기에서** 별도 수행(샌드박스 불가).
+5. `VERSION`·`CHANGELOG.md` 갱신, 산출물 최상위 폴더 `cheong_zip_sa`·`_vMAJOR_MINOR` 접미사
+
+> ⚠️ **오프라인 검증의 한계(중요)**: 위 1~3(괄호 균형·compileall·verify_frontend)은 **런타임 `ReferenceError`(스코프 밖 심볼)를 잡지 못한다.** 실제로 v1.136에서 한 컴포넌트의 지역 헬퍼(`segBtn`)를 다른 컴포넌트에서 써서 **게시판 진입 시 크래시**가 오프라인 검증을 통과한 채 배포됐다. 따라서 아래 **브라우저 스모크**를 배포 전 반드시 수행한다.
+
+### 브라우저 스모크 (개발 PC `npm run dev` 또는 배포본에서 — 라이트/다크 각각)
+- [ ] 홈 진입: 우리집 카드·"청주는 지금"(시드 시)·최근본·랭킹 배너 정상, 콘솔 에러 0
+- [ ] **게시판 탭 진입**(과거 크래시 지점) + [게시판]/[매물] 토글 전환
+- [ ] 지도 탭: 지도 렌더·마커(총액)·전체화면·필터 오버레이·요약 바(네비 안 가림)·호재 토글
+- [ ] 단지 상세 열기(검색 또는 마커): 거래활발·지도·인프라·직주근접·면적별(접힘)·초품아 배지
+- [ ] 청약 탭: 분양/청약 세그 전환 / 대출·예산·통근 도구 진입
+- [ ] 로그인 → 우리집 등록 → 새로고침(동기화) → 관심 단지 시세 표시
+- [ ] 주요 버튼(글쓰기·등록·로그인)이 `.btn-primary` 일관 스타일로 보임(다크 포함)
+> 컴포넌트/헬퍼를 추가·이동했다면 **사용하는 심볼이 그 스코프에 실제로 있는지** 눈으로 확인(모듈 레벨 or 인라인).
 
 ## H. 수익화 스캐폴딩(부록B) 테스트 — 전부 플래그 OFF가 기본(현재 동작 불변)
 > 목적: 첫 출시엔 제외(OFF) 가능한 구조 검증. 플래그를 켜야만 동작이 나타남.

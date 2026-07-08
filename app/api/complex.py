@@ -1,5 +1,5 @@
 """단지 상세 API (M3)."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -7,9 +7,18 @@ from app.services import stats
 from app.services.poi import nearby
 from app.services import places as places_svc
 from app.services import landmarks as landmarks_svc
+from app.services import commute as commute_svc
 from app.services.living import living_score
 
 router = APIRouter(prefix="/complex", tags=["complex"])
+
+
+@router.post("/quotes")
+def quotes(payload: dict = Body(...), db: Session = Depends(get_db)):
+    """여러 단지의 최근 매매가·전월대비를 한 번에(관심단지 목록 등).
+    body: {"items":[{"name":..,"lawd_cd":..,"property_type":..}, ...]}"""
+    items = (payload or {}).get("items") or []
+    return stats.complex_quotes(db, items)
 
 DISCLAIMER = ("단지 상세는 신고된 실거래 캐시 기반 참고용입니다(신고 지연·정정·해제 가능). "
               "자료: 국토교통부 실거래가.")
@@ -47,10 +56,12 @@ def detail(db: Session = Depends(get_db),
         res["living_score"] = living_score(res["poi"])
         res["places"] = places_svc.nearby(db, res["lat"], res["lng"])  # 공공데이터 학원·체육·생활
         res["landmarks"] = landmarks_svc.nearby(db, res["lat"], res["lng"])  # 주변 개발 호재
+        res["work_access"] = commute_svc.hub_access(db, res["lat"], res["lng"])  # 청주 직장·거점 거리(직선)
     else:
         res["poi"] = None
         res["school_access"] = None
         res["places"] = None
         res["landmarks"] = None
         res["living_score"] = None
+        res["work_access"] = None
     return res

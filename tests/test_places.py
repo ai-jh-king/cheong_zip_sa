@@ -67,3 +67,39 @@ def test_fit_score_basic(db):
 
 def test_fit_score_no_coords(db):
     assert svc.fit_score(db, None, None, {"academy": 5})["overall"] is None
+
+
+def test_in_bounds_bbox_and_category(db):
+    """지도 POI: bbox 안의 시설만, 카테고리 필터 반영. 데이터 없으면 빈 리스트."""
+    _place(db, name="상당학원", category="education", subcategory="academy_exam",
+           lat=36.64, lng=127.49, source_key="b1")
+    _place(db, name="흥덕체육관", category="sports", subcategory="sports",
+           lat=36.64, lng=127.42, source_key="b2")
+    _place(db, name="범위밖학원", category="education", subcategory="academy_exam",
+           lat=37.50, lng=127.00, source_key="b3")   # 서울권(범위 밖)
+    # 청주 대략 bbox
+    res = svc.in_bounds(db, 36.55, 36.75, 127.30, 127.55)
+    names = {p["name"] for p in res["places"]}
+    assert "상당학원" in names and "흥덕체육관" in names
+    assert "범위밖학원" not in names                      # bbox 밖 제외
+    # 카테고리 필터
+    edu = svc.in_bounds(db, 36.55, 36.75, 127.30, 127.55, groups=["education"])
+    edu_names = {p["name"] for p in edu["places"]}
+    assert "상당학원" in edu_names and "흥덕체육관" not in edu_names
+    # 좌표 없는 시설은 지도에 안 뜸
+    _place(db, name="좌표없는곳", category="living", subcategory="library",
+           lat=None, lng=None, source_key="b4")
+    res2 = svc.in_bounds(db, 36.55, 36.75, 127.30, 127.55)
+    assert "좌표없는곳" not in {p["name"] for p in res2["places"]}
+
+
+def test_geocode_places_requires_key(db, monkeypatch):
+    """지오코딩 키가 하나도 없으면 GeocodeKeyMissing(안전 실패, 왜곡 없음)."""
+    from app.services import geocode as g
+    from app.core.config import get_settings
+    s = get_settings()
+    monkeypatch.setattr(s, "kakao_rest_api_key", "", raising=False)
+    monkeypatch.setattr(s, "geocode_use_naver", False, raising=False)
+    import pytest
+    with pytest.raises(g.GeocodeKeyMissing):
+        g.run_geocode_places(db)

@@ -47,21 +47,26 @@ app/
   data/region_codes.py   청주 4개 구 + 구 중심좌표(DISTRICT_CENTROIDS)
   models/__init__.py     ORM 전체(아래 5)
   sources/molit/         실거래 8종(endpoints/client/normalize)
-  sources/{applyhome,news,finlife,hf,seomin}.py
+  sources/{applyhome,news,finlife,hf,seomin,kapt}.py  + places 계열 소스(academy/sports/medical/library/daycare)
   pipeline/collect.py    수집·정규화·dedup upsert·캐시 무효화
   services/{stats,loan,costs,geocode,poi,storage}.py
+  services/{landmarks,commute,places,living,enrich,gongsi}.py  # 호재·통근/직주근접·시설·생활점수·단지보강·공시
   api/{dashboard,home,complex,loan,favorites,personal,   # 시세·대출·개인화
-       auth,listings,search,admin,community}.py          # 로그인·매물·검색·관리자·게시판(+notif_router)
-  web/index.html         단일 React UI(DEMO 폴백)
+       auth,listings,search,admin,community,             # 로그인·매물·검색·관리자·게시판(+notif_router)
+       landmarks,commute,places,legal}.py                # 호재·통근·시설·법적동의
+  web/index.html         레거시 단일 React UI(동결·폴백)
   fixtures/              오프라인 검증 표본(is_sample)
-frontend/                웹 빌드(Vite): 정본 src/main.jsx + PWA(manifest·아이콘·SW). build→dist(운영 서빙). 컷오버 구성 완료(멀티스테이지)
-scripts/                 run_collect / geocode / scheduler / db_upgrade / verify_region_codes
-migrations/              Alembic (env.py가 앱 설정 URL 사용)
+frontend/                ★ 웹 정본(+ capacitor.config.json = 스토어 앱 설정, appId com.cheongzipsa.app). src/main.jsx = 단일 파일 React(현재 ~4,500줄, 100+ 컴포넌트) + PWA(manifest·아이콘·SW). build→dist(운영 서빙).
+                         ⚠️ 단일 파일이 커서 블라인드 편집 위험 — 컴포넌트는 반드시 모듈 레벨(아래 10). 향후 파일 분리 권장.
+scripts/                 run_collect / geocode / scheduler / db_upgrade / verify_region_codes / verify_frontend
+                         seed_landmarks(호재) / seed_commute(통근거점·직주근접 공유) / collect_places(시설)
+migrations/              Alembic (env.py가 앱 설정 URL 사용) — **head 0019**
 skills/                  ★ 모듈별 상세지침(아래 9)
 ```
 
 ## 5. 데이터 모델
-`Region` · `Complex` · `Transaction`(dedup_key 유니크·raw_payload 보존) · `Favorite` · `UserPref` · `RecentView` · `SavedSearch` · `Account` · `DeviceLink` · `Listing` · `Post` · `Comment`(parent_id 대댓글) · `PostLike`(uq post+owner) · `ReportLog`(uq target+owner) · `Notification`(account_id 인덱스·type comment/reply/transaction/new_high) · `Bookmark`(uq owner+post) · `CommuteDestination`·`CommuteTime`(통근) · `PushSubscription`(웹푸시 구독·endpoint 유니크) · `JobRun`(배치 실행 이력).
+`Region` · `Complex` · `Transaction`(dedup_key 유니크·raw_payload 보존) · `Favorite` · `UserPref`(data JSON — **우리집 my_home 포함**) · `RecentView` · `SavedSearch` · `Account` · `DeviceLink` · `Listing` · `Post` · `Comment`(parent_id 대댓글) · `PostLike`(uq post+owner) · `ReportLog`(uq target+owner) · `Notification`(account_id 인덱스·type comment/reply/transaction/new_high) · `Bookmark`(uq owner+post) · `CommuteDestination`·`CommuteTime`(통근·**직주근접 hub_access 재사용**) · `PushSubscription`(웹푸시 구독·endpoint 유니크) · `JobRun`(배치 실행 이력) · `Landmark`(개발 호재 — category/status/lat/lng/summary/expected_year/source_*) · `Place`(생활·교육·운동 시설 — category/subcategory/lat/lng/source) · `Consent`(개인정보·약관 동의 이력·버전).
+> **스키마 규칙**: 신규 컬럼은 ①모델에 추가 ②Alembic 마이그레이션 파일 생성(운영 PG) — SQLite 는 `_ensure_columns`(모델 자동 도출)가 시작 시 보강. 'no such column'은 대개 마이그레이션 미적용 or 운영이 SQLite. **마이그레이션 head = 0019**(…0018_landmarks → 0019_post_resident). 스키마 변경은 반드시 Alembic(아래 3).
 
 ## 6. 수정 후 필수 검증 루틴 (반드시 실행)
 **프런트(`frontend/src/main.jsx`) 수정 시 — 표준 검증**: 괄호 균형(`()`·`{}`·`[]` 모두 0) + `verify_frontend`. **모든 UI 수정은 여기서만**(레거시 `app/web/index.html`은 **동결 — 편집 금지**, 폴백 잔존):
@@ -73,7 +78,7 @@ for o,cl in [('(',')'),('{','}'),('[',']')]:
 "
 python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·index.html 구성, PASS 기대
 ```
-**백엔드 수정 시**: `python -m py_compile app/<바꾼파일>.py` (또는 전체 `python -m compileall app`).
+**모든 수정 후(전달 전 필수)**: `python -m scripts.verify_all` — compileall+verify_imports(import/속성 심볼)+verify_frontend 단일 게이트. PASS 아니면 전달 금지. compileall만으로는 '존재하지 않는 심볼 import·def 유실 함수 흡수 → 런타임 부팅 실패'를 못 잡는다(실제 사고 AGG_MONTHS·complex_detail).
 그 다음 **`pytest`** 로 회귀 테스트(반드시 통과). 새 기능/버그수정엔 테스트를 함께 추가. 마지막에 `python run.py` 스모크.
 
 **전 레이어 테스트 방법·릴리스 전 체크리스트는 [`TESTING.md`](TESTING.md) 가 단일 기록.**
@@ -95,6 +100,42 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - **운영 준비(완료)**: 시세 **서버 집계**(price_overview) ✅ · **웹푸시**(VAPID·구독·발송·SW) ✅ · **모니터링**(JobRun·record_job·system_status·alert·Sentry·/admin/monitor) ✅ · **백업/복구**(pg_dump·restore·스케줄러) ✅ · **배포 자가진단**(scripts/doctor) ✅. 실서버에서 키 설정 + pytest + `doctor`로 최종 확인 필요.
 - **차별화(완료)**: 생활권 점수 ✅ · 임장 도우미 ✅. **UI**: 모든 상세/검색 **바텀시트(SheetShell)+스와이프** 통일 ✅ · 청약 상세(마감 포함) ✅.
 - 상세 체크박스·우선순위는 **`ROADMAP.md`** 가 SSOT. 작업할 때마다 갱신.
+
+### 8.0 제품 전략(포지셔닝) — 인수인계 핵심
+- **메인 기능(결정) = '판단이 얹힌 지도'**: 유입·체류는 지도가 만들고(부동산 앱의 첫 본능), 차별화는 지도 위 시그널(📉급매 핀·🏗호재 핀, 향후 전세가율 위험)이 만든다. 지도는 전체화면+오버레이 필터+현위치. '가격만 찍힌 지도'가 아니라 말릴 수 있는 앱의 판단 재료를 지도에 올리는 것이 정체성.
+- **해자 = 이해상충 없음**: 청집사는 중개·광고 수익이 0 → 대형 앱이 구조적으로 못 하는 '거래를 말리는 정보'(역전세 경고·과열 구간·대안 단지)를 전면에 낼 수 있다. 모든 신호는 참고·근거·면책(왜곡 없음)로 이 포지션을 지킨다.
+- **창끝 = 전입자 온보딩**: SK하이닉스·오송·오창 발령자 등 '청주가 처음인' 신규 수요층에게 직장근처+시세+조심할점을 큐레이션. 기존 부품(통근검색·시세·전세가율) 조립.
+- **복리 = 주민 인증 커뮤니티**(v1.158) 데이터 축적.
+
+### 8.1 최근 추가(v1.135~v1.152) — 청주 특화 & 개인화 & UI
+- **청주 특화 3축**:
+  - **개발 호재**: 홈 '🏗 청주는 지금' 카드(`CityIssues`, GET `/landmarks`) + 지도 '🏗 호재' 토글 핀(클릭 시 요약·출처). 데이터=`scripts/seed_landmarks`(실제 출처: SK하이닉스 P&T7·오창 방사광가속기·테크노폴리스·북청주역세권·OSCO).
+  - **직주근접**: 단지 상세 '🏭 직장·거점 거리'(`work_access`, `commute.hub_access` — CommuteDestination 좌표 재사용, **직선거리** 명시). 데이터=`scripts/seed_commute`(SK하이닉스 청주캠퍼스 포함).
+  - **전세가율/역전세 신호**: 단지 상세 '전세가율' 카드(`RentSignal`, `stats.rent_gap_signal`) — 전세가율(전세중앙값/매매중앙값)을 갭 크기·주의점으로 해석. 청주 최대 화두(갭투자·역전세) 대응. **가격 예측·역전세 단정 금지**, 수치·근거·면책만.
+  - **육아**: 단지 상세 '🧸 육아 환경'(`KidsEnv`, d.places 기반 어린이집·학원·소아과 등 개수) + '🏫 초품아/초등 도보권' 배지(school_access 재사용). **시설 데이터 적재 시 작동**(아래 8.2).
+- **우리집(내 아파트)**: 홈 최상단 `MyHomeCard`(최근 매매가+전월/지역대비 변동%, GET `/complex/detail`). 등록=검색 오버레이 homePick 모드. 저장=`UserPref.data.my_home` → **로그인 시 기기 동기화**(비로그인=로컬 safeStore).
+- **더보기 '🛡 전세 안전 진단'(JeonseGuard)**: 링크가 아닌 **앱 내 계산** — 매매시세·보증금·근저당 채권최고액(등기부 을구) 입력 → (보증금+선순위)÷시세 % 밴드(≥80 위험/70~80 주의/<70 여유) + 계산식·'채권최고액=원금 110~130%' 설명 + 단정 금지 면책. 접이식 계약 단계별 체크리스트(계약 전/계약일/잔금·입주 — 확정일자·전입신고·체납열람 등 검증 사실만, '법률 자문 아님' 고지). ⚠️ 단지 상세의 전세가율 게이지 `JeonseSafety({ratio,scope})`와 별개 컴포넌트(이름 충돌 사고→개명, verify_frontend에 중복 정의 검사 추가).
+- **더보기 '계약 전 꼭 확인'(OfficialLinks)**: 앱이 대신 못 해주는 필수 확인을 공식 서비스로 연결 — 등기부등본(iros)·건축물대장(정부24)·실거래 원본(rt.molit)·공시가격(realtyprice)·전세보증/안심전세(HUG)·금리비교(금감원 finlife)·임대차신고(rtms.molit)·홈택스·청약홈·청주시청 — 총 10종. '말릴 수 있는 앱' 정체성(직접 확인 권유)+무관·무수익 고지. 링크는 공식 최상위 도메인만(경로 하드코딩 금지 — 개편에 강함).
+- **유입(바이럴) 장치**: ①시세 공유 카드에 워터마크(청집사+접속 도메인 location.host — 카톡 확산→유입 연결) ②호가검증 결과 '📤 공유'(navigator.share→클립보드 폴백, 면책 포함 텍스트) ③더보기 '📣 친구에게 알리기'(중개·광고 없음 소개문). SEO 랜딩(/r·/c·sitemap)은 기구현.
+- **가격 검증 3종(services/pricecheck + /pricecheck/*)**: ①호가 검증 `quote`(단지상세 PriceCheck 카드 — 중앙값 대비 %·이하거래 백분위) ②구 시세 맥락 `gu-context`(분양 탭 GuContextBar) ③급매 레이더 `bargains`(홈 BargainRadar + **지도 📉급매 토글 핀**(showBg, 좌표는 응답에 포함·미지오코딩 시 핀 제외) — 같은 평형 12개월 중앙값 대비 ≤-12% 실거래 사실, 표본≥4). 판정 금지·면책 필수. 집계 윈도우=settings.aggregate_months.
+- **전입자 온보딩(전략 창끝)**: `services/onboarding.py`(+ `api/onboarding.py`, main 등록). `GET /onboarding/options`(직장·산단 = commute job 거점) · `GET /onboarding/recommend?dest_key=&budget=&has_kids=` — 직장 근처 단지(search_by_commute) + 최근가(complex_quotes) + 예산 **차액(over_budget_by, 판정 아님)** 조립. 새 데이터 생성 없음·고지 포함. 프런트 위저드 완료(`OnboardingWizard` — 전체화면 4단계: 직장→예산→가족→결과, 진행도트·큰 탭타겟·최신 트렌드). 첫 방문 1회 자동 안내(safeStore `cj_onb_seen`)+홈 배너+마이페이지 진입. 저장=UserPref.data.onboarding(로그인 동기화).
+- **단지 인증 소통(주민 뱃지·단지 이야기)**: 글 작성 시 서버가 작성자 '우리집(prefs.my_home)'과 @단지 태그를 **대조**해 `Post.resident` 저장(자가 신고 아님·서류 인증도 아님 — '자가 등록 기반' 정직 라벨). 목록 `GET /community/posts?complex=` 필터. 프런트: PostCard/PostSheet 🏠주민 뱃지 + 단지 상세 `ComplexTalk`(단지 이야기 최근 5건). 후행: 관리자 서류 인증 승격 여지.
+- **관심 단지 시세**: FavList가 `POST /complex/quotes`(배치, 1쿼리 N단지)로 최근가·전월대비 표시.
+- **더보기=마이페이지**: 프로필+우리집+바로가기(관심/청약/게시판)+집찾기 도구.
+- **시세 추이 차트(지침서 2.3)**: 단지 상세 `TrendBlock` — 1·3·5년·전체 토글(데이터 있는 옵션만), 가격 라인+거래량 막대(월별 count), 전월/전년 동월 등락 칩. timeseries(전체 이력) 재사용, 표본 적은 달 주의 문구.
+- **면적 병합**: 단지 상세 면적별을 **평형(round(평)) 단위 병합**(stats.complex_detail; 23.1·23.2평→23평). 대표면적=중앙값.
+- **지도 시설(POI) 레이어**: 지도 '🎓학원/🏃체육/🏪생활' 토글 + 확대(zoom≥15) 시 표출(GET `/places/map` bbox). **시설 데이터 대기**.
+- **UI 정리**: 필터·토글은 토스식(선택만 은은, 초록채움·경계 제거) / **주요 버튼은 공통 `.btn-primary` 클래스**(테마대응·일관 반경12·active 피드백). 지도 **전체화면**(헤더48+네비60 기준 calc, 필터/요약 오버레이). 다크모드 하드코딩색 정리.
+
+### 8.2 데이터 적재 상태 (중요 — 왜곡 없음: 미적재 기능은 '숨김')
+| 데이터 | 상태 | 활성 기능 |
+|---|---|---|
+| 실거래(MOLIT) | ✅ 라이브(키 있음) | 시세·추이·랭킹·단지상세·우리집·관심시세·지도마커 |
+| 지도(네이버) | ✅ 키 있음 | 지도 렌더 |
+| 호재(seed_landmarks) | ⚠️ 시드 실행 필요 | 홈 개발이슈·지도 호재핀 |
+| 통근거점(seed_commute) | ⚠️ 시드 실행 필요 | 직주근접(직장 거리) |
+| 시설(collect_places+geocode places) | ❌ 미적재(NEIS·data.go.kr 키) | 육아환경·초품아·지도 POI |
+> 적재 절차·명령은 `OPERATIONS.md`·`DATA_PLACES.md` 참조. 미적재 시 해당 UI는 렌더되지 않음(빈 화면 아님).
 
 ## 9. 상세 지침 — `skills/` (작업 전 먼저 읽기)
 - `skills/README.md` — 원칙·레포지도·검증 총괄
@@ -122,6 +163,10 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 
 ## 10. 자주 실수하는 함정 (DO NOT)
 - ❌ **JSX 렌더 루프에서 React 컴포넌트를 정의해 `<Comp/>`로 쓰지 말 것** → 매 렌더 리마운트로 **입력 포커스 빠짐**. 컴포넌트는 모듈 레벨에 정의. 리스트 항목에 인라인이 필요하면 **컴포넌트가 아니라 "JSX를 반환하는 렌더 함수"**(예: `renderCmt(c)`)로 작성(리마운트 없음).
+- ❌ **한 컴포넌트의 지역 헬퍼(예: 지역 `const segBtn`)를 다른 컴포넌트에서 쓰지 말 것** → 스코프 밖 `ReferenceError`로 **런타임 크래시**(실제 v1.136 게시판 크래시 원인). 공용 헬퍼는 **모듈 레벨**에 두거나(예: `guOf`·`onEnter`·`eok`·`Delta`) 인라인으로. 새 버튼은 공용 CSS 클래스 **`.btn-primary`/`.btn-ghost`**(index.html) 사용 권장.
+- ⚠️ **`def` 줄 str_replace 시 데코레이터 전이 주의**: 데코레이터(`@stat_cached()` 등)가 붙은 함수의 `def` 줄을 교체·이동하면, 데코레이터는 제자리에 남아 **아래로 새로 온 함수에 잘못 적용**된다(실제 사고: rent_gap_signal 이 stat_cached 를 물려받아 인자 무관 첫 결과만 반환=전세가율 왜곡). `@stat_cached`는 `(db, ...)` 시그니처 전용(첫 인자를 db로 간주).
+- ⚠️ **`def` 줄을 포함한 str_replace 주의**: 함수 시그니처를 교체할 때 새 내용에서 그 `def` 줄을 빠뜨리면, 뒤 본문이 **앞 함수에 흡수**돼(문법상 정상 → compileall 통과) 해당 함수가 **정의 소실**된다(실제 사고: complex_detail). 편집 후 `scripts/verify_imports`로 확인.
+- ⚠️ **오프라인 검증(괄호·compileall·verify_frontend)은 런타임 ReferenceError를 못 잡는다.** 심볼이 실제 스코프에 있는지 눈으로 확인하고, 배포 전 브라우저 스모크(게시판 진입·지도·단지상세 열기)를 반드시 수행(`TESTING.md`).
 - ❌ 외부 API 응답 필드 추측·0으로 채우기 금지 → tolerant 매핑 + None.
 - ❌ 새 외부 커넥터에 `@ttl_cached` 누락 금지. 새 무거운 집계에 `@stat_cached` 누락 금지.
 - ❌ **카운터를 `x = (x or 0)+1`로 갱신 금지** → 원자 `update(...).values(...)`.

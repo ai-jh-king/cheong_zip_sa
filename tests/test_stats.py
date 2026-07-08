@@ -49,3 +49,19 @@ def test_aggregate_window_excludes_old(db):
     r = stats.city_summary(db, "apartment")
     assert r["trade_count"] == 1        # 최근만 집계
     assert r["avg_mae"] == 50000        # 옛 거래(99999) 제외
+
+
+def test_rent_gap_signal_bands():
+    """전세가율 해석 신호: 밴드 경계·None 처리. 가격 예측이 아니라 참고 신호(왜곡 없음)."""
+    assert stats.rent_gap_signal(None) is None
+    hi = stats.rent_gap_signal(92.0)
+    assert hi["level"] == "high" and hi["jeonse_ratio"] == 92.0
+    assert "역전세" in hi["note"] or "깡통" in hi["note"]      # 세입자 주의 맥락
+    assert stats.rent_gap_signal(85.0)["level"] == "high"      # 경계 포함
+    assert stats.rent_gap_signal(80.0)["level"] == "elevated"
+    assert stats.rent_gap_signal(65.0)["level"] == "normal"
+    assert stats.rent_gap_signal(40.0)["level"] == "low"
+    # 단정 표현이 없어야 함(가격 하락/상승 확정 금지)
+    for jr in (95.0, 80.0, 65.0, 40.0):
+        note = stats.rent_gap_signal(jr)["note"]
+        assert "반드시" not in note and "확정" not in note

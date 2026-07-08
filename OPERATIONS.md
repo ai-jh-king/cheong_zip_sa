@@ -7,6 +7,7 @@
 
 
 ## 배포 자가진단 (가장 먼저 실행)
+> 코드 반영 전 로컬/CI에서 **`python -m scripts.verify_all`** (정적 게이트, PASS 필수) → 그다음 아래 preflight(env·시크릿).
 
 설정·DB·마이그레이션·지역코드 실조회·데이터 신선도·연동 키·백업 준비를 한 번에 점검합니다.
 
@@ -76,14 +77,19 @@ python -m scripts.verify_region_codes  # 지역코드/키 점검(401 진단)
 
 ## 3. 일상 운영
 
-### 3.1 데이터 자동 갱신 (스케줄러)
+### 3.1 데이터 자동 갱신 (스케줄러 / Render 크론)
 ```bash
-python -m scripts.scheduler            # 주기적으로 수집 + 지오코딩
+python -m scripts.scheduler            # 상시 루프: 주기적으로 수집 + 지오코딩(단지·시설)
+python -m scripts.scheduler --once     # 1사이클만 실행 후 종료(크론용)
 ```
-- 주기: `.env`의 `SCHEDULER_INTERVAL_HOURS`(기본 24).
-- 실수집 수행 여부: `SCHEDULER_RUN_COLLECT=true`(MOLIT 키 있을 때만).
-- 운영에선 이 프로세스를 **상시 실행**(systemd/pm2/supervisor)하거나, OS 크론으로 `scripts.run_collect`+`scripts.geocode`를 매일 호출하세요.
-- 수집 시 **관심 단지 신규 실거래 알림**과 **정정·해제 반영**이 자동으로 처리됩니다.
+- 주기: `.env`의 `SCHEDULER_INTERVAL_HOURS`(기본 24). 실수집: `SCHEDULER_RUN_COLLECT=true`(MOLIT 키 있을 때만).
+- 지오코딩은 **단지 + 시설(Place)** 모두 수행(키 없으면 자동 스킵). 수집 시 관심 단지 신규 실거래 알림·정정/해제 반영 자동.
+
+**Render에서 자동화 켜기 (둘 중 하나):**
+- **A. 대시보드에서 Cron Job 생성(기존 수동 배포 사용자 — 권장)**: Render 대시보드 → New + → **Cron Job** → 이 저장소 선택(runtime Docker) → Schedule `0 19 * * *`(한국 04:00) → Command `python -m scripts.scheduler --once` → Environment에 `DATABASE_URL`(웹 서비스와 같은 DB의 Internal URL), `MOLIT_SERVICE_KEY`, (선택)`KAKAO_REST_API_KEY` 입력 → 생성. 첫 실행은 "Trigger Run"으로 즉시 테스트.
+- **B. Blueprint(render.yaml)**: 저장소의 render.yaml에 cron이 활성화돼 있음 → Blueprint Apply 시 웹+DB+크론이 함께 생성. ⚠️ **이미 수동으로 서비스를 만든 경우 Apply 금지**(중복 생성) — A 방식 사용.
+- 확인: 실행 후 `/health`의 `last_collect_at` 갱신, 관리자 API `X-Admin-Token`으로 JobRun 이력 조회.
+- (로컬/자체 서버라면) 이 프로세스를 systemd/pm2로 상시 실행하거나 OS 크론으로 `--once` 호출.
 
 ### 3.2 관리자 API (헤더 `X-Admin-Token: <ADMIN_TOKEN>`)
 | 메서드/경로 | 기능 |
@@ -111,6 +117,8 @@ python -m scripts.import_gongsi --path /경로/공동주택가격.csv
 - 단지명 매칭 실패는 보강하지 않습니다(null 유지·날조 금지). CSV 헤더가 다르면 `app/services/gongsi.py`의 후보 컬럼을 확인·조정하세요.
 
 ---
+
+> 배포 시 마이그레이션: `python -m scripts.db_upgrade` (현재 head **0019_post_resident**).
 
 ## 5. 운영 배포 (스테이징/프로덕션)
 
@@ -158,6 +166,18 @@ GitHub Actions(`.github/workflows/ci.yml`)가 push/PR마다 컴파일+pytest를 
 ---
 
 ## 7. 장애 대응 (실제 사례)
+
+### 🚨 'no such column' + 데이터 전체 안 보임 — 원인: 운영이 SQLite 로 돌고 있음
+- **증상**: 게시판 `no such column: posts.resident`(SQLite 어투), 시세·목록 등 데이터가 비어 보임.
+- **원인**: `DATABASE_URL` 미설정 → **SQLite 폴백**. SQLite 파일은 컨테이너 재배포 때 **초기화**(영속 디스크 없으면)되어 데이터가 사라지고, 과거 생성된 테이블에 신규 컬럼(resident)이 없어 쿼리 실패.
+- **확정**: `python -m scripts.doctor` 또는 `/health` 에서 DB 종류·데이터 건수 확인. `DATABASE_URL` 이 비어 있으면 SQLite.
+- **해결(운영 필수)**:
+  1) Render 관리형 **PostgreSQL** 생성 → 웹 서비스 env `DATABASE_URL`(Internal URL) 설정 → 재배포.
+  2) `python -m scripts.db_upgrade`(→head, 스키마 생성/최신화).
+  3) 최초 수집 `python -m scripts.run_collect live` + 크론(3.1) 활성화.
+- **참고**: SQLite 환경이라도 앱 시작 시 `_ensure_columns`(모델 자동 도출)가 신규 컬럼을 보강하므로 재시작만으로 'no such column' 은 해소됨. 단 **데이터 영속성은 PostgreSQL 이어야** 보장됨.
+
+
 
 | 증상 | 원인 | 조치 |
 |---|---|---|
@@ -211,6 +231,19 @@ GitHub Actions(`.github/workflows/ci.yml`)가 push/PR마다 컴파일+pytest를 
 
 ## 데이터 구조 설명서
 운영자용 데이터 저장 구조·컬럼·흐름·집계 기간·PostgreSQL 확인 방법은 **[DATA.md](./DATA.md)** 참조.
+
+## 청주 특화 데이터 적재 (호재·직주근접·시설)
+> 왜곡 없음: 아래를 적재하기 전까지 해당 UI는 **렌더되지 않음**(빈 화면 아님). 적재 즉시 활성.
+
+| 기능 | 적재 명령 | 필요 키 | 상태 |
+|---|---|---|---|
+| 🏗 개발 호재(홈 카드·지도 핀) | `python -m scripts.seed_landmarks` | 없음(시드 내장) | 데이터 준비됨 → 실행만 |
+| 🏭 직주근접(직장·거점 거리) | `python -m scripts.seed_commute` | 없음(정밀좌표는 `--geocode`+카카오) | 데이터 준비됨 → 실행만 |
+| 🧸 육아·초품아·지도 POI | `python -m scripts.collect_places all` → `python -m scripts.geocode places` | **NEIS(학원)** + data.go.kr(어린이집 등) | 키 발급 필요 |
+
+- **호재 갱신**: `scripts/seed_landmarks.py`의 `LANDMARKS` 리스트를 편집(사실·출처 필수) 후 재실행. 멱등(name 기준 upsert). 좌표 없으면 지도 핀 제외(홈 카드엔 표시).
+- **시설(NEIS 학원)**: `academy_service_key`(open.neis.go.kr, data.go.kr 키와 별개) 발급 → `.env` → `collect_places` → `geocode`(좌표 부여). 세분류 매핑은 `app/services/places.py` `CATEGORY_LABELS`.
+- 적재 후 `bump_data_version()`이 캐시를 무효화하므로 별도 재시작 불필요(수집 스크립트가 호출).
 
 ## 통근권(commute) 운영
 1. 목적지 시드: `python -m scripts.seed_commute` (정밀 좌표 필요시 `--geocode`, 카카오 키 필요)

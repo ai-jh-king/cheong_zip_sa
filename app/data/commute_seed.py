@@ -17,6 +17,8 @@ COMMUTE_DESTINATIONS = [
      "lat": 36.6330, "lng": 127.4290, "gu": "흥덕구", "address": "충북 청주시 흥덕구 가경동", "sort_order": 50},
 
     # 직장 · 산업단지
+    {"key": "sk_hynix_cheongju", "name": "SK하이닉스 청주캠퍼스", "category": "job",
+     "lat": 36.6750, "lng": 127.4250, "gu": "흥덕구", "address": "충북 청주시 흥덕구 향정동(청주캠퍼스 일대)", "sort_order": 19},
     {"key": "osong_bio",      "name": "오송 바이오단지",     "category": "job",
      "lat": 36.6310, "lng": 127.3290, "gu": "흥덕구", "address": "충북 청주시 흥덕구 오송읍", "sort_order": 20},
     {"key": "ochang_complex", "name": "오창 과학산업단지",   "category": "job",

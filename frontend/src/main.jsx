@@ -511,6 +511,12 @@ function Icon({name,active,size=24}){
  if(name==="star")return <svg {...p} fill={active?TEAL:"none"} stroke={active?TEAL:"#9aa3a8"}><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 17l-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z"/></svg>;
  if(name==="board")return <svg {...p}><path d="M4 5h16v11H10l-4 3v-3H4z"/><path d="M8 9h8M8 12h5"/></svg>;
  if(name==="heart")return <svg {...p} fill={active?UP:"none"} stroke={active?UP:"#9aa3a8"}><path d="M12 20s-7-4.6-9.2-9C1.3 8 3 4.8 6.2 4.8c1.9 0 3.1 1.1 3.8 2.2.7-1.1 1.9-2.2 3.8-2.2 3.2 0 4.9 3.2 3.4 6.2C19 15.4 12 20 12 20Z"/></svg>;
+ if(name==="academy")return <svg {...p}><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11.5V16c0 1.1 2.7 2.4 6 2.4s6-1.3 6-2.4v-4.5"/><path d="M21.5 9.2v4.3"/></svg>;
+ if(name==="sports")return <svg {...p}><path d="M6.5 8v8M4 9.5v5M17.5 8v8M20 9.5v5M6.5 12h11"/></svg>;
+ if(name==="store")return <svg {...p}><path d="M4.5 9.5 6 5h12l1.5 4.5a2.4 2.4 0 0 1-4.75.5 2.4 2.4 0 0 1-4.75 0 2.4 2.4 0 0 1-4.75-.5z"/><path d="M5.5 11V19h13V11"/><path d="M10 19v-4.5h4V19"/></svg>;
+ if(name==="bargain")return <svg {...p}><path d="M12 5v12.5"/><path d="M6.5 12.5 12 18l5.5-5.5"/></svg>;
+ if(name==="alerthome")return <svg {...p}><path d="M4 11 12 5l8 6"/><path d="M6 10v9h12v-9"/><path d="M12 12.3v3"/><path d="M12 17.6v.01"/></svg>;
+ if(name==="locate")return <svg {...p}><circle cx="12" cy="12" r="7"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="1.6" fill={c} stroke="none"/></svg>;
  if(name==="bell")return <svg {...p}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10.5 19a1.8 1.8 0 0 0 3 0"/></svg>;
  if(name==="subscription")return <svg {...p}><path d="M4 7h16v4a2 2 0 0 0 0 2v4H4v-4a2 2 0 0 0 0-2z"/><path d="M14 7v10"/></svg>;
  if(name==="bookmark")return <svg {...p} fill={active?TEAL:"none"} stroke={active?TEAL:"#9aa3a8"}><path d="M7 4h10v16l-5-3.2L7 20z"/></svg>;
@@ -2206,7 +2212,7 @@ function TickerBanner({label,color,bg,items,metric,onItem,info,title}){
  const cur=ticker[i%n];
  return (<div className="card" style={{padding:0,marginTop:8,overflow:"hidden"}}>
   <div onClick={()=>setSheet(true)} tabIndex={0} role="button" onKeyDown={onEnter(()=>setSheet(true))} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 13px",cursor:"pointer"}}>
-   <span className="pill" style={{background:bg,color,fontWeight:800,fontSize:11.5,flex:"none"}}>{label}</span>
+   <span className="pill" style={{background:bg,color,fontWeight:800,fontSize:11.5,flex:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box",minWidth:92}}>{label}</span>
    <span className="num" style={{fontWeight:800,color,fontSize:13,flex:"none",minWidth:12,textAlign:"center"}}>{cur.rank}</span>
    <span style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,minWidth:0}}>{cur.name} {cur.contains_sample_data&&<ExBadge/>}</span>
    <span style={{flex:"none",display:"flex",alignItems:"center",gap:6}}>{metric(cur)}<span style={{color:MUTED,fontSize:15}}>›</span></span>
@@ -3331,15 +3337,15 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
    </div>
    <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
     <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
-     {[["education","🎓 학원"],["sports","🏃 체육"],["living","🏪 생활"]].map(([k,l])=><button key={k} onClick={()=>togglePoi(k)} style={{...chip(poiCats.includes(k)),fontSize:12}}>{l}</button>)}
+     {[["education","학원","academy"],["sports","체육","sports"],["living","생활","store"]].map(([k,l,ic])=><button key={k} onClick={()=>togglePoi(k)} style={{...chip(poiCats.includes(k)),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><Icon name={ic} active={poiCats.includes(k)} size={14}/>{l}</button>)}
      <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
-     <button onClick={()=>setShowLm(v=>!v)} style={{...chip(showLm),fontSize:12}}>🏗 호재</button>
-     <button onClick={()=>setShowBg(v=>!v)} style={{...chip(showBg),fontSize:12}} title="같은 평형 중앙값 대비 크게 낮게 신고된 실거래(사유 있을 수 있음)">📉 급매</button>
-     <button onClick={()=>setShowJr(v=>!v)} style={{...chip(showJr),fontSize:12}} title="전세보증금 중앙값÷매매가 중앙값이 높은 단지(역전세 유의·단정 아님)">🏠 전세위험</button>
+     <button onClick={()=>setShowLm(v=>!v)} style={{...chip(showLm),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="개발 호재(참고·출처 표기)"><Icon name="build" active={showLm} size={14}/>호재</button>
+     <button onClick={()=>setShowBg(v=>!v)} style={{...chip(showBg),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="같은 평형 중앙값 대비 크게 낮게 신고된 실거래(사유 있을 수 있음)"><Icon name="bargain" active={showBg} size={14}/>급매</button>
+     <button onClick={()=>setShowJr(v=>!v)} style={{...chip(showJr),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="전세보증금 중앙값÷매매가 중앙값이 높은 단지(역전세 유의·단정 아님)"><Icon name="alerthome" active={showJr} size={14}/>전세위험</button>
     </div>
    </div>
   </div>
-  <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":"📍"}</button>
+  <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 오버레이: 이 지역 요약 */}
   <div style={{position:"absolute",left:10,right:10,bottom:20,zIndex:6}}>
    <div style={{display:"flex",alignItems:"center",gap:9,background:"var(--surface-solid)",borderRadius:12,padding:"10px 13px",boxShadow:"0 3px 14px rgba(16,24,32,.2)"}}>

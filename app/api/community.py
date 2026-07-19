@@ -96,6 +96,18 @@ def _my_home_of(db: Session, account_id: int) -> dict | None:
     return None
 
 
+def _compute_resident(db: Session, account_id: int, complex_name: str | None,
+                      lawd_cd: str | None) -> bool:
+    """작성자의 '우리집(my_home)'과 글의 @단지 태그를 서버가 대조해 주민 여부를 산출.
+    자가 신고가 아니라 '자가 등록 기반' 라벨(위조 불가). complex_name/lawd_cd 변경 시 반드시 재호출.
+    (단지 태그 없으면 False. lawd_cd는 양쪽에 있을 때만 비교 — 없으면 단지명 일치로 인정.)"""
+    if not complex_name:
+        return False
+    mh = _my_home_of(db, account_id)
+    return bool(mh and mh.get("complex_name") == complex_name
+                and (not lawd_cd or not mh.get("lawd_cd") or mh.get("lawd_cd") == lawd_cd))
+
+
 @router.get("/categories")
 def categories():
     return {"items": [{"key": k, "label": v} for k, v in CATEGORIES.items()]}
@@ -209,9 +221,7 @@ def create_post(body: PostIn, db: Session = Depends(get_db),
     p = Post(account_id=acc.id, device_id=body.device_id, nickname=acc.nickname or "회원",
              category=cat, title=title, body=text, lawd_cd=(body.lawd_cd or None),
              complex_name=(body.complex_name or None), property_type=(body.property_type or None),
-             resident=(lambda mh: bool(mh and body.complex_name and mh.get("complex_name") == body.complex_name
-                                       and (not body.lawd_cd or not mh.get("lawd_cd") or mh.get("lawd_cd") == body.lawd_cd))
-                       )(_my_home_of(db, acc.id) if body.complex_name else None),
+             resident=_compute_resident(db, acc.id, body.complex_name, body.lawd_cd),
              images=(imgs or None), created_at=datetime.utcnow(), updated_at=datetime.utcnow())
     db.add(p)
     db.commit()
@@ -256,6 +266,9 @@ def edit_post(pid: int, body: PostEditIn, db: Session = Depends(get_db),
         p.complex_name = body.complex_name or None
     if body.property_type is not None:
         p.property_type = body.property_type or None
+    # @단지/지역 태그가 바뀌면 주민 뱃지를 서버가 재산출 — 다른 단지로 편집해 뱃지를 옮기는 위조를 차단.
+    if body.complex_name is not None or body.lawd_cd is not None:
+        p.resident = _compute_resident(db, p.account_id, p.complex_name, p.lawd_cd)
     if body.images is not None:
         p.images = [u for u in body.images if isinstance(u, str)][:8] or None
     p.updated_at = datetime.utcnow()
@@ -349,9 +362,11 @@ def delete_comment(cid: int, db: Session = Depends(get_db),
     if not (acc and c.account_id == acc.id):
         raise HTTPException(status_code=403, detail="작성자만 삭제할 수 있습니다.")
     c.status = "hidden"
-    p = db.get(Post, c.post_id)
-    if p and (p.comment_count or 0) > 0:
-        p.comment_count -= 1
+    # 원자적 감소(경합 방지) — read-modify-write 금지. 0 미만으로 내려가지 않게 case 가드.
+    db.execute(update(Post).where(Post.id == c.post_id)
+               .values(comment_count=case(
+                   (func.coalesce(Post.comment_count, 0) > 0, Post.comment_count - 1),
+                   else_=0)))
     db.commit()
     return {"ok": True}
 

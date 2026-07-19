@@ -197,12 +197,45 @@ def config():
 DISCLAIMER = "실거래가는 신고 지연·정정·해제가 있을 수 있는 참고용 정보이며 법적 효력이 없습니다. 자료: 국토교통부 실거래가."
 
 
+def _auto_seed_commute(log):
+    """전입자 온보딩(전략 창끝)은 통근 '직장' 거점에 의존. 0건이면 자동 시드(멱등·좌표 하드코딩·API키 불필요).
+    시드 누락으로 온보딩 위저드 1단계가 빈 목록이 되는 사고를 부팅 시 자동 차단."""
+    try:
+        from app.db.session import SessionLocal
+        from app.models import CommuteDestination
+        from sqlalchemy import select, func as _f
+        with SessionLocal() as db:
+            n = db.scalar(select(_f.count()).select_from(CommuteDestination)
+                          .where(CommuteDestination.category == "job")) or 0
+        if n == 0:
+            from scripts.seed_commute import seed
+            added = seed()
+            log.info("통근 거점 자동 시드 완료: 신규 %s건 — 전입자 온보딩 활성화", added)
+    except Exception as e:  # noqa: BLE001
+        log.warning("통근 거점 자동 시드 스킵(무시): %s", e)
+
+
 @app.on_event("startup")
 def _startup():
     from app.core.logging import setup_logging
-    setup_logging(getattr(get_settings(), "log_level", "INFO"))
-    init_db()
     import logging
+    s = get_settings()
+    setup_logging(getattr(s, "log_level", "INFO"))
+    log = logging.getLogger(__name__)
+    # 프로덕션 안전 가드 — 미설정으로 인한 운영 사고를 부팅 시점에 차단.
+    if s.is_production:
+        if not s.jwt_secret:
+            raise RuntimeError(
+                "프로덕션(app_env=production)에서 JWT_SECRET 미설정 → 부팅 거부. "
+                "다중 워커 환경에서 워커마다 임시키가 달라 로그인 토큰이 무작위로 무효화됩니다. "
+                "32자 이상 랜덤 문자열을 JWT_SECRET 환경변수로 설정하세요.")
+        if s.auth_dev_login:
+            log.warning("⚠️ 프로덕션에서 AUTH_DEV_LOGIN=true — OAuth 없이 로그인 우회 가능. 운영은 false로 설정하세요.")
+        if _allow_origins == ["*"]:
+            log.warning("⚠️ 프로덕션 CORS_ORIGINS 미설정(*) — 배포 도메인으로 좁히세요. 예) CORS_ORIGINS=https://your-domain,capacitor://localhost")
+    init_db()
+    if s.auto_seed_commute:
+        _auto_seed_commute(log)
     # 에러 모니터링(Sentry) — DSN 설정 시에만. 패키지 없으면 조용히 건너뜀.
     dsn = (get_settings().sentry_dsn or "").strip()
     if dsn:

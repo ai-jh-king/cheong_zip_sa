@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     jwt_secret: str = ""                   # 세션 토큰 서명키(배포 시 필수 설정)
     session_days: int = 14                 # 세션 유효기간(일)
     auth_dev_login: bool = True            # 개발용 로그인 허용(운영 배포 시 False 권장)
+    auto_seed_commute: bool = True         # 부팅 시 통근 거점 0건이면 자동 시드(전입자 온보딩=전략 창끝 활성화). 테스트는 false
     auto_geocode: bool = True              # 수집 후 단지 좌표 자동 지오코딩(키 있을 때만)
     geocode_use_naver: bool = False        # 지오코딩 제공자: 기본 카카오 단독. true 면 네이버 우선+카카오 폴백
     geocode_seed_limit: int = 0            # 0=제한없음(전체). 쿼터 보호용 상한
@@ -171,6 +172,11 @@ class Settings(BaseSettings):
         if url.startswith("postgresql://"):         # 드라이버 미지정 → psycopg3 사용
             url = "postgresql+psycopg://" + url[len("postgresql://"):]
         return url
+
+    @property
+    def is_production(self) -> bool:
+        """운영 배포 여부(app_env=prod|production). 부팅 안전 가드(JWT 필수 등)에 사용."""
+        return self.app_env.strip().lower() in ("prod", "production")
 
     @property
     def molit_enabled(self) -> bool:

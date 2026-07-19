@@ -3,6 +3,15 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.178 (2026-07-19) — 전면 감사 후속 조치(해자·운영 안정성·프런트 부채)
+> 5축 병렬 코드·전략 감사(해자 신호·전입자 온보딩·주민 커뮤니티/판단 지도·데이터 격차·코드 건전성)에서 나온 실결함을 수정. 전략 정합성·왜곡없음 준수는 '강함/우수'로 확인됨.
+- **[FIX·해자] 주민 뱃지 위조 벡터 차단**: `edit_post`가 `complex_name`/`lawd_cd` 변경 시 `Post.resident`를 재계산하지 않아, 우리집 단지로 뱃지 획득 후 다른 단지로 편집하면 🏠주민 뱃지가 유지되던 구멍. `resident` 산출을 모듈 헬퍼 `_compute_resident`로 추출해 create/edit 양쪽에서 서버 대조 → '위조 불가 주민 뱃지'(복리 해자)가 실제로 성립. 회귀 테스트 추가.
+- **[FIX·원칙] 비원자 카운터 제거**: `delete_comment`의 `comment_count -= 1`(read-modify-write)을 `update(...).values(case(...))` 원자 감소로 교체(0 미만 방지). CLAUDE.md 명시 금지 규칙 준수. 회귀 테스트 추가.
+- **[운영] 프로덕션 부팅 안전 가드**: `app_env=production`에서 **JWT_SECRET 미설정 시 부팅 거부**(다중 워커 간 임시키 불일치 → 간헐적 로그아웃 장애 예방). AUTH_DEV_LOGIN=true·CORS `*`는 경고 로그. `Settings.is_production` 프로퍼티 신설.
+- **[전략·창끝] 통근 거점 자동 시드 안전망**: 부팅 시 job 거점 0건이면 `seed_commute` 자동 실행(멱등·좌표 하드코딩·API키 불필요). 시드 누락으로 **전입자 온보딩 위저드 1단계가 빈 목록**이 되던 사고를 구조적으로 차단. `auto_seed_commute` 플래그(테스트는 false).
+- **[프런트 부채] 렌더 본문 내 컴포넌트 정리(§10 트랩#1)**: 순수 표시 컴포넌트 `Stat`·`Tool`·`Quick`를 모듈 레벨로 승격(호출부 불변), 부모 state를 잡는 `Chip`·`Tab`은 렌더 함수(`renderChip`/`renderTab`)로 변환 → 리마운트 churn 제거·입력 포커스 사고 잠복 지뢰 제거. `GU_NAME`/`GU_NAMES` 중복 정의 통합(키가 문자열로 강제되어 동작 동일).
+- 검증: verify_all PASS · pytest **150**(+2) · smoke_e2e 18 · **브라우저 스모크**(게시판 칩/탭·더보기 Tool/Quick·지도, 콘솔 에러 0).
+- 후속(태스크): 지도 POI 토글을 시설 데이터 미적재 시 숨김(시설 데이터 인프라와 함께), `Sel`/`Row` 이름충돌 순수쌍 정리(파일 분리 시).
 ## v1.177 (2026-06-28) — Claude Code 인수인계 문서화
 - **`HANDOFF_TO_CLAUDE_CODE.md` 신설** — 웹 Claude에서 Claude Code 환경으로 옮기면서 새 Claude가 처음 읽어야 할 최상단 인수인계서.
   - 사용자 절대 원칙(왜곡 없음·인수인계 문서·step by step·대규모 대비·먼저 파악해 제안·최신 UI·실제 앱 테스트·서비스 단계 실수 금지) 명문화.

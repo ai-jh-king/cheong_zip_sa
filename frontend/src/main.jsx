@@ -102,31 +102,30 @@ function demoRanking(type,band="all"){
   active_regions:DEMO_ACTIVE,top_movers:DEMO_MOVERS,newly_high:DEMO_HIGH,
   newly_low:[{complex_name:"샘플숲속마을",gu:"청주시 청원구",area_label:"소형 (~60㎡)",latest_amount:27620,prev_low:27680,change_pct:-0.2,month:"2025-11",is_sample:true}]};
 }
-const GU_NAMES={43111:"상당구",43112:"서원구",43113:"흥덕구",43114:"청원구"};
 function demoBoard(){
  const tr=DEMO_TX.filter(t=>t.deal_type==="trade"&&t.deal_amount);
- const gu_ranking=Object.keys(GU_NAMES).map(code=>{
+ const gu_ranking=Object.keys(GU_NAME).map(code=>{
   const rs=tr.filter(t=>String(t.lawd_cd)===code);
   const amts=rs.map(r=>r.deal_amount).sort((a,b)=>a-b);
   const pys=rs.filter(r=>r.exclusive_area).map(r=>Math.round(r.deal_amount/(r.exclusive_area/PY))).sort((a,b)=>a-b);
-  return {code,gu:GU_NAMES[code],name:"청주시 "+GU_NAMES[code],
+  return {code,gu:GU_NAME[code],name:"청주시 "+GU_NAME[code],
    median_mae:amts.length?amts[Math.floor(amts.length/2)]:null,
    median_pyeong:pys.length?pys[Math.floor(pys.length/2)]:null,count:amts.length,month_count:rs.length,low_sample:amts.length<3};
  }).sort((a,b)=>(b.median_pyeong||0)-(a.median_pyeong||0));
  const bk=a=>a==null?null:(a<60?"s":a<85?"m":"l");
- const recent_by_gu=Object.keys(GU_NAMES).map(code=>{
+ const recent_by_gu=Object.keys(GU_NAME).map(code=>{
   const rs=tr.filter(t=>String(t.lawd_cd)===code);
   const gmax={}; rs.forEach(t=>{const k=(t.complex_name||"")+"|"+bk(t.exclusive_area);gmax[k]=gmax[k]||{max:0,n:0};gmax[k].max=Math.max(gmax[k].max,t.deal_amount);gmax[k].n++;});
-  return {gu:GU_NAMES[code],name:"청주시 "+GU_NAMES[code],code,
+  return {gu:GU_NAME[code],name:"청주시 "+GU_NAME[code],code,
    items:rs.slice().sort((a,b)=>(b.contract_date||"").localeCompare(a.contract_date||"")).slice(0,12)
     .sort((a,b)=>b.deal_amount-a.deal_amount).slice(0,4)
     .map(t=>{const g=gmax[(t.complex_name||"")+"|"+bk(t.exclusive_area)];
      return {complex_name:t.complex_name,lawd_cd:t.lawd_cd,property_type:t.property_type,dong:t.dong,exclusive_area:t.exclusive_area,floor:t.floor,contract_date:t.contract_date,deal_amount:t.deal_amount,is_high:!!t.complex_name&&g.n>=2&&t.deal_amount>=g.max,is_sample:true};})};
  });
  const months=["2025-06","2025-07","2025-08","2025-09","2025-10","2025-11"];
- const guSeries=Object.keys(GU_NAMES).map(code=>{
+ const guSeries=Object.keys(GU_NAME).map(code=>{
   const base={43111:31900,43112:30200,43113:34200,43114:27600}[code];
-  return {code,name:"청주시 "+GU_NAMES[code],values:months.map((m,i)=>Math.round(base*(1+i*0.004)))};});
+  return {code,name:"청주시 "+GU_NAME[code],values:months.map((m,i)=>Math.round(base*(1+i*0.004)))};});
  const order={}; gu_ranking.forEach((g,i)=>order[g.code]=i);
  recent_by_gu.sort((a,b)=>(order[a.code]??9)-(order[b.code]??9));
  guSeries.sort((a,b)=>(order[a.code]??9)-(order[b.code]??9));
@@ -135,7 +134,7 @@ function demoBoard(){
  const landmark=Object.values(lmG).map(rs=>{
   const ppms=rs.filter(r=>r.exclusive_area).map(r=>Math.round(r.deal_amount/(r.exclusive_area/PY)));
   const areas=rs.filter(r=>r.exclusive_area).map(r=>r.exclusive_area);
-  return {name:rs[0].complex_name,code:rs[0].lawd_cd,gu:GU_NAMES[rs[0].lawd_cd],dong:rs[0].dong,
+  return {name:rs[0].complex_name,code:rs[0].lawd_cd,gu:GU_NAME[rs[0].lawd_cd],dong:rs[0].dong,
    price:med(rs.map(r=>r.deal_amount)),ppm:ppms.length?med(ppms):null,area:areas.length?areas[0]:null,count:rs.length,is_sample:true};
  }).sort((a,b)=>b.price-a.price).slice(0,5).map((a,i)=>({...a,rank:i+1}));
  const BANDS=[["small","소형 (~60㎡)"],["medium","중형 (60~85㎡)"],["large","대형 (85㎡~)"]];
@@ -145,7 +144,7 @@ function demoBoard(){
   const items=Object.values(g).map(rs=>{
    const ppms=rs.filter(r=>r.exclusive_area).map(r=>Math.round(r.deal_amount/(r.exclusive_area/PY)));
    const areas=rs.filter(r=>r.exclusive_area).map(r=>r.exclusive_area);
-   return {name:rs[0].complex_name,code:rs[0].lawd_cd,gu:GU_NAMES[rs[0].lawd_cd],dong:rs[0].dong,
+   return {name:rs[0].complex_name,code:rs[0].lawd_cd,gu:GU_NAME[rs[0].lawd_cd],dong:rs[0].dong,
     price:med(rs.map(r=>r.deal_amount)),ppm:ppms.length?med(ppms):null,area:areas.length?areas[0]:null,count:rs.length,is_sample:true};
   }).sort((a,b)=>b.price-a.price).slice(0,5).map((a,i)=>({...a,rank:i+1}));
   return {key:k,label,items};
@@ -156,12 +155,12 @@ function demoBoard(){
   const items=rs.slice().sort((a,b)=>(b.contract_date||"").localeCompare(a.contract_date||"")).slice(0,30)
    .sort((a,b)=>b.deal_amount-a.deal_amount).slice(0,5)
    .map(t=>{const g=gmax[(t.complex_name||"")+"|"+bandOf(t.exclusive_area)];
-    return {complex_name:t.complex_name,lawd_cd:t.lawd_cd,gu:GU_NAMES[t.lawd_cd],property_type:t.property_type,dong:t.dong,exclusive_area:t.exclusive_area,floor:t.floor,contract_date:t.contract_date,deal_amount:t.deal_amount,is_high:!!t.complex_name&&g.n>=2&&t.deal_amount>=g.max,is_sample:true};});
+    return {complex_name:t.complex_name,lawd_cd:t.lawd_cd,gu:GU_NAME[t.lawd_cd],property_type:t.property_type,dong:t.dong,exclusive_area:t.exclusive_area,floor:t.floor,contract_date:t.contract_date,deal_amount:t.deal_amount,is_high:!!t.complex_name&&g.n>=2&&t.deal_amount>=g.max,is_sample:true};});
   return {key:k,label,items};
  });
  const demoTrending={basis:"surge",items:Object.values(lmG).map(rs=>{
    const rc=rs.length,pc=Math.max(0,Math.floor(rc/2));
-   return {name:rs[0].complex_name,lawd_cd:rs[0].lawd_cd,gu:GU_NAMES[rs[0].lawd_cd],dong:rs[0].dong,property_type:rs[0].property_type,
+   return {name:rs[0].complex_name,lawd_cd:rs[0].lawd_cd,gu:GU_NAME[rs[0].lawd_cd],dong:rs[0].dong,property_type:rs[0].property_type,
     recent_count:rc,prev_count:pc,delta:rc-pc,price:med(rs.map(r=>r.deal_amount)),contains_sample_data:true};
   }).sort((a,b)=>(b.delta-a.delta)||(b.recent_count-a.recent_count)).slice(0,8).map((o,i)=>({...o,rank:i+1}))};
  const _mv=Object.values(lmG).map(rs=>{
@@ -169,10 +168,10 @@ function demoBoard(){
    if(s.length<2)return null; const prev=s[s.length-2],latest=s[s.length-1], change=latest.deal_amount-prev.deal_amount;
    if(!change)return null;
    return {name:latest.complex_name,area_py:latest.exclusive_area?Math.round(latest.exclusive_area/PY):null,lawd_cd:latest.lawd_cd,
-    gu:GU_NAMES[latest.lawd_cd],dong:latest.dong,prev_amount:prev.deal_amount,latest_amount:latest.deal_amount,
+    gu:GU_NAME[latest.lawd_cd],dong:latest.dong,prev_amount:prev.deal_amount,latest_amount:latest.deal_amount,
     change,pct:Math.round(change/prev.deal_amount*1000)/10,contains_sample_data:true};
   }).filter(Boolean);
- const _S=(n,py,code,dong,pv,lt)=>({name:n,area_py:py,lawd_cd:code,gu:GU_NAMES[code],dong,prev_amount:pv,latest_amount:lt,change:lt-pv,pct:Math.round((lt-pv)/pv*1000)/10,contains_sample_data:true});
+ const _S=(n,py,code,dong,pv,lt)=>({name:n,area_py:py,lawd_cd:code,gu:GU_NAME[code],dong,prev_amount:pv,latest_amount:lt,change:lt-pv,pct:Math.round((lt-pv)/pv*1000)/10,contains_sample_data:true});
  const _up=[..._mv.filter(x=>x.change>0),_S("샘플센트럴파크",34,"43113","복대동",41000,44500),_S("샘플그린아파트",25,"43111","용암동",30500,31920),_S("샘플파크자이",32,"43112","산남동",27900,29840)];
  const _dn=[..._mv.filter(x=>x.change<0),_S("샘플숲속마을",18,"43114","오창",28800,27620),_S("샘플빌라",17,"43111","용암동",15000,14200)];
  const _dedupe=a=>{const seen={};return a.filter(x=>{const k=x.name+x.area_py;if(seen[k])return false;seen[k]=1;return true;});};
@@ -478,6 +477,16 @@ function MoreList({items,render,initial=8,step=10,label="더보기"}){
 /* 라인 아이콘 (이모지 대체) */
 /* 키보드 활성화: 클릭 div를 Enter/Space로도 누를 수 있게(접근성) */
 const onEnter=fn=>e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fn();}};
+/* 아래 순수 표시 컴포넌트는 모듈 레벨에 둔다 — 부모 렌더 본문 안에 정의하면 매 렌더 리마운트(포커스·성능 churn, CLAUDE.md §10 트랩#1). */
+const Stat=({label,val})=>(<div style={{flex:1,minWidth:72,background:"var(--surface-2)",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:MUTED}}>{label}</div><div className="num" style={{fontSize:20,fontWeight:800}}>{val}</div></div>);
+const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
+  <div style={{fontSize:28,flex:"none"}}>{icon}</div>
+  <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:15}}>{title}</div><div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{desc}</div></div>
+  <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
+ </div>);
+const Quick=({icon,label,onClick})=>(<button onClick={onClick} style={{flex:1,border:"none",background:"var(--surface-2)",borderRadius:12,padding:"13px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+  <span style={{fontSize:22}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
+ </button>);
 function Icon({name,active,size=24}){
  const c=active?TEAL:"#9aa3a8";
  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:c,strokeWidth:active?2.3:2,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,focusable:false};
@@ -1233,8 +1242,9 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
  const openAuthor=aid=>{if(aid){setAuthorId(aid);setMode("author");}};
  if(mode==="author"&&authorId!=null)return <AuthorView accountId={authorId} onBack={()=>setMode("list")} onOpenPost={pid=>{setSelId(pid);setMode("detail");}}/>;
  if(mode==="write")return <PostForm account={account} edit={editPost} onCancel={()=>{const e=editPost;setEditPost(null);setMode(e?"detail":"list");}} onCreated={p=>{setMode("detail");setSelId(p.id);setItems(it=>[p,...(it||[])]);}} onUpdated={p=>{setEditPost(null);setSelId(p.id);setMode("detail");setItems(it=>(it||[]).map(x=>x.id===p.id?{...x,...p}:x));}}/>;
- const Chip=({k,label})=>(<button onClick={()=>setCat(k)} className={"tog "+(cat===k?"on":"")} style={{whiteSpace:"nowrap"}}>{label}</button>);
- const Tab=({v,label})=>(<button onClick={()=>setView(v)} style={{border:"none",background:"none",borderBottom:"2.5px solid "+(view===v?TEAL:"transparent"),color:view===v?INK:MUTED,fontWeight:800,fontSize:14,padding:"7px 4px",cursor:"pointer"}}>{label}</button>);
+ // 렌더 함수(컴포넌트 아님) — 부모 state(cat/view)를 클로저로 잡으므로 렌더 본문 안에 두되, <Comp/> 대신 {renderX()}로 호출해 리마운트를 피한다(CLAUDE.md §10).
+ const renderChip=(k,label)=>(<button key={k||"__all"} onClick={()=>setCat(k)} className={"tog "+(cat===k?"on":"")} style={{whiteSpace:"nowrap"}}>{label}</button>);
+ const renderTab=(v,label)=>(<button key={v} onClick={()=>setView(v)} style={{border:"none",background:"none",borderBottom:"2.5px solid "+(view===v?TEAL:"transparent"),color:view===v?INK:MUTED,fontWeight:800,fontSize:14,padding:"7px 4px",cursor:"pointer"}}>{label}</button>);
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
    <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?INK:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>💬 게시판</button>
@@ -1247,7 +1257,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
    <button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 글쓰기</button>
   </div>
   <div style={{display:"flex",gap:14,borderBottom:"1px solid rgba(99,120,128,.14)",margin:"8px 0 0"}}>
-   <Tab v="all" label="전체글"/><Tab v="scrap" label="스크랩"/><Tab v="mine" label="내 활동"/>
+   {renderTab("all","전체글")}{renderTab("scrap","스크랩")}{renderTab("mine","내 활동")}
   </div>
   {view==="mine"?(
    !mineData?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>:
@@ -1269,7 +1279,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
    </div>
   ):(<React.Fragment>
    <div style={{display:"flex",gap:6,overflowX:"auto",margin:"10px 0 0",paddingBottom:2}}>
-    <Chip k="" label="전체"/>{CAT_ORDER.map(k=><Chip key={k} k={k} label={CAT_LABEL[k]}/>)}
+    {renderChip("","전체")}{CAT_ORDER.map(k=>renderChip(k,CAT_LABEL[k]))}
    </div>
    <div style={{display:"flex",gap:8,alignItems:"center",margin:"10px 0 0"}}>
     <div style={{flex:1,display:"flex",alignItems:"center",gap:7,background:"var(--surface-solid)",border:"1px solid rgba(99,120,128,.16)",borderRadius:10,padding:"8px 11px"}}>
@@ -2378,7 +2388,6 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
  const active=a.filter(x=>x.status==="active").length;
  const sponsored=a.filter(x=>x.is_sponsored).length;
  const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>중개사 대시보드</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
- const Stat=({label,val})=>(<div style={{flex:1,minWidth:72,background:"var(--surface-2)",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:MUTED}}>{label}</div><div className="num" style={{fontSize:20,fontWeight:800}}>{val}</div></div>);
  return (<SheetShell onClose={onClose} zIndex={119} header={header}>
   {editing?<div style={{padding:"2px 2px 16px"}}><ListingForm account={account} initial={editing} onCancel={()=>setEditing(null)} onCreated={()=>{setEditing(null);load();}}/></div>:
   <div style={{padding:"2px 2px 16px"}}>
@@ -2529,14 +2538,6 @@ function OfficialLinks(){
  </div>);
 }
 function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard}){
- const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
-  <div style={{fontSize:28,flex:"none"}}>{icon}</div>
-  <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:15}}>{title}</div><div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{desc}</div></div>
-  <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
- </div>);
- const Quick=({icon,label,onClick})=>(<button onClick={onClick} style={{flex:1,border:"none",background:"var(--surface-2)",borderRadius:12,padding:"13px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-  <span style={{fontSize:22}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
- </button>);
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>

@@ -97,6 +97,8 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - **중개사 대시보드(B2B v1)**: 계정 메뉴 → role=agent에게만 노출되는 `AgentDashboard` 시트(내 매물 요약 통계+관리·삭제·등록 진입·행 탭→상세). 조회수 추적(외부 조회만·소유자 제외)·상태관리(거래완료/숨김/복구)·매물 수정(PUT) 포함(v2). 리드/문의 추적은 미구현=v3.
 - **수익화**: 전략 `MONETIZATION.md`. 부록B 스캐폴딩 존재(매물 `is_sponsored`/`priority`+"광고" 배지, `accounts.plan`+`is_premium` 게이팅, admin 테스트 엔드포인트) — **전부 피처 플래그(`feature_ads`/`feature_monetization`) 뒤·기본 OFF=현재와 동일**. 마이그레이션 0012.
 - **배포/운영**: Dockerfile·`docker-compose.prod.yml`(web 다중워커+scheduler 단일+db)·CORS 환경변수화(`CORS_ORIGINS`, 기본 `*`)·`DEPLOY.md`(배포 전 점검·HTTPS·보안 체크) 준비됨. 컨테이너 실제 빌드·실행은 운영 머신 검증.
+  - **프로덕션 안전 가드(v1.178)**: `app_env=production`이면 startup에서 **JWT_SECRET 미설정 시 부팅 거부**(다중 워커 임시키 불일치=간헐 로그아웃 예방), `AUTH_DEV_LOGIN=true`·CORS `*`는 경고. 판별=`Settings.is_production`.
+  - **통근 거점 자동 시드(v1.178)**: startup에서 job 거점 0건이면 `seed_commute` 자동 실행(멱등·API키 불필요) → 전입자 온보딩(창끝) 부팅 직후 활성화. 플래그 `auto_seed_commute`(테스트는 false). 시드/시설 데이터 미적재 시 청주특화 기능 상당수가 '조용히 숨김'되므로 배포 체크리스트에 `seed_landmarks`·`seed_commute`·카카오 키를 필수화할 것.
 - **운영 준비(완료)**: 시세 **서버 집계**(price_overview) ✅ · **웹푸시**(VAPID·구독·발송·SW) ✅ · **모니터링**(JobRun·record_job·system_status·alert·Sentry·/admin/monitor) ✅ · **백업/복구**(pg_dump·restore·스케줄러) ✅ · **배포 자가진단**(scripts/doctor) ✅. 실서버에서 키 설정 + pytest + `doctor`로 최종 확인 필요.
 - **차별화(완료)**: 생활권 점수 ✅ · 임장 도우미 ✅. **UI**: 모든 상세/검색 **바텀시트(SheetShell)+스와이프** 통일 ✅ · 청약 상세(마감 포함) ✅.
 - 상세 체크박스·우선순위는 **`ROADMAP.md`** 가 SSOT. 작업할 때마다 갱신.

@@ -3901,6 +3901,34 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
   </Sheet>}
  </div>);
 }
+function CautionSignals({card,d}){
+ // 흩어진 주의 '사실'을 한 장으로 통합 — 새 수치를 만들지 않고 이미 표시되는 실거래 사실만 모음(왜곡 없음).
+ // 판정("사지 마세요") 금지 = 사실+근거+면책. 신호가 없으면 숨김(안전을 암시하지 않기 위해).
+ const f=[];
+ if(card.jr!=null && card.jr>=75)
+  f.push(["전세가율 "+card.jr+"%","매매가 대비 보증금 비중이 커요 — 역전세·깡통전세 유의(단정 아님)"]);
+ if(card.fromPeak!=null && card.fromPeak<=-15)
+  f.push(["최근 "+AGG_MONTHS+"개월 고점 대비 "+card.fromPeak+"%","하락 구간일 수 있어요(추세 단정 아님)"]);
+ if((d.reliability==="low"||d.reliability==="fair") || (card.count!=null&&card.count<5))
+  f.push(["최근 거래 "+(card.count!=null?card.count:0)+"건","표본이 적어 시세가 흔들릴 수 있어요"]);
+ if(d.canceled_count>0)
+  f.push(["신고 후 해제(취소) "+d.canceled_count+"건","실제 성사 거래가 아니라 시세 집계에서 제외했어요"]);
+ if(!f.length) return null;
+ return (<div className="card" style={{padding:"12px 14px",marginTop:10,background:"var(--callout-bg)",border:"none"}}>
+  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+   <span style={{fontWeight:800,fontSize:13.5,color:"var(--callout-fg)"}}>⚠️ 참고 주의 신호</span>
+   <Info text="이 단지에서 참고할 만한 사실을 모았어요. 매수·매도 판단이 아니라 확인용이며, 각 항목은 이 앱 실거래 데이터의 사실입니다."/>
+  </div>
+  {f.map(([t,why],i)=>(<div key={i} style={{display:"flex",gap:8,padding:"5px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
+   <span style={{color:"#C77A1A",fontSize:13,flex:"none",lineHeight:1.5}}>•</span>
+   <div style={{minWidth:0}}>
+    <div style={{fontSize:13,fontWeight:700,color:"var(--ink)"}}>{t}</div>
+    <div style={{fontSize:11.5,color:MUTED,marginTop:1,lineHeight:1.5}}>{why}</div>
+   </div>
+  </div>))}
+  <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>참고용 신호 모음이며 매수·매도 판단이 아니에요.</div>
+ </div>);
+}
 function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,onOpen}){
  const unit=useUnit();
  const [d,setD]=useState(null);
@@ -3989,12 +4017,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     {narrowed?<DMetric label={<React.Fragment>평단가<Info text="전용 1평(3.3㎡)당 가격(만원)."/></React.Fragment>} val={card.ppm!=null?card.ppm.toLocaleString("ko-KR"):"—"} sub="만원/평"/>:<DMetric label="면적 타입" val={`${areas.length}개`}/>}
    </div>
   </div>
-  {(d.canceled_count>0||d.reliability==="low"||d.reliability==="fair")&&<div className="card" style={{padding:"10px 13px",marginTop:10,background:"var(--callout-bg)",border:"none"}}>
-   <div style={{fontSize:12.5,color:"var(--callout-fg)",lineHeight:1.6,fontWeight:600}}>
-    {(d.reliability==="low"||d.reliability==="fair")&&<span>최근 {AGG_MONTHS}개월 거래 표본이 적어({d.trade_count}건) 시세가 흔들릴 수 있어요. 참고용으로 봐 주세요. </span>}
-    {d.canceled_count>0&&<span>신고 후 <b>해제(취소) {d.canceled_count}건</b>은 시세 집계에서 제외했습니다.</span>}
-   </div>
-  </div>}
+  <CautionSignals card={card} d={d}/>
   <VolumeSignal volume={d.volume}/>
   <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
   <PriceCheck name={d.name} lawd={d.lawd_cd||sel.lawd_cd} pt={d.property_type||sel.property_type}/>

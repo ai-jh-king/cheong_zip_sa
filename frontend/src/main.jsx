@@ -390,12 +390,15 @@ function ShareCard({card,onClose}){
   </div>
  </div>);
 }
-function JeonseSafety({ratio,scope}){
+function JeonseSafety({ratio,scope,note}){
+ // 전세가율(비율) + 전세 안전도(위험 밴드)를 하나로 통합 — 게이지·비율·해석은 기본 노출(알짜),
+ // 체크리스트·보증기관 링크는 '계약 전 확인 ▾' 접이식으로.
  const s=jeonseSafety(ratio);
+ const [more,setMore]=useState(false);
  if(!s) return null;
  const pos=Math.max(0,Math.min(100,ratio));
  const zones=[["~70",0,70,"#1d7a4d"],["70~80",70,80,"#1E5FC4"],["80~90",80,90,"#9A6B00"],["90~",90,100,"#C8322A"]];
- return (<Collapsible icon="doc" defaultOpen={true} title={<React.Fragment>전세 안전도 <span style={{fontWeight:500,color:MUTED,fontSize:12}}>· 깡통전세 위험 참고</span></React.Fragment>}>
+ return (<Collapsible icon="doc" defaultOpen={true} title={<React.Fragment>전세가율·안전도 <span style={{fontWeight:500,color:MUTED,fontSize:12}}>· 깡통전세 위험 참고</span></React.Fragment>}>
   <div style={{padding:"8px 14px 13px"}}>
    <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
     <span className="num" style={{fontSize:22,fontWeight:800}}>{ratio}%</span>
@@ -412,21 +415,24 @@ function JeonseSafety({ratio,scope}){
    <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:MUTED}}>
     {zones.map(([l])=><span key={l}>{l}</span>)}
    </div>
-   <p style={{fontSize:13,lineHeight:1.65,margin:"11px 0 0"}}>{s.advice}</p>
-   <div style={{background:"var(--chip)",borderRadius:10,padding:"10px 12px",marginTop:10}}>
-    <div style={{fontSize:12,fontWeight:800,marginBottom:5}}>계약 전 확인하세요</div>
-    <ul style={{margin:0,paddingLeft:17,fontSize:12.5,lineHeight:1.7,color:"var(--ink)"}}>
-     <li>등기부등본의 <b>선순위 채권·근저당</b> 합계가 (보증금+선순위)가 매매가를 넘지 않는지</li>
-     <li>임대인 <b>국세·지방세 체납</b> 여부(납세증명서 요청)</li>
-     <li><b>전세보증금 반환보증</b> 가입 가능 여부·한도</li>
-     <li>확정일자·전입신고로 <b>대항력·우선변제권</b> 확보</li>
-    </ul>
-   </div>
-   <div style={{fontSize:12,color:MUTED,marginTop:9,lineHeight:1.6}}>
-    보증금 반환보증: 주택도시보증공사(HUG, <a href="https://www.khug.or.kr" target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>khug.or.kr</a>) · 한국주택금융공사(HF, <a href="https://www.hf.go.kr" target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>hf.go.kr</a>) · SGI서울보증. 가입 가능 여부·한도는 보증기관 심사로 결정됩니다.
-   </div>
-   <div style={{fontSize:11,color:MUTED,marginTop:7,lineHeight:1.6}}>
-    ※ 전세가율은 <b>참고 지표</b>일 뿐이며, 실제 위험은 등기부·선순위 채권·임대인 신용 등으로 달라집니다. 본 내용은 정보 제공이며 법률·금융 자문이 아닙니다.
+   {note&&<div style={{fontSize:12.5,color:INK,marginTop:10,lineHeight:1.55}}>💧 {note}</div>}
+   <p style={{fontSize:13,lineHeight:1.65,margin:"9px 0 0"}}>{s.advice}</p>
+   <button onClick={()=>setMore(v=>!v)} style={{marginTop:11,border:"none",background:"var(--chip)",borderRadius:9,padding:"9px 12px",cursor:"pointer",fontWeight:800,fontSize:12.5,color:INK,width:"100%",textAlign:"left"}}>계약 전 확인 {more?"▲":"▾"}</button>
+   {more&&<React.Fragment>
+    <div style={{background:"var(--chip)",borderRadius:10,padding:"10px 12px",marginTop:8}}>
+     <ul style={{margin:0,paddingLeft:17,fontSize:12.5,lineHeight:1.7,color:"var(--ink)"}}>
+      <li>등기부등본의 <b>선순위 채권·근저당</b> 합계가 (보증금+선순위)가 매매가를 넘지 않는지</li>
+      <li>임대인 <b>국세·지방세 체납</b> 여부(납세증명서 요청)</li>
+      <li><b>전세보증금 반환보증</b> 가입 가능 여부·한도</li>
+      <li>확정일자·전입신고로 <b>대항력·우선변제권</b> 확보</li>
+     </ul>
+    </div>
+    <div style={{fontSize:12,color:MUTED,marginTop:9,lineHeight:1.6}}>
+     보증금 반환보증: 주택도시보증공사(HUG, <a href="https://www.khug.or.kr" target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>khug.or.kr</a>) · 한국주택금융공사(HF, <a href="https://www.hf.go.kr" target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>hf.go.kr</a>) · SGI서울보증. 가입 가능 여부·한도는 보증기관 심사로 결정됩니다.
+    </div>
+   </React.Fragment>}
+   <div style={{fontSize:11,color:MUTED,marginTop:9,lineHeight:1.6}}>
+    전세가율 = 전세보증금 중앙값 ÷ 매매가 중앙값(최근 실거래). <b>참고 지표</b>이며 실제 위험은 등기부·선순위 채권·임대인 신용 등으로 달라집니다. 정보 제공이며 법률·금융 자문이 아닙니다.
    </div>
   </div>
  </Collapsible>);
@@ -2668,23 +2674,17 @@ function GuContextBar(){
  </div>);
 }
 function BargainRadar({onOpen}){
+ // 급매 신호는 '거래 급상승'과 동일한 압축 티커(TickerBanner) 패턴으로. 한 건 낮은 거래는
+ // 특수거래(직거래·가족)일 수 있어 실행 가능성이 제한적 → 큰 카드가 아니라 1줄 티커로 노출.
  const [d,setD]=useState(null);
  useEffect(()=>{fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(setD).catch(()=>setD(null));},[]);
  if(!d||!d.items||!d.items.length)return null;
- return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
-  <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontWeight:800,fontSize:15}}>📉 낮은 가격 거래 포착</span><span style={{fontSize:11.5,color:MUTED}}>최근 {d.months}개월</span></div>
-  <div style={{fontSize:11.5,color:MUTED,margin:"2px 0 4px"}}>같은 평형 중앙값보다 크게 낮게 신고된 실거래예요(사유가 있을 수 있어요).</div>
-  <MoreList items={d.items} initial={3} step={3} render={(x,i)=>(
-   <div key={i} onClick={()=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:"apartment",gu:x.gu})} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:"apartment",gu:x.gu}))} style={{padding:"9px 0",borderTop:i>0?"1px solid var(--line)":"none",cursor:"pointer"}}>
-    <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-     <span style={{fontWeight:800,fontSize:13.5}}>{x.name}</span>
-     <span style={{fontSize:11.5,color:MUTED}}>{x.gu} · {x.pyeong}평{x.floor!=null?` · ${x.floor}층`:""}</span>
-     <span className="num" style={{marginLeft:"auto",fontWeight:800,fontSize:13.5,color:DOWN}}>{x.diff_pct}%</span>
-    </div>
-    <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{eok(x.amount)} <span style={{opacity:.7}}>(중앙값 {eok(x.median)})</span> · {x.date}</div>
-   </div>)}/>
-  <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{d.disclaimer}</div>
- </div>);
+ const items=d.items.map((x,i)=>({...x,rank:i+1,contains_sample_data:x.is_sample}));
+ return <TickerBanner label="📉 급매 포착" color={DOWN} bg="rgba(30,95,196,.10)" title="📉 급매 포착"
+   info={d.disclaimer||`같은 평형 중앙값보다 크게 낮게 신고된 실거래예요(최근 ${d.months}개월). 특수거래(직거래·가족 등)·사유가 있을 수 있어 실제 급매가 아닐 수 있어요.`}
+   items={items}
+   metric={it=><span className="num" style={{color:DOWN,fontWeight:800,fontSize:12.5}}>{it.diff_pct}% <span style={{color:MUTED,fontWeight:600,fontSize:11}}>{it.pyeong}평</span></span>}
+   onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:"apartment",gu:it.gu})}/>;
 }
 function RentSignal({sig}){
  if(!sig||sig.jeonse_ratio==null)return null;
@@ -2910,8 +2910,6 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   })()}
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
-
-  <TopMovers movers={b.top_movers} onOpen={onOpen}/>
 
   <TodayInfo feed={feed} go={go}/>
  </div>);
@@ -3732,9 +3730,9 @@ function FairPriceCheck({a}){
   <div style={{fontSize:10.5,color:MUTED,marginTop:9,lineHeight:1.6}}>※ 같은 평형 최근 실거래 기준 참고 위치예요. 층·향·동·시점·옵션에 따라 실제 적정가는 달라지며, 신고 지연·정정·이상거래가 섞일 수 있습니다.</div>
  </div>);
 }
-function AreaSection({a,unit,onLoan}){
+function AreaSection({a,unit,onLoan,open=true}){
  const months=(a.timeseries||[]).map(t=>t.month.slice(5)), vals=(a.timeseries||[]).map(t=>t.avg);
- return (<Collapsible icon="price" defaultOpen={true}
+ return (<Collapsible icon="price" defaultOpen={open}
    title={<span>{areaTxt(a,unit)}</span>}
    right={<span className="num" style={{fontSize:12,color:MUTED}}>{a.trade_count}건</span>}>
   <div style={{padding:"6px 14px 12px"}}>
@@ -3908,16 +3906,18 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
  const [d,setD]=useState(null);
  const [loanArea,setLoanArea]=useState(null);
  const [cardOpen,setCardOpen]=useState(false);
+ const [tabPy,setTabPy]=useState(sel.area!=null?Math.round(sel.area/PY):null);   // 평형 탭(단지 전체=null)
  useEffect(()=>{let on=true;setD(null);
   const q=`name=${encodeURIComponent(sel.name)}&lawd_cd=${sel.lawd_cd}`+(sel.property_type?`&property_type=${sel.property_type}`:"");
   fetch(`${API}/complex/detail?${q}`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(demoDetail(sel));});
   return ()=>{on=false;};},[sel.name,sel.lawd_cd,sel.property_type]);
- useEffect(()=>{setLoanArea(null);},[sel.name,sel.lawd_cd,sel.property_type,sel.area]);
+ useEffect(()=>{setLoanArea(null);setTabPy(sel.area!=null?Math.round(sel.area/PY):null);},[sel.name,sel.lawd_cd,sel.property_type,sel.area]);
  if(!d)return <div style={{marginTop:6}}><div style={{height:8}}/><SkeletonCard lines={4}/><SkeletonCard/></div>;
  if(!d.found)return <div style={{marginTop:6}}><Empty>이 단지의 거래 데이터를 찾지 못했습니다.</Empty></div>;
  const mapItem=[{rank:1,complex_name:d.name,lat:d.lat,lng:d.lng,deal_amount:d.latest_amount}];
  const areas=d.areas||[];
- const focusPy=sel.area!=null?Math.round(sel.area/PY):null;
+ const focusPy=tabPy;
+ const pyList=[...new Set(areas.map(a=>Math.round(a.area/PY)).filter(x=>x))].sort((a,b)=>a-b);
  const matched=focusPy!=null?areas.filter(a=>Math.round(a.area/PY)===focusPy):[];
  const useAreas=matched.length?matched:areas;
  const narrowed=matched.length>0&&matched.length<areas.length;
@@ -3960,35 +3960,35 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     <Icon name="star" active={isFav&&isFav(favId({complex_name:d.name,lawd_cd:sel.lawd_cd,property_type:d.property_type}))} size={26}/>
    </button>}
   </div>
-  {narrowed&&<div className="card" style={{padding:"11px 14px",marginTop:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-   <span style={{fontSize:13,fontWeight:700,minWidth:0}}>전용 {matched.map(a=>areaTxt(a,unit)).join(" · ")} 평형만 보는 중</span>
-   <button onClick={()=>onOpen&&onOpen({complex_name:d.name,lawd_cd:sel.lawd_cd,property_type:d.property_type,gu:d.gu,dong:d.dong})} style={{marginLeft:"auto",border:"1px solid var(--line)",background:"var(--surface-2)",color:TEAL,fontWeight:700,fontSize:12,borderRadius:9,padding:"7px 12px",cursor:"pointer",flex:"none"}}>전체 평형 보기</button>
+  {pyList.length>1&&<div style={{display:"flex",gap:6,overflowX:"auto",margin:"12px 0 0",paddingBottom:2}}>
+   <button onClick={()=>setTabPy(null)} className={"tog "+(focusPy==null?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>전체</button>
+   {pyList.map(py=><button key={py} onClick={()=>setTabPy(py)} className={"tog "+(focusPy===py?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>{py}평</button>)}
   </div>}
-  {!narrowed&&<div className="card" style={{padding:16,marginTop:12}}>
+  <div className="card" style={{padding:16,marginTop:12}}>
    <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
     <div style={{minWidth:0}}>
-     <div style={{fontSize:12.5,color:MUTED}}>단지 전체 최근 매매가 <span style={{fontSize:10.5}}>· 최근 {AGG_MONTHS}개월 기준</span></div>
-     <div className="num" style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginTop:3}}>{eok(d.latest_amount)}</div>
+     <div style={{fontSize:12.5,color:MUTED}}>{narrowed?`전용 ${card.scope} 최근 매매가`:"단지 전체 최근 매매가"} <span style={{fontSize:10.5}}>· 최근 {AGG_MONTHS}개월 기준</span></div>
+     <div className="num" style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginTop:3}}>{card.latest!=null?eok(card.latest):"—"}</div>
     </div>
     <div style={{marginLeft:"auto",textAlign:"right",flex:"none"}}>
-     <div style={{fontSize:17,fontWeight:800}}><Delta v={d.from_peak_pct}/></div>
-     <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>최근 {AGG_MONTHS}개월 고점 {eok(d.peak_amount)} 대비</div>
+     <div style={{fontSize:17,fontWeight:800}}><Delta v={card.fromPeak}/></div>
+     <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>최근 {AGG_MONTHS}개월 고점 {card.peak!=null?eok(card.peak):"—"} 대비</div>
     </div>
    </div>
-   {d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+   {!narrowed&&d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
     <span style={{fontSize:13}}>📍</span>
     <span style={{fontSize:13,fontWeight:700}}>{d.vs_region.gu} 평균 대비</span>
     <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
     <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>평단가 {d.vs_region.complex_ppm?.toLocaleString?.()||d.vs_region.complex_ppm} vs {d.vs_region.gu_ppm?.toLocaleString?.()||d.vs_region.gu_ppm} 만원/평</span>
    </div>}
-   {(d.timeseries||[]).length>1&&<TrendBlock ts={d.timeseries}/>}
+   {(card.ts||[]).length>1&&<TrendBlock ts={card.ts}/>}
    <div style={{height:1,background:"rgba(99,120,128,.12)",margin:"13px 0 11px"}}/>
    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"11px 10px"}}>
-    <DMetric label="매매 거래" val={`${d.trade_count}건`}/>
-    <JeonseMetric ratio={d.jeonse_ratio}/>
-    <DMetric label="면적 타입" val={`${areas.length}개`}/>
+    <DMetric label="매매 거래" val={`${card.count!=null?card.count:0}건`}/>
+    <JeonseMetric ratio={card.jr}/>
+    {narrowed?<DMetric label={<React.Fragment>평단가<Info text="전용 1평(3.3㎡)당 가격(만원)."/></React.Fragment>} val={card.ppm!=null?card.ppm.toLocaleString("ko-KR"):"—"} sub="만원/평"/>:<DMetric label="면적 타입" val={`${areas.length}개`}/>}
    </div>
-  </div>}
+  </div>
   {(d.canceled_count>0||d.reliability==="low"||d.reliability==="fair")&&<div className="card" style={{padding:"10px 13px",marginTop:10,background:"var(--callout-bg)",border:"none"}}>
    <div style={{fontSize:12.5,color:"var(--callout-fg)",lineHeight:1.6,fontWeight:600}}>
     {(d.reliability==="low"||d.reliability==="fair")&&<span>최근 {AGG_MONTHS}개월 거래 표본이 적어({d.trade_count}건) 시세가 흔들릴 수 있어요. 참고용으로 봐 주세요. </span>}
@@ -3996,7 +3996,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </div>}
   <VolumeSignal volume={d.volume}/>
-  <RentSignal sig={d.rent_signal}/>
+  <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
   <PriceCheck name={d.name} lawd={d.lawd_cd||sel.lawd_cd} pt={d.property_type||sel.property_type}/>
   <Collapsible icon="map" defaultOpen={true} title="위치">
    <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
@@ -4038,7 +4038,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   <ExternalListings d={d}/>
   <Collapsible icon="search" defaultOpen={narrowed} title={`면적별 상세${narrowed?" (선택 평형)":""}`}>
    <div style={{padding:"2px 0"}}>
-   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)}/>)
+   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)} open={narrowed||useAreas.length===1}/>)
     :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
    </div>
   </Collapsible>
@@ -4083,7 +4083,6 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     <Loan key={loanArea?loanArea.area:(useAreas[0]?useAreas[0].area:"none")} initialPrice={loanInit} onOpen={onOpen}/>
    </div>
   </Collapsible>
-  <JeonseSafety ratio={jr} scope={narrowed?(matched.map(a=>areaTxt(a,unit)).join("·")+" 기준"):"단지 전체 기준"}/>
   <div style={{height:16}}/>
  </div>);
 }

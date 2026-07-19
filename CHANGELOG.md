@@ -3,6 +3,28 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.177 (2026-06-28) — Claude Code 인수인계 문서화
+- **`HANDOFF_TO_CLAUDE_CODE.md` 신설** — 웹 Claude에서 Claude Code 환경으로 옮기면서 새 Claude가 처음 읽어야 할 최상단 인수인계서.
+  - 사용자 절대 원칙(왜곡 없음·인수인계 문서·step by step·대규모 대비·먼저 파악해 제안·최신 UI·실제 앱 테스트·서비스 단계 실수 금지) 명문화.
+  - 3층 해자 전략, 메인 기능 결정('판단이 얹힌 지도'), 완비 기능/데이터 대기 기능/알려진 부채 스냅샷.
+  - 진행 중이던 카카오 KOE101 미완 상태 + 다음 큰 작업(PostgreSQL 전환) 명시.
+  - Claude Code 환경 첫 실행 절차, 검증 3층 루틴, 코드 구조·문서 위계, 릴리스 규율·패키징 관례, 커뮤니케이션 스타일, 정적 검사가 못 잡았던 사고 5건 교훈 정리.
+- ROADMAP 스냅샷: v1.176으로 갱신, 인수인계 사실 표시.
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18. (문서만 추가, 코드 무변경)
+## v1.176 (2026-06-28) — 소셜 로그인 콜백 진단성·안정성 강화
+- **[FIX] 조용한 KeyError → 원인 표면화**: `_exchange_and_profile` 가 `tok["access_token"]`·`me["id"]` 를 직접 인덱싱해 실패 시 KeyError → 조용히 `?login=error` 리다이렉트 → **원인 진단 불가**. `.get()` + 상세 `RuntimeError("<provider> token 실패: ...")` 로 개편.
+- **[진단] 콜백 실패 사유 로그·URL 노출**: 콜백에서 예외 발생 시 `auth.oauth` 로거에 스택 남기고, 리다이렉트 URL 에 `?login=error&provider=<p>&why=<짧은 사유>` 붙임(시크릿 없음). 사용자·개발자 둘 다 원인 즉시 확인 가능.
+- **[FIX] 카카오 Client Secret 지원**: 카카오 콘솔 '보안 > Client Secret 사용' ON 한 앱은 토큰 교환 시 secret 필수인데 기존 코드가 안 보냄 → 실패. `KAKAO_LOGIN_CLIENT_SECRET` env(선택) 추가, 설정 시에만 전송. OFF 앱이면 비워두면 됨.
+- `SOCIAL_LOGIN_DEBUG.md` §7 로컬 진단 절차 추가(카카오 동의항목·네이버 사용 API 활성화 등 실제 원인 매핑).
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
+## v1.175 (2026-06-28) — 소셜 로그인(카카오·네이버) 진단·수정
+- **[FIX] OAuth redirect_uri·state URL 인코딩 부재**: `app/api/auth.py` `/login/{provider}` 가 `redirect_uri=<https URL>` 을 미인코딩 raw 로 붙였음(카카오·네이버 모두 문자 단위 일치 요구 — 미인코딩 시 KOE006·redirect_uri_mismatch 유발 가능성). `urllib.parse.quote(safe="")` 로 감쌈. 실제 부팅해 URL 확인(`redirect_uri=https%3A%2F%2F...`) 정상.
+- **[진단 문서] `SOCIAL_LOGIN_DEBUG.md` 신설** — ①필수 env 5종(AUTH_REDIRECT_BASE·KAKAO_LOGIN_REST_KEY·NAVER_LOGIN_CLIENT_ID/SECRET·JWT_SECRET) + `/auth/config` 확인 ②콘솔 리다이렉트 URI 문자 단위 일치(카카오 로그인 활성화·REST 키 / 네이버 서비스URL·CallbackURL) ③프런트 alert 문구별 원인 ④콜백 에러 코드 매핑(KOE006·KOE101·unauthorized_client) ⑤Shell 격리 테스트 ⑥임시 우회.
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18 · 실앱 부팅으로 인코딩 URL 육안 확인.
+## v1.174 (2026-06-28) — 🚨 지도 탭 크래시 긴급 수정(useRef 누락)
+- **[FIX] 지도 탭 진입 시 화면 크래시**: v1.169에서 지도 개선(급매핀·현위치) 배선 시 MapHub 안 `useRef(null)` 호출을 추가했으나, 파일 상단 `const {useState,useEffect,useMemo,useCallback} = React;` 에 **`useRef` 구조분해를 안 넣음**. 지도 탭 진입 순간 ReferenceError → 화면 크래시. `useRef` 추가로 즉시 해소.
+- **[예방] `scripts/verify_frontend`에 'React 훅 import/구조분해 정합' 검사 추가** — 파일에서 호출된 훅(useState/useEffect/useMemo/useCallback/**useRef**/useReducer/useContext/useLayoutEffect/useTransition)이 import 또는 React 구조분해로 실제 들어와 있는지 대조. 오프라인 검사(괄호·구문)가 못 잡는 '런타임 ReferenceError로 화면 크래시' 유형 영구 차단. 자가 테스트로 검증기 자체 동작 확인. verify_all 게이트에 자동 포함.
+- 검증: verify_all PASS · pytest 148 · smoke_e2e 18.
 ## v1.173 (2026-06-28) — 더보기 '🛡 전세 안전 진단'(앱 내 상세 제공, 단순 링크 아님)
 - **깡통전세 계산기(JeonseGuard)**: 매매 시세·전세 보증금·등기부(을구) 근저당 채권최고액 입력 → **(보증금+선순위)÷시세 비율**을 밴드로 진단(≥80% 위험 신호/70~80 주의/<70 상대적 여유) + 보증보험·특약 행동 안내. 계산식·'채권최고액=통상 원금의 110~130%' 설명, **단정 금지 면책**(경매 배당·법적 판단 아님). 외부 링크(등기부)와 "떼서 이 숫자를 넣으세요"로 연결되는 구조.
 - **전세 계약 단계별 체크리스트**(접이식): 계약 전(등기부·건축물대장·전세가율·임대인 체납 열람)/계약일(당일 재발급·임대인 계좌·특약)/잔금·입주(재확인·전입신고+확정일자·보증보험) — 검증된 일반 절차만, '법률 자문 아님' 고지.

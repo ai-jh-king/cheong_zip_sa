@@ -84,6 +84,20 @@ def main() -> int:
     dups = sorted({n for n in names if names.count(n) > 1})
     check("최상위 함수 중복 정의 없음", not dups, f"중복={dups}" if dups else "")
 
+    # 7) React 훅 사용 정합 — 파일 안에서 `useX(` 호출된 훅이 import(또는 React 구조분해)로 들어와 있어야 한다.
+    #    구조분해 안 된 훅을 그냥 호출하면 런타임 ReferenceError(실제 사고: v1.169 지도 탭 useRef 미포함=크래시).
+    react_hooks = ("useState","useEffect","useMemo","useCallback","useRef",
+                   "useReducer","useContext","useLayoutEffect","useTransition")
+    imported = set()
+    m = re.search(r"const\s*\{([^}]+)\}\s*=\s*React\s*;", code)
+    if m:
+        imported |= {t.strip() for t in m.group(1).split(",") if t.strip()}
+    for h in re.findall(r"import\s*\{([^}]+)\}\s*from\s*['\"]react['\"]", code):
+        imported |= {t.strip().split(" as ")[-1] for t in h.split(",") if t.strip()}
+    used = {h for h in react_hooks if re.search(rf"(?<![A-Za-z_.]){h}\s*\(", code)}
+    missing = sorted(used - imported)
+    check("React 훅 import/구조분해 정합", not missing, f"누락(런타임 크래시)={missing}" if missing else "")
+
     print("== 결과:", "PASS ✅" if ok else "FAIL ❌", "==")
     return 0 if ok else 1
 

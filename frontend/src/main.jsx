@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 const ReactDOM = { createRoot, createPortal };
 // 아래는 기존 app/web/index.html 의 인라인 스크립트 본문(무변경) + API 설정 한 줄만 env 화.
 
-const {useState,useEffect,useMemo,useCallback} = React;
+const {useState,useEffect,useMemo,useCallback,useRef} = React;
 const UP="var(--up)",DOWN="var(--down)",INK="var(--ink)",MUTED="var(--muted)",TEAL="var(--teal)",LINE="var(--line)";
 const GU_NAME={"43111":"상당구","43112":"서원구","43113":"흥덕구","43114":"청원구"};
 const GU_FULL=c=>"청주시 "+(GU_NAME[c]||c);

@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     places_medical_url: str = ""   # 전국의료기관표준데이터(15096293) — 좌표 EPSG:5174 주의
     # --- 개인화 2단계: 소셜 로그인(구조만, 키 설정 시 활성화) ---
     kakao_login_rest_key: str = ""        # 카카오 로그인 REST 키(지도 키와 별개 앱일 수 있음)
+    kakao_login_client_secret: str = ""   # 카카오 콘솔 '보안 > Client Secret 사용' ON 한 경우만 설정. OFF면 비워둠(있어도 무해)
     naver_login_client_id: str = ""       # 네이버 로그인 Client ID(검색/지도 키와 별개)
     naver_login_client_secret: str = ""
     auth_redirect_base: str = ""          # OAuth 리다이렉트 base URL(배포 도메인)

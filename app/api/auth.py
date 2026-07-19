@@ -6,6 +6,7 @@
 - 비밀키·토큰은 로그에 남기지 않는다.
 """
 import secrets
+from urllib.parse import quote as _urlquote
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Header, HTTPException
@@ -104,16 +105,22 @@ def account_from_auth(db: Session, authorization: str | None) -> Account | None:
 
 
 def _exchange_and_profile(s, provider: str, code: str, state: str):
-    """code → access_token → 프로필(provider_uid, nickname)."""
+    """code → access_token → 프로필(provider_uid, nickname). 실패 시 상세 예외를 남긴다."""
     if provider == "kakao":
-        tok = httpx.post(s.kakao_token_url, data={
-            "grant_type": "authorization_code", "client_id": s.kakao_login_rest_key,
-            "redirect_uri": _redirect_uri(s, "kakao"), "code": code,
-        }, timeout=10).json()
-        at = tok["access_token"]
+        data = {"grant_type": "authorization_code", "client_id": s.kakao_login_rest_key,
+                "redirect_uri": _redirect_uri(s, "kakao"), "code": code}
+        # 카카오 콘솔 '보안'에서 Client Secret 사용을 켠 앱은 필수. 안 켰으면 무시됨(있어도 무해).
+        if getattr(s, "kakao_login_client_secret", ""):
+            data["client_secret"] = s.kakao_login_client_secret
+        tok = httpx.post(s.kakao_token_url, data=data, timeout=10).json()
+        at = tok.get("access_token")
+        if not at:
+            raise RuntimeError(f"kakao token 실패: {tok.get('error') or tok.get('msg') or tok}")
         me = httpx.get(s.kakao_userinfo_url,
                        headers={"Authorization": f"Bearer {at}"}, timeout=10).json()
-        uid = str(me["id"])
+        uid = str(me.get("id") or "")
+        if not uid:
+            raise RuntimeError(f"kakao profile 실패: {me.get('msg') or me}")
         nick = ((me.get("kakao_account", {}) or {}).get("profile", {}) or {}).get("nickname") \
             or (me.get("properties", {}) or {}).get("nickname")
         return uid, nick
@@ -121,11 +128,16 @@ def _exchange_and_profile(s, provider: str, code: str, state: str):
         "grant_type": "authorization_code", "client_id": s.naver_login_client_id,
         "client_secret": s.naver_login_client_secret, "code": code, "state": state,
     }, timeout=10).json()
-    at = tok["access_token"]
+    at = tok.get("access_token")
+    if not at:
+        raise RuntimeError(f"naver token 실패: {tok.get('error') or tok.get('error_description') or tok}")
     me = httpx.get(s.naver_userinfo_url,
                    headers={"Authorization": f"Bearer {at}"}, timeout=10).json()
     r = me.get("response", {}) or {}
-    return str(r.get("id")), (r.get("nickname") or r.get("name"))
+    uid = str(r.get("id") or "")
+    if not uid:
+        raise RuntimeError(f"naver profile 실패: {me.get('message') or me}")
+    return uid, (r.get("nickname") or r.get("name"))
 
 
 @router.get("/config")
@@ -150,17 +162,18 @@ def login_url(provider: str, device_id: str = Query("")):
     if not s.auth_redirect_base:
         raise HTTPException(status_code=400, detail="AUTH_REDIRECT_BASE(배포 도메인) 설정이 필요합니다.")
     state = sign_state(f"{device_id}|{secrets.token_urlsafe(8)}")
-    ru = _redirect_uri(s, provider)
+    ru = _urlquote(_redirect_uri(s, provider), safe="")   # https://... → https%3A%2F%2F... (콘솔 등록값과 완전 일치 필수)
+    st = _urlquote(state, safe="")
     if provider == "kakao":
         if not s.kakao_login_rest_key:
             raise HTTPException(status_code=400, detail="카카오 로그인 키 미설정")
         url = (f"{s.kakao_authorize_url}?response_type=code"
-               f"&client_id={s.kakao_login_rest_key}&redirect_uri={ru}&state={state}")
+               f"&client_id={s.kakao_login_rest_key}&redirect_uri={ru}&state={st}")
     else:
         if not (s.naver_login_client_id and s.naver_login_client_secret):
             raise HTTPException(status_code=400, detail="네이버 로그인 키 미설정")
         url = (f"{s.naver_authorize_url}?response_type=code"
-               f"&client_id={s.naver_login_client_id}&redirect_uri={ru}&state={state}")
+               f"&client_id={s.naver_login_client_id}&redirect_uri={ru}&state={st}")
     return {"url": url}
 
 
@@ -175,8 +188,13 @@ def callback(provider: str, code: str = Query(""), state: str = Query(""),
     device_id = data.split("|")[0] if data else ""
     try:
         uid, nick = _exchange_and_profile(s, provider, code, state)
-    except Exception:
-        return RedirectResponse(f"{app_base}/?login=error")
+    except Exception as e:
+        import logging
+        logging.getLogger("auth.oauth").exception("%s 콜백 실패: %s", provider, e)
+        # URL 에 사유 힌트(내용은 짧게, 시크릿 노출 없음)
+        from urllib.parse import quote as _q
+        reason = _q(str(e)[:120], safe="")
+        return RedirectResponse(f"{app_base}/?login=error&provider={provider}&why={reason}")
     if not uid:
         return RedirectResponse(f"{app_base}/?login=error")
     acc = _upsert_account(db, provider, uid, nick)

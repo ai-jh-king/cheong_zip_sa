@@ -164,6 +164,8 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 ## 10. 자주 실수하는 함정 (DO NOT)
 - ❌ **JSX 렌더 루프에서 React 컴포넌트를 정의해 `<Comp/>`로 쓰지 말 것** → 매 렌더 리마운트로 **입력 포커스 빠짐**. 컴포넌트는 모듈 레벨에 정의. 리스트 항목에 인라인이 필요하면 **컴포넌트가 아니라 "JSX를 반환하는 렌더 함수"**(예: `renderCmt(c)`)로 작성(리마운트 없음).
 - ❌ **한 컴포넌트의 지역 헬퍼(예: 지역 `const segBtn`)를 다른 컴포넌트에서 쓰지 말 것** → 스코프 밖 `ReferenceError`로 **런타임 크래시**(실제 v1.136 게시판 크래시 원인). 공용 헬퍼는 **모듈 레벨**에 두거나(예: `guOf`·`onEnter`·`eok`·`Delta`) 인라인으로. 새 버튼은 공용 CSS 클래스 **`.btn-primary`/`.btn-ghost`**(index.html) 사용 권장.
+- ⚠️ **소셜 로그인 URL 인코딩**: 카카오/네이버 OAuth `redirect_uri`·`state`는 `urllib.parse.quote(safe="")`로 인코딩 필수(콘솔 등록값과 문자 단위 일치 요구). 미인코딩 = KOE006·redirect_uri_mismatch(v1.175 수정). 트러블슈팅: `SOCIAL_LOGIN_DEBUG.md`.
+- ⚠️ **React 훅 구조분해 누락**: 새 훅 사용 시 파일 상단 `const {...} = React;` 에 반드시 추가. 누락 시 오프라인 검사(괄호·구문)는 통과하지만 **런타임 ReferenceError로 해당 화면 크래시**(실제 사고: v1.169 지도탭 useRef 미포함). verify_frontend 에 정합 검사 추가.
 - ⚠️ **`def` 줄 str_replace 시 데코레이터 전이 주의**: 데코레이터(`@stat_cached()` 등)가 붙은 함수의 `def` 줄을 교체·이동하면, 데코레이터는 제자리에 남아 **아래로 새로 온 함수에 잘못 적용**된다(실제 사고: rent_gap_signal 이 stat_cached 를 물려받아 인자 무관 첫 결과만 반환=전세가율 왜곡). `@stat_cached`는 `(db, ...)` 시그니처 전용(첫 인자를 db로 간주).
 - ⚠️ **`def` 줄을 포함한 str_replace 주의**: 함수 시그니처를 교체할 때 새 내용에서 그 `def` 줄을 빠뜨리면, 뒤 본문이 **앞 함수에 흡수**돼(문법상 정상 → compileall 통과) 해당 함수가 **정의 소실**된다(실제 사고: complex_detail). 편집 후 `scripts/verify_imports`로 확인.
 - ⚠️ **오프라인 검증(괄호·compileall·verify_frontend)은 런타임 ReferenceError를 못 잡는다.** 심볼이 실제 스코프에 있는지 눈으로 확인하고, 배포 전 브라우저 스모크(게시판 진입·지도·단지상세 열기)를 반드시 수행(`TESTING.md`).

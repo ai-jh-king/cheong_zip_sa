@@ -3949,6 +3949,30 @@ function CautionSignals({card,d}){
   <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>참고용 신호 모음이며 매수·매도 판단이 아니에요.</div>
  </div>);
 }
+function HoodProfile({d}){
+ // 전입자용 '한눈에' 요약 — 이미 있는 사실만 조합(새 데이터 0). '조용한 동네' 같은 주관 평가는
+ // 데이터에 없으므로 담지 않음(왜곡 없음). 각 칩은 실거래·공공데이터 사실.
+ const chips=[];
+ const yr=d.build_year;
+ if(yr){const age=new Date().getFullYear()-yr; const tag=age<=10?"신축":age<=25?"준신축":"구축";
+  chips.push(["🏗", yr+"년·"+tag]);}
+ if(d.vs_region&&d.vs_region.pct!=null){const p=d.vs_region.pct;
+  const tag=p<=-5?"구 평균보다 저렴":p>=5?"구 평균보다 높음":"구 평균 수준";
+  chips.push(["📍", d.vs_region.gu+" 대비 "+(p>0?"+":"")+p+"% · "+tag]);}
+ const jobs=(d.work_access||[]).filter(h=>h.category==="job").sort((a,b)=>(a.distance_km||0)-(b.distance_km||0));
+ if(jobs.length) chips.push(["🏭", jobs[0].name+" "+jobs[0].distance_km+"km"]);
+ const el=d.school_access&&d.school_access.elementary;
+ if(el&&el.distance!=null) chips.push(["🏫", (el.name||"초등학교")+" "+(el.distance<=400?"도보 5분·초품아":distM(el.distance))]);
+ if(d.landmarks&&d.landmarks.length) chips.push(["🚀", "인근 개발 호재 "+d.landmarks.length+"건"]);
+ if(!chips.length) return null;
+ return (<div className="card" style={{padding:"12px 14px",marginTop:10}}>
+  <div style={{fontWeight:800,fontSize:13.5,marginBottom:8}}>🏘 이 단지 한눈에</div>
+  <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+   {chips.map(([ic,t],i)=><span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:"var(--surface-2)",borderRadius:9,padding:"6px 10px",fontSize:12.5,fontWeight:600}}>{ic} {t}</span>)}
+  </div>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>실거래·공공데이터 기반 사실 요약이에요. 직선거리·공개분 기준이며 동네 분위기 등 주관적 평가는 담지 않습니다.</div>
+ </div>);
+}
 function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,onOpen}){
  const unit=useUnit();
  const [d,setD]=useState(null);
@@ -4037,6 +4061,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
     {narrowed?<DMetric label={<React.Fragment>평단가<Info text="전용 1평(3.3㎡)당 가격(만원)."/></React.Fragment>} val={card.ppm!=null?card.ppm.toLocaleString("ko-KR"):"—"} sub="만원/평"/>:<DMetric label="면적 타입" val={`${areas.length}개`}/>}
    </div>
   </div>
+  <HoodProfile d={d}/>
   <CautionSignals card={card} d={d}/>
   <VolumeSignal volume={d.volume}/>
   <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>

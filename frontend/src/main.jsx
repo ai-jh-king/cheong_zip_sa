@@ -3111,7 +3111,7 @@ function useNaver(clientId,enabled){
  },[clientId,enabled]);
  return {ready,err};
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, onMapReady, full}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const ref=React.useRef(null);
  const mapObj=React.useRef(null);
@@ -3119,6 +3119,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
  const poiObjs=React.useRef([]);
  const lmObjs=React.useRef([]);
  const bgObjs=React.useRef([]);   // 급매(낮은가격 거래) 핀
+ const jrObjs=React.useRef([]);   // 전세가율 위험(역전세 유의) 핀
  const fitDone=React.useRef("");
  const [tick,setTick]=useState(0);
  const POI_META={education:{c:"#7A5AF8",e:"🎓"},sports:{c:"#2563D8",e:"🏃"},living:{c:"#0E7C71",e:"🏪"}};
@@ -3237,6 +3238,23 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   }).catch(()=>{});
   return ()=>{alive=false;};
  },[ready,showBg]);
+ useEffect(()=>{
+  if(!ready||!mapObj.current||!window.naver)return;
+  const n=window.naver, map=mapObj.current;
+  const clearJr=()=>{jrObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});jrObjs.current=[];};
+  if(!showJr){clearJr();return;}
+  let alive=true;
+  fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{ if(!alive)return; clearJr();
+   ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
+    const col=J.level==="high"?"#C8322A":"#C77A1A";
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${col};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">🏠 ${J.ratio}%</div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(J.lat,J.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:109});
+    n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment",gu:J.gu}); });
+    jrObjs.current.push(mk);
+   });
+  }).catch(()=>{});
+  return ()=>{alive=false;};
+ },[ready,showJr]);
  useEffect(()=>{ if(ready&&mapObj.current&&onMapReady)onMapReady(mapObj.current); },[ready]);
  if(!mapCfg.enabled)return <Notice>지도를 보려면 서버 <b>.env</b> 에 <b>NAVER_MAP_CLIENT_ID</b> 를 넣고 새로고침하세요. (네이버 클라우드 플랫폼 Maps의 Client ID)</Notice>;
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
@@ -3271,6 +3289,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
  const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
  const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
+ const [showJr,setShowJr]=useState(false);   // 🏠 전세가율 위험(역전세 유의) 핀
  const mapRef=useRef(null);                  // 현위치 이동용 지도 인스턴스
  const [locBusy,setLocBusy]=useState(false);
  const goMyLoc=()=>{ if(!navigator.geolocation||!mapRef.current||!window.naver){alert("현재 위치를 사용할 수 없어요. 위치 권한을 확인해주세요.");return;}
@@ -3300,7 +3319,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const vc=viewport?viewport.count:(gsum?gsum.count:markers.length);
  const vm=viewport?viewport.median:(gsum?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={markers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} onMapReady={m=>{mapRef.current=m;}} full={true}/>
+  <PriceMarkerMap markers={markers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}/>
   {/* 상단 오버레이: 필터(가로 스크롤) */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",flexDirection:"column",gap:6,padding:"0 10px",pointerEvents:"none"}}>
    <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
@@ -3316,6 +3335,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
      <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
      <button onClick={()=>setShowLm(v=>!v)} style={{...chip(showLm),fontSize:12}}>🏗 호재</button>
      <button onClick={()=>setShowBg(v=>!v)} style={{...chip(showBg),fontSize:12}} title="같은 평형 중앙값 대비 크게 낮게 신고된 실거래(사유 있을 수 있음)">📉 급매</button>
+     <button onClick={()=>setShowJr(v=>!v)} style={{...chip(showJr),fontSize:12}} title="전세보증금 중앙값÷매매가 중앙값이 높은 단지(역전세 유의·단정 아님)">🏠 전세위험</button>
     </div>
    </div>
   </div>

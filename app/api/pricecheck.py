@@ -23,3 +23,11 @@ def gu_ctx(db: Session = Depends(get_db)):
 def bargains(months: int = Query(3, ge=1, le=12), limit: int = Query(12, ge=1, le=30),
              db: Session = Depends(get_db)):
     return svc.bargain_radar(db, months=months, limit=limit)
+
+
+@router.get("/jeonse-risk")
+def jeonse_risk(min_ratio: float = Query(75.0, ge=50, le=100),
+                limit: int = Query(200, ge=1, le=500),
+                db: Session = Depends(get_db)):
+    """전세가율 높은 단지(역전세 유의) 지도 핀. 표본 게이팅·좌표 있는 단지만·면책 포함."""
+    return svc.jeonse_risk_map(db, min_ratio=min_ratio, limit=limit)

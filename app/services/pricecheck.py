@@ -131,3 +131,54 @@ def bargain_radar(db: Session, months: int = 3, threshold_pct: float = -12.0,
     return {"months": months, "threshold_pct": threshold_pct, "items": hits,
             "disclaimer": ("같은 평형의 12개월 중앙값 대비 낮게 신고된 실거래 '사실'입니다. "
                            "저층·수리필요·가족 간 거래 등 사유가 있을 수 있어 '급매'를 단정하지 않습니다.")}
+
+
+def jeonse_risk_map(db: Session, months: int | None = None, min_ratio: float = 75.0,
+                    min_sample: int = 3, limit: int = 200) -> dict:
+    """전세가율(전세보증금 중앙값 ÷ 매매가 중앙값)이 높은 단지를 '사실'로 나열 — '판단이 얹힌 지도'용.
+    청주 최대 화두(갭투자·역전세)의 공간 신호. 역전세 '단정' 금지, 표본 게이팅, 좌표 없으면 제외(왜곡 없음).
+    단지 상세의 jeonse_ratio(median 전세보증금/median 매매가)와 동일한 산식."""
+    months = months or _agg_months()
+    since = date.today() - timedelta(days=months * 31)
+    rows = db.execute(select(Transaction.complex_name, Transaction.lawd_cd,
+                             Transaction.deal_type, Transaction.deal_amount,
+                             Transaction.deposit).where(
+        Transaction.property_type == "apartment", Transaction.is_canceled.isnot(True),
+        Transaction.complex_name.isnot(None), Transaction.contract_date >= since)).all()
+    agg: dict = {}
+    for nm, lawd, dt, amt, dep in rows:
+        if not nm:
+            continue
+        g = agg.setdefault((nm, lawd), {"sale": [], "jeonse": []})
+        if dt == "trade" and amt:
+            g["sale"].append(amt)
+        elif dt == "jeonse" and dep:
+            g["jeonse"].append(dep)
+    # 지오코딩된 단지만 좌표 부여 → 없으면 핀 제외(왜곡 없음)
+    from app.models import Complex
+    coord = {(cx.name, cx.lawd_cd): (cx.lat, cx.lng)
+             for cx in db.scalars(select(Complex).where(Complex.lat.isnot(None)))}
+    items = []
+    for (nm, lawd), g in agg.items():
+        # 매매·전세 둘 다 표본이 충분할 때만(얇은 표본으로 역전세 위험을 단정하지 않기 위해)
+        if len(g["sale"]) < min_sample or len(g["jeonse"]) < min_sample:
+            continue
+        ll = coord.get((nm, lawd))
+        if not ll or ll[0] is None:
+            continue
+        sale_med = median(g["sale"])
+        if not sale_med:
+            continue
+        ratio = round(median(g["jeonse"]) / sale_med * 100, 1)
+        if ratio < min_ratio:
+            continue
+        items.append({"name": nm, "gu": _gu_name(lawd), "lawd_cd": lawd,
+                      "lat": ll[0], "lng": ll[1], "ratio": ratio,
+                      "level": "high" if ratio >= 85 else "elevated",
+                      "sale_count": len(g["sale"]), "jeonse_count": len(g["jeonse"])})
+    items.sort(key=lambda x: -x["ratio"])
+    items = items[:limit]
+    return {"months": months, "min_ratio": min_ratio, "items": items,
+            "disclaimer": ("전세보증금 중앙값 ÷ 매매가 중앙값(최근 실거래)이 높은 단지 '사실'입니다. "
+                           "전세가율이 높을수록 시세 하락 시 보증금 회수가 어려워질 수 있으나, 실제 위험은 "
+                           "등기부·선순위 채권·개별 계약으로 달라지며 역전세를 단정하지 않습니다.")}

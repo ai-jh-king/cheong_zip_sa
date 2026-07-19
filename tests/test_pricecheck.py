@@ -43,6 +43,47 @@ def test_gu_context_medians(db):
     assert it["price_median"] == 60000 and it["count"] == 3 and it["ppm_median"] > 0
 
 
+def _jx(name, dep, key, lawd="43113", d=date(2026, 5, 10)):
+    return Transaction(lawd_cd=lawd, property_type="apartment", deal_type="jeonse",
+                       complex_name=name, exclusive_area=84.9, contract_date=d,
+                       deposit=dep, source="TEST", dedup_key=key)
+
+
+def test_jeonse_risk_map_flags_high_ratio_with_coords(db):
+    """전세가율 높은 단지를 좌표와 함께 나열(지도 핀). 좌표 없으면 제외(왜곡 없음)·판정 없음."""
+    from app.models import Complex
+    db.add(Complex(name="갭단지", lawd_cd="43113", property_type="apartment", lat=36.64, lng=127.42))
+    for i, a in enumerate([50000, 52000, 54000]):
+        db.add(_tx("갭단지", a, f"js{i}"))
+    for i, dep in enumerate([45000, 46000, 47000]):
+        db.add(_jx("갭단지", dep, f"jj{i}"))
+    for i, a in enumerate([50000, 52000, 54000]):        # 좌표 없는 단지 → 제외
+        db.add(_tx("무좌표단지", a, f"ns{i}"))
+    for i, dep in enumerate([45000, 46000, 47000]):
+        db.add(_jx("무좌표단지", dep, f"nj{i}"))
+    db.commit()
+    r = pc.jeonse_risk_map(db, min_ratio=75)
+    names = [x["name"] for x in r["items"]]
+    assert "갭단지" in names
+    assert "무좌표단지" not in names
+    it = next(x for x in r["items"] if x["name"] == "갭단지")
+    assert it["ratio"] == round(46000 / 52000 * 100, 1) and it["lat"] == 36.64
+    assert it["level"] in ("elevated", "high")
+    assert "단정하지" in r["disclaimer"]
+
+
+def test_jeonse_risk_map_gates_thin_samples(db):
+    """전세 표본이 얇으면(역전세를 단정하지 않기 위해) 핀 제외."""
+    from app.models import Complex
+    db.add(Complex(name="얇은단지", lawd_cd="43113", property_type="apartment", lat=36.6, lng=127.4))
+    for i, a in enumerate([50000, 52000, 54000]):
+        db.add(_tx("얇은단지", a, f"ts{i}"))
+    db.add(_jx("얇은단지", 46000, "tj0"))       # 전세 1건뿐 → 표본 부족
+    db.commit()
+    r = pc.jeonse_risk_map(db, min_ratio=75)
+    assert all(x["name"] != "얇은단지" for x in r["items"])
+
+
 def test_bargain_radar_includes_coords_when_geocoded(db):
     """급매 항목에 지오코딩된 단지 좌표 포함(지도 핀) — 좌표 없으면 None(왜곡 없음)."""
     from app.models import Complex

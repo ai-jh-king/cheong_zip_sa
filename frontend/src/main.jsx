@@ -4036,10 +4036,10 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    <button onClick={()=>setTabPy(null)} className={"tog "+(focusPy==null?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>전체</button>
    {pyList.map(py=><button key={py} onClick={()=>setTabPy(py)} className={"tog "+(focusPy===py?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>{py}평</button>)}
   </div>}
-  <div className="card" style={{padding:16,marginTop:12}}>
+  {focusPy==null&&pyList.length>1&&<div className="card" style={{padding:16,marginTop:12}}>
    <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
     <div style={{minWidth:0}}>
-     <div style={{fontSize:12.5,color:MUTED}}>{narrowed?`전용 ${card.scope} 최근 매매가`:"단지 전체 최근 매매가"} <span style={{fontSize:10.5}}>· 최근 {AGG_MONTHS}개월 기준</span></div>
+     <div style={{fontSize:12.5,color:MUTED}}>단지 전체 최근 매매가 <span style={{fontSize:10.5}}>· 최근 {AGG_MONTHS}개월 기준</span></div>
      <div className="num" style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginTop:3}}>{card.latest!=null?eok(card.latest):"—"}</div>
     </div>
     <div style={{marginLeft:"auto",textAlign:"right",flex:"none"}}>
@@ -4047,7 +4047,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
      <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>최근 {AGG_MONTHS}개월 고점 {card.peak!=null?eok(card.peak):"—"} 대비</div>
     </div>
    </div>
-   {!narrowed&&d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+   {d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
     <span style={{fontSize:13}}>📍</span>
     <span style={{fontSize:13,fontWeight:700}}>{d.vs_region.gu} 평균 대비</span>
     <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
@@ -4058,17 +4058,23 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"11px 10px"}}>
     <DMetric label="매매 거래" val={`${card.count!=null?card.count:0}건`}/>
     <JeonseMetric ratio={card.jr}/>
-    {narrowed?<DMetric label={<React.Fragment>평단가<Info text="전용 1평(3.3㎡)당 가격(만원)."/></React.Fragment>} val={card.ppm!=null?card.ppm.toLocaleString("ko-KR"):"—"} sub="만원/평"/>:<DMetric label="면적 타입" val={`${areas.length}개`}/>}
+    <DMetric label="면적 타입" val={`${areas.length}개`}/>
    </div>
+   <div style={{fontSize:11,color:MUTED,marginTop:9,lineHeight:1.5}}>위 평형 탭에서 평수를 고르면 그 평형의 상세(중앙값·최근 실거래·적정가 등)로 바뀝니다.</div>
+  </div>}
+  {/* 면적별 상세를 평형 탭과 통합 — 전체면 각 면적 카드(접힘), 평형 선택 시 그 평형만(펼침). 하단 별도 섹션 제거. */}
+  <div style={{marginTop:12}}>
+   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)} open={narrowed||useAreas.length===1}/>)
+    :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
   </div>
+  <Collapsible icon="map" defaultOpen={true} title="위치">
+   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
+  </Collapsible>
   <HoodProfile d={d}/>
   <CautionSignals card={card} d={d}/>
   <VolumeSignal volume={d.volume}/>
   <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
   <PriceCheck name={d.name} lawd={d.lawd_cd||sel.lawd_cd} pt={d.property_type||sel.property_type}/>
-  <Collapsible icon="map" defaultOpen={true} title="위치">
-   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
-  </Collapsible>
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
     {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
@@ -4104,12 +4110,6 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </Collapsible>}
   <ExternalListings d={d}/>
-  <Collapsible icon="search" defaultOpen={narrowed} title={`면적별 상세${narrowed?" (선택 평형)":""}`}>
-   <div style={{padding:"2px 0"}}>
-   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)} open={narrowed||useAreas.length===1}/>)
-    :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
-   </div>
-  </Collapsible>
   {d.living_score&&<LivingScore data={d.living_score}/>}
   <KidsEnv places={d.places}/>
   {d.places&&Object.keys(d.places).length>0&&<Collapsible icon="search" defaultOpen={true} title="주변 학원·운동·생활">

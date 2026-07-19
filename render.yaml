@@ -19,6 +19,10 @@ services:
     plan: starter                # 운영 중(슬립 없음). 초기 실험만이면 free 로 낮춰도 됨
     healthCheckPath: /health
     autoDeploy: true             # main 브랜치 푸시 시 자동 재배포
+    # 매 배포 직전(새 버전 라이브 전) 자동 마이그레이션 — alembic upgrade 는 멱등(이미 head면 무동작)이라 안전.
+    # PG는 init_db 가 create_all 을 안 하므로 스키마 권위 소스는 Alembic. 이 한 줄로 수동 db_upgrade 스텝 제거.
+    # (Starter 이상 유료 인스턴스에서 동작. Blueprint 미사용 시 대시보드 Settings > Pre-Deploy Command 에 동일 입력.)
+    preDeployCommand: python -m scripts.db_upgrade
     envVars:
       - key: DATABASE_URL
         fromDatabase:

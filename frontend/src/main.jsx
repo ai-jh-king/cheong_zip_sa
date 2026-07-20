@@ -2892,6 +2892,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
 
   <RecentList recents={recents} onOpen={onOpen}/>
 
+  <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
+
   <CityIssues/>
 
   <BargainRadar onOpen={onOpen}/>
@@ -2914,8 +2916,6 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
     metric={it=><span className="num" style={{fontWeight:800,fontSize:13}}>{eok(it.price)}</span>}
     onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:b.property_type||"apartment"})}/>;
   })()}
-
-  <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
 
   <TodayInfo feed={feed} go={go}/>
  </div>);

@@ -16,7 +16,7 @@
 
 ## 데이터 채우기·갱신
 1. `scripts/seed_landmarks.py` 의 `LANDMARKS` 리스트를 편집(사실·출처·좌표). 좌표 없으면 지도 핀 제외(홈 카드엔 표시).
-2. (최초 1회, 테이블 없으면) `python -m scripts.db_upgrade` — head 0018.
+2. (최초 1회, 테이블 없으면) `python -m scripts.db_upgrade` — 현행 head 0019.
 3. `python -m scripts.seed_landmarks` (name 기준 upsert·멱등).
 
 ## 표시 위치

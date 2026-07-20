@@ -110,6 +110,7 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - **복리 = 주민 인증 커뮤니티**(v1.158) 데이터 축적.
 
 ### 8.1 최근 추가(v1.135~v1.152) — 청주 특화 & 개인화 & UI
+> **v1.153 이후 주요 추가(상세는 CHANGELOG)**: 전세위험 지도핀(`jeonse_risk_map`·`/pricecheck/jeonse-risk`·지도 🏠토글, v1.180) · 단지상세 **통합 주의신호**(`CautionSignals`)·**동네 프로필**(`HoodProfile` '이 단지 한눈에')·**평형 탭 통합**(요약↔면적별, v1.179~186) · **아이콘 SVG 전면 전환**(`Icon` 컴포넌트·color prop, v1.182~185) · 홈 개인화 우선 재배치(v1.183) · **대규모 하드닝**(dev-login 프로덕션 부팅거부·미보호 레이트리밋·data_version DB화·pricecheck/coords_map 캐시·CVE 패치·pg_dump, v1.187~189).
 - **청주 특화 3축**:
   - **개발 호재**: 홈 '🏗 청주는 지금' 카드(`CityIssues`, GET `/landmarks`) + 지도 '🏗 호재' 토글 핀(클릭 시 요약·출처). 데이터=`scripts/seed_landmarks`(실제 출처: SK하이닉스 P&T7·오창 방사광가속기·테크노폴리스·북청주역세권·OSCO).
   - **직주근접**: 단지 상세 '🏭 직장·거점 거리'(`work_access`, `commute.hub_access` — CommuteDestination 좌표 재사용, **직선거리** 명시). 데이터=`scripts/seed_commute`(SK하이닉스 청주캠퍼스 포함).
@@ -147,7 +148,7 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - `skills/personalization.md` — 개인화(device_id→로그인 승계 union)
 - `skills/auth-and-roles.md` — 소셜로그인·역할(user/agent)
 - `skills/community.md` — 게시판·댓글/대댓글·좋아요/신고·알림·스크랩·작성자·**원자 카운터·포커스 규칙**
-- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0011)·**웹푸시·모니터링·백업·doctor**·레이트리밋
+- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0019, head 0019_post_resident)·**웹푸시·모니터링·백업·doctor**·레이트리밋
 - `skills/frontend.md` — UI 컨벤션·**SheetShell 바텀시트/스와이프 통일**·시세 드릴다운·상세 위젯·임장·푸시토글·데모폴백
 - `skills/testing.md` — 테스트·CI(pytest·격리·픽스처)
 - 외부 API 주소는 전부 config(.env 오버라이드, 빈 값이면 코드 기본값). 새 외부호출 추가 시 URL을 config 필드로 두고 `s.<field> or 상수` 패턴 사용.

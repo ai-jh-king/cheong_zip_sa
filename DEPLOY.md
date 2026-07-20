@@ -150,7 +150,7 @@ git add . && git commit -m "deploy: render ready" && git push
 - 크론 서비스에도 `MOLIT_SERVICE_KEY` 동일 입력.
 
 **4. 마이그레이션은 자동**
-- 웹 서비스의 `preDeployCommand: python -m scripts.db_upgrade` 가 배포마다 자동 실행(head 0016).
+- 웹 서비스의 `preDeployCommand: python -m scripts.db_upgrade` 가 배포마다 자동 실행(현행 head 0019_post_resident).
 
 **5. 첫 데이터 수집**(최초 1회는 수동 트리거 권장)
 - 크론 서비스 > **Trigger Run** 으로 즉시 1회 수집 → 이후는 매일 04:00(KST) 자동.

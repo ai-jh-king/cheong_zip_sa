@@ -222,7 +222,7 @@ curl -X POST "http://localhost:8000/admin/test/plan?account_id=<ID>&plan=premium
 - 주의: 결제·구독 추가로 마이그레이션 필요 → `python -m scripts.db_upgrade`(head=0015).
 
 ## M. 검색 인덱스(pg_trgm) — v1.99 · PostgreSQL
-- [ ] (PostgreSQL) `python -m scripts.db_upgrade`(head=0016) 후 인덱스 생성 확인:
+- [ ] (PostgreSQL) `python -m scripts.db_upgrade`(현행 head 0019; pg_trgm 인덱스는 0016 마이그레이션에서 생성) 후 인덱스 확인:
       `\di+ ix_*_trgm` (psql) 또는 `SELECT indexname FROM pg_indexes WHERE indexname LIKE '%trgm%';`
 - [ ] 인덱스 사용 확인(EXPLAIN): `EXPLAIN ANALYZE SELECT * FROM transactions WHERE complex_name LIKE '%복대%' AND deal_type='trade' LIMIT 500;` → Bitmap Index Scan on ix_tx_complex_trgm 가 보이면 OK(데이터가 충분할 때).
 - [ ] `/search?q=...` 결과는 인덱스 적용 전후 **동일**해야 함(가속만, 결과 불변).

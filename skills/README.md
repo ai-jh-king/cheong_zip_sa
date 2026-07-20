@@ -30,7 +30,7 @@ app/
   fixtures/          오프라인 검증용 표본
 scripts/  run_collect verify_region_codes geocode scheduler db_upgrade compute_commute
           seed_commute import_gongsi enrich gen_vapid backup restore doctor
-migrations/  Alembic 0001→0011 (env.py가 앱 설정 URL 사용)
+migrations/  Alembic 0001→0019 (head 0019_post_resident, env.py가 앱 설정 URL 사용)
 run.py    원클릭 실행      skills/  ← 본 지침 모음
 ```
 

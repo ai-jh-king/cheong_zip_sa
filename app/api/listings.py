@@ -11,7 +11,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File, Header
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -131,6 +131,9 @@ def _row_light(x: Listing) -> dict:
     d = _row_full(x)
     d["photos"] = (x.photos or [])[:1]
     d.pop("description", None)
+    # 연락처·상세주소는 목록에서 숨김 → 순번 ID 대량 스크래핑으로 PII 수집 방지(상세 조회에서만 노출).
+    d.pop("agent_phone", None)
+    d.pop("agent_address", None)
     return d
 
 
@@ -182,9 +185,11 @@ def get_listing(listing_id: int, device_id: str = Query(""),
         or (device_id and x.device_id and x.device_id == device_id)
     if x.status == "hidden" and not is_owner:   # 숨김 매물은 소유자만 조회(편집/복구용)
         raise HTTPException(status_code=404, detail="매물을 찾을 수 없습니다.")
-    if not is_owner:   # 외부 조회만 집계(소유자 본인 조회는 제외)
-        x.views = (x.views or 0) + 1
+    if not is_owner:   # 외부 조회만 집계(소유자 본인 조회는 제외). 원자 증가(경합 방지, read-modify-write 금지).
+        db.execute(update(Listing).where(Listing.id == listing_id)
+                   .values(views=func.coalesce(Listing.views, 0) + 1))
         db.commit()
+        db.refresh(x)
     return _row_full(x)
 
 

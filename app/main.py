@@ -230,7 +230,9 @@ def _startup():
                 "다중 워커 환경에서 워커마다 임시키가 달라 로그인 토큰이 무작위로 무효화됩니다. "
                 "32자 이상 랜덤 문자열을 JWT_SECRET 환경변수로 설정하세요.")
         if s.auth_dev_login:
-            log.warning("⚠️ 프로덕션에서 AUTH_DEV_LOGIN=true — OAuth 없이 로그인 우회 가능. 운영은 false로 설정하세요.")
+            raise RuntimeError(
+                "프로덕션에서 AUTH_DEV_LOGIN=true → 부팅 거부. /auth/dev-login 은 키·OAuth 없이 "
+                "임의 계정(중개사 권한 포함)을 발급하는 인증 우회 백도어입니다. AUTH_DEV_LOGIN=false 로 설정하세요.")
         if _allow_origins == ["*"]:
             log.warning("⚠️ 프로덕션 CORS_ORIGINS 미설정(*) — 배포 도메인으로 좁히세요. 예) CORS_ORIGINS=https://your-domain,capacitor://localhost")
     init_db()

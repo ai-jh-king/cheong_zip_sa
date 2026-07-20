@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Transaction
 from app.core.config import get_settings
+from app.core.cache import stat_cached
 from app.services.stats import PYEONG, _gu_name
 
 
@@ -57,6 +58,7 @@ def quote_check(db: Session, name: str, lawd_cd: str, asking: int,
             "disclaimer": _DISC}
 
 
+@stat_cached()
 def gu_context(db: Session, months: int | None = None) -> dict:
     """② 구별 기존 아파트 시세 맥락(분양가 옆에 참고로). 평단가·중앙값·표본수."""
     months = months or _agg_months()
@@ -79,6 +81,7 @@ def gu_context(db: Session, months: int | None = None) -> dict:
             "disclaimer": "기존 아파트 실거래 기준 참고 맥락입니다. 분양가와의 비교 판단(입지·신축 프리미엄 등)은 여러 요인을 함께 보세요."}
 
 
+@stat_cached()
 def bargain_radar(db: Session, months: int = 3, threshold_pct: float = -12.0,
                   limit: int = 12) -> dict:
     """③ 급매 레이더: 최근 실거래 중 '그 단지 최근 12개월 중앙값' 대비 threshold 이하 사례.
@@ -133,6 +136,7 @@ def bargain_radar(db: Session, months: int = 3, threshold_pct: float = -12.0,
                            "저층·수리필요·가족 간 거래 등 사유가 있을 수 있어 '급매'를 단정하지 않습니다.")}
 
 
+@stat_cached()
 def jeonse_risk_map(db: Session, months: int | None = None, min_ratio: float = 75.0,
                     min_sample: int = 3, limit: int = 200) -> dict:
     """전세가율(전세보증금 중앙값 ÷ 매매가 중앙값)이 높은 단지를 '사실'로 나열 — '판단이 얹힌 지도'용.

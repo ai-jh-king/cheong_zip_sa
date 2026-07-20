@@ -24,6 +24,8 @@ services:
     # (Starter 이상 유료 인스턴스에서 동작. Blueprint 미사용 시 대시보드 Settings > Pre-Deploy Command 에 동일 입력.)
     preDeployCommand: python -m scripts.db_upgrade
     envVars:
+      - key: APP_ENV
+        value: production        # 프로덕션 안전가드 활성화(JWT_SECRET/AUTH_DEV_LOGIN 미설정 시 부팅 거부). 미설정이면 가드 전부 무력.
       - key: DATABASE_URL
         fromDatabase:
           name: cheongju-db

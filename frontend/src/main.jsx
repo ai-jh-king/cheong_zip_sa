@@ -486,12 +486,12 @@ const onEnter=fn=>e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fn();}
 /* 아래 순수 표시 컴포넌트는 모듈 레벨에 둔다 — 부모 렌더 본문 안에 정의하면 매 렌더 리마운트(포커스·성능 churn, CLAUDE.md §10 트랩#1). */
 const Stat=({label,val})=>(<div style={{flex:1,minWidth:72,background:"var(--surface-2)",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:MUTED}}>{label}</div><div className="num" style={{fontSize:20,fontWeight:800}}>{val}</div></div>);
 const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
-  <div style={{fontSize:28,flex:"none"}}>{icon}</div>
+  <div style={{flex:"none",lineHeight:0}}><Icon name={icon} active color={TEAL} size={26}/></div>
   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:15}}>{title}</div><div style={{fontSize:12.5,color:MUTED,marginTop:2}}>{desc}</div></div>
   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
  </div>);
 const Quick=({icon,label,onClick})=>(<button onClick={onClick} style={{flex:1,border:"none",background:"var(--surface-2)",borderRadius:12,padding:"13px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-  <span style={{fontSize:22}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
+  <span style={{lineHeight:0}}><Icon name={icon} active color={TEAL} size={22}/></span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
  </button>);
 function Icon({name,active,size=24,color}){
  const c=color||(active?TEAL:"#9aa3a8");
@@ -522,6 +522,20 @@ function Icon({name,active,size=24,color}){
  if(name==="bookmark")return <svg {...p} fill={active?TEAL:"none"} stroke={active?TEAL:"#9aa3a8"}><path d="M7 4h10v16l-5-3.2L7 20z"/></svg>;
  if(name==="more")return <svg {...p}><path d="M4 7h16M4 12h16M4 17h16"/></svg>;
  if(name==="edit")return <svg {...p}><path d="M4 20h4L18.7 9.3a1.9 1.9 0 0 0-2.7-2.7L5 17.5z"/><path d="M13.5 6.7l3.8 3.8"/></svg>;
+ if(name==="compass")return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="m14.8 9.2-1.8 4.6-4.6 1.8 1.8-4.6z"/></svg>;
+ if(name==="rocket")return <svg {...p}><path d="M12 3.5c2.6 1.8 3.8 4.6 3.8 7.5 0 1.9-.8 3.7-1.6 5H9.8c-.8-1.3-1.6-3.1-1.6-5 0-2.9 1.2-5.7 3.8-7.5Z"/><circle cx="12" cy="10" r="1.5"/><path d="M8.5 16 7 20l3-1.5M15.5 16 17 20l-3-1.5"/></svg>;
+ if(name==="won")return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M7.3 9.3 9.5 15l2.5-4.8 2.5 4.8 2.2-5.7M7.3 11.4h9.4"/></svg>;
+ if(name==="shield")return <svg {...p}><path d="M12 3.5 19 6.5V11c0 4.4-3 7.4-7 8.8-4-1.4-7-4.4-7-8.8V6.5z"/></svg>;
+ if(name==="megaphone")return <svg {...p}><path d="M4.5 10.5v3l9 4V6.5zM4.5 10.5H4a1.5 1.5 0 0 0 0 3h.5M16.5 9.5a3.5 3.5 0 0 1 0 5"/></svg>;
+ if(name==="kids")return <svg {...p}><circle cx="12" cy="6" r="2.5"/><path d="M12 8.5v6M8.5 11.5h7M9.5 20 12 14.5 14.5 20"/></svg>;
+ if(name==="factory")return <svg {...p}><path d="M4 20V11l4.5 2.5V11L13 13.5V11l4.5 2.5V7.5H20V20z"/><path d="M8 20v-2.5M12 20v-2.5M16 20v-2.5"/></svg>;
+ if(name==="train")return <svg {...p}><rect x="6" y="4" width="12" height="12.5" rx="2.5"/><path d="M6 11h12M8.5 16.5 6.5 20M15.5 16.5 17.5 20"/><circle cx="9.3" cy="13.7" r="0.7" fill={c} stroke="none"/><circle cx="14.7" cy="13.7" r="0.7" fill={c} stroke="none"/></svg>;
+ if(name==="gov")return <svg {...p}><path d="M3.5 10 12 4l8.5 6M5 10v9M9 10v9M15 10v9M19 10v9M3.5 20h17"/></svg>;
+ if(name==="hospital")return <svg {...p}><path d="M5 20V8l7-4 7 4v12z"/><path d="M12 10v6M9 13h6"/></svg>;
+ if(name==="pill")return <svg {...p}><path d="M6 14 14 6a4 4 0 0 1 5.7 5.7L11.7 19.7A4 4 0 0 1 6 14Z"/><path d="M9 11.2 12.8 15"/></svg>;
+ if(name==="book")return <svg {...p}><path d="M5 5h10v14H7a2 2 0 0 1-2-2z"/><path d="M8 5v12"/></svg>;
+ if(name==="crown")return <svg {...p}><path d="M4 8.5 7.5 15h9L20 8.5l-4.5 3L12 6 8.5 11.5z"/><path d="M6.5 18h11"/></svg>;
+ if(name==="flame")return <svg {...p}><path d="M12 3c2.4 3 4.8 5 4.8 8.7A4.8 4.8 0 0 1 12 16.5a4.8 4.8 0 0 1-4.8-4.8c0-2 1-3.5 2.4-5C9.8 8.5 11 6 12 3Z"/></svg>;
  return null;
 }
 function SecTitle({icon,children}){
@@ -2202,7 +2216,7 @@ function ComplexQuickSheet({item,onClose,onDetail}){
   <div style={{height:8}}/>
  </Sheet>);
 }
-function TickerBanner({label,color,bg,items,metric,onItem,info,title}){
+function TickerBanner({label,color,bg,items,metric,onItem,info,title,icon}){
  const all=items||[];
  const ticker=all.slice(0,5);   // 펼치기 전 티커는 상위 5개만 회전
  const n=ticker.length;
@@ -2213,7 +2227,7 @@ function TickerBanner({label,color,bg,items,metric,onItem,info,title}){
  const cur=ticker[i%n];
  return (<div className="card" style={{padding:0,marginTop:8,overflow:"hidden"}}>
   <div onClick={()=>setSheet(true)} tabIndex={0} role="button" onKeyDown={onEnter(()=>setSheet(true))} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 13px",cursor:"pointer"}}>
-   <span className="pill" style={{background:bg,color,fontWeight:800,fontSize:11.5,flex:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box",minWidth:92}}>{label}</span>
+   <span className="pill" style={{background:bg,color,fontWeight:800,fontSize:11.5,flex:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:4,boxSizing:"border-box",minWidth:92}}>{icon&&<Icon name={icon} color={color} size={12.5}/>}{label}</span>
    <span className="num" style={{fontWeight:800,color,fontSize:13,flex:"none",minWidth:12,textAlign:"center"}}>{cur.rank}</span>
    <span style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,minWidth:0}}>{cur.name} {cur.contains_sample_data&&<ExBadge/>}</span>
    <span style={{flex:"none",display:"flex",alignItems:"center",gap:6}}>{metric(cur)}<span style={{color:MUTED,fontSize:15}}>›</span></span>
@@ -2490,7 +2504,7 @@ function JeonseGuard(){
  ];
  return (<div style={{marginTop:16}}>
   <div style={{margin:"0 2px 6px"}}>
-   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>🛡 전세 안전 진단</div>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="shield" active color={INK} size={17}/>전세 안전 진단</div>
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>등기부등본의 숫자를 넣으면, 경매 시 보증금 회수 여유를 계산해드려요.</div>
   </div>
   <div className="card" style={{padding:"14px 15px"}}>
@@ -2521,25 +2535,25 @@ function JeonseGuard(){
 }
 function OfficialLinks(){
  const LINKS=[
-  ["📜","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
-  ["🏗","건축물대장 발급","위반건축물·용도 확인 — 정부24","https://www.gov.kr"],
-  ["📊","실거래가 원본 조회","국토교통부 실거래가 공개시스템","https://rt.molit.go.kr"],
-  ["🏷","공시가격 알리미","주택 공시가격(보유세 기준) 확인","https://www.realtyprice.kr"],
-  ["🛡","전세보증금 반환보증","역전세 대비 보증보험·안심전세 앱 — HUG","https://www.khug.or.kr"],
-  ["💰","대출·예금 금리 비교","금융상품 통합비교공시 — 금융감독원","https://finlife.fss.or.kr"],
-  ["🧾","임대차(전월세) 신고","부동산거래관리시스템 — 국토교통부","https://rtms.molit.go.kr"],
-  ["🏦","취득·양도세 신고","국세청 홈택스","https://www.hometax.go.kr"],
-  ["🏢","청약홈","청약 신청·자격 확인 — 한국부동산원","https://www.applyhome.co.kr"],
-  ["🏛","청주시청 부동산 정보","고시·공고·도시계획","https://www.cheongju.go.kr"],
+  ["doc","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
+  ["build","건축물대장 발급","위반건축물·용도 확인 — 정부24","https://www.gov.kr"],
+  ["rank","실거래가 원본 조회","국토교통부 실거래가 공개시스템","https://rt.molit.go.kr"],
+  ["won","공시가격 알리미","주택 공시가격(보유세 기준) 확인","https://www.realtyprice.kr"],
+  ["shield","전세보증금 반환보증","역전세 대비 보증보험·안심전세 앱 — HUG","https://www.khug.or.kr"],
+  ["won","대출·예금 금리 비교","금융상품 통합비교공시 — 금융감독원","https://finlife.fss.or.kr"],
+  ["doc","임대차(전월세) 신고","부동산거래관리시스템 — 국토교통부","https://rtms.molit.go.kr"],
+  ["loan","취득·양도세 신고","국세청 홈택스","https://www.hometax.go.kr"],
+  ["subscription","청약홈","청약 신청·자격 확인 — 한국부동산원","https://www.applyhome.co.kr"],
+  ["gov","청주시청 부동산 정보","고시·공고·도시계획","https://www.cheongju.go.kr"],
  ];
  return (<div style={{marginTop:16}}>
   <div style={{margin:"0 2px 6px"}}>
-   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>🔎 계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="search" active color={INK} size={16}/>계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>청집사가 대신 확인해줄 수 없는 것들이에요. 계약 전 아래 공식 서비스에서 직접 확인하세요.</div>
   </div>
   <div className="card" style={{padding:"4px 15px"}}>
    {LINKS.map(([ic,t,d,u],i)=>(<a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<LINKS.length-1?"1px solid var(--line)":"none",textDecoration:"none"}}>
-    <span style={{fontSize:19,flex:"none"}}>{ic}</span>
+    <span style={{flex:"none",lineHeight:0}}><Icon name={ic} active color={TEAL} size={19}/></span>
     <span style={{minWidth:0,flex:1}}>
      <span style={{display:"block",fontWeight:700,fontSize:13.5,color:INK}}>{t}</span>
      <span style={{display:"block",fontSize:11.5,color:MUTED,marginTop:1}}>{d}</span>
@@ -2563,7 +2577,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
   </div>
   <div className="card" style={{padding:"14px 15px",marginTop:10}}>
    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:myHome?8:2}}>
-    <span style={{fontWeight:800,fontSize:14.5}}>🏠 우리집</span>
+    <span style={{fontWeight:800,fontSize:14.5,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="home" active color={INK} size={16}/>우리집</span>
     {myHome&&<button onClick={onClearHome} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12,cursor:"pointer"}}>삭제</button>}
    </div>
    {myHome?(
@@ -2587,24 +2601,24 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
    <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
   </div>
   <div style={{display:"flex",gap:8,marginTop:10}}>
-   <Quick icon="⭐" label="관심 단지" onClick={()=>go&&go("home")}/>
-   <Quick icon="🏢" label="청약" onClick={()=>go&&go("subscription")}/>
-   <Quick icon="💬" label="게시판" onClick={()=>go&&go("board")}/>
+   <Quick icon="star" label="관심 단지" onClick={()=>go&&go("home")}/>
+   <Quick icon="subscription" label="청약" onClick={()=>go&&go("subscription")}/>
+   <Quick icon="board" label="게시판" onClick={()=>go&&go("board")}/>
   </div>
   <div style={{margin:"18px 2px 4px"}}>
    <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>조건으로 청주 단지를 찾고, 대출까지 한 번에.</div>
   </div>
-  <Tool icon="🧭" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
-  <Tool icon="💰" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
-  <Tool icon="🏦" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
+  <Tool icon="compass" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
+  <Tool icon="won" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
+  <Tool icon="loan" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
   <JeonseGuard/>
   <OfficialLinks/>
   <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.\n${location.origin}`;
     if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
     else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>alert("소개 문구를 복사했어요!")).catch(()=>{});}}}
    className="card" style={{width:"100%",padding:"14px 15px",marginTop:12,border:"1px dashed rgba(15,118,110,.4)",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
-   <span style={{fontSize:24,flex:"none"}}>📣</span>
+   <span style={{flex:"none",lineHeight:0}}><Icon name="megaphone" active color={TEAL} size={24}/></span>
    <span style={{minWidth:0,flex:1}}>
     <span style={{display:"block",fontWeight:800,fontSize:14.5,color:INK}}>친구에게 청집사 알리기</span>
     <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>청주로 이사 오는 지인에게 공유해주세요</span>
@@ -2687,7 +2701,7 @@ function BargainRadar({onOpen}){
  useEffect(()=>{fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(setD).catch(()=>setD(null));},[]);
  if(!d||!d.items||!d.items.length)return null;
  const items=d.items.map((x,i)=>({...x,rank:i+1,contains_sample_data:x.is_sample}));
- return <TickerBanner label="📉 급매 포착" color={DOWN} bg="rgba(30,95,196,.10)" title="📉 급매 포착"
+ return <TickerBanner icon="bargain" label="급매 포착" color={DOWN} bg="rgba(30,95,196,.10)" title="급매 포착"
    info={d.disclaimer||`같은 평형 중앙값보다 크게 낮게 신고된 실거래예요(최근 ${d.months}개월). 특수거래(직거래·가족 등)·사유가 있을 수 있어 실제 급매가 아닐 수 있어요.`}
    items={items}
    metric={it=><span className="num" style={{color:DOWN,fontWeight:800,fontSize:12.5}}>{it.diff_pct}% <span style={{color:MUTED,fontWeight:600,fontSize:11}}>{it.pyeong}평</span></span>}
@@ -2711,16 +2725,16 @@ function RentSignal({sig}){
 }
 function WorkAccess({items}){
  if(!items||!items.length)return null;   // 거점 미시드면 숨김(왜곡 없음)
- const CAT_ICON={job:"🏭",transit:"🚄",public:"🏛",education:"🎓",medical:"🏥"};
+ const CAT_ICON={job:"factory",transit:"train",public:"gov",education:"academy",medical:"hospital"};
  const CAT_LABEL={job:"직장·산단",transit:"교통",public:"공공",education:"교육",medical:"의료"};
  const jobs=items.filter(h=>h.category==="job");
  const rest=items.filter(h=>h.category!=="job");
  const Row=({h})=>(<div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
-  <span style={{fontSize:15,flex:"none"}}>{CAT_ICON[h.category]||"📍"}</span>
+  <span style={{flex:"none",lineHeight:0}}><Icon name={CAT_ICON[h.category]||"locate"} active color={TEAL} size={16}/></span>
   <span style={{fontWeight:600,fontSize:13.5,minWidth:0,flex:1,overflowWrap:"anywhere"}}>{h.name}</span>
   <span className="num" style={{fontWeight:800,fontSize:13.5,flex:"none"}}>{h.distance_km}km</span>
  </div>);
- return (<Collapsible icon="map" defaultOpen={true} title="🏭 직장·거점 거리">
+ return (<Collapsible icon="factory" defaultOpen={true} title="직장·거점 거리">
   <div style={{padding:"4px 14px 12px"}}>
    {jobs.length>0&&<React.Fragment>
     <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"4px 0 2px"}}>주요 직장 · 산업단지</div>
@@ -2738,14 +2752,14 @@ function KidsEnv({places}){
  if(!places||!Object.keys(places).length)return null;
  const cnt=(k)=>places[k]&&places[k].count?places[k].count:0;
  const academy=Object.keys(places).filter(k=>k.indexOf("academy_")===0).reduce((s,k)=>s+cnt(k),0);
- const rows=[["어린이집·유치원",cnt("daycare"),"🧸"],["학원",academy,"📚"],["소아과·병원",cnt("hospital"),"🏥"],["도서관",cnt("library"),"📖"],["체육시설",cnt("sports"),"🏃"],["약국",cnt("pharmacy"),"💊"]];
+ const rows=[["어린이집·유치원",cnt("daycare"),"kids"],["학원",academy,"academy"],["소아과·병원",cnt("hospital"),"hospital"],["도서관",cnt("library"),"book"],["체육시설",cnt("sports"),"sports"],["약국",cnt("pharmacy"),"pill"]];
  const total=rows.reduce((s,r)=>s+r[1],0);
  if(!total)return null;   // 육아 관련 시설 데이터 없으면 표시 안 함(왜곡 없음)
- return (<Collapsible icon="search" defaultOpen={true} title="🧸 육아 환경">
+ return (<Collapsible icon="kids" defaultOpen={true} title="육아 환경">
   <div style={{padding:"6px 14px 12px"}}>
    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
     {rows.map(([l,n,e])=>(<div key={l} style={{background:"var(--surface-2)",borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
-     <div style={{fontSize:18}}>{e}</div>
+     <div style={{lineHeight:0,display:"flex",justifyContent:"center"}}><Icon name={e} active color={n>0?TEAL:"#9aa3a8"} size={20}/></div>
      <div className="num" style={{fontWeight:800,fontSize:16,color:n>0?INK:MUTED,marginTop:1}}>{n>0?n:"—"}</div>
      <div style={{fontSize:11,color:MUTED,marginTop:1}}>{l}</div>
     </div>))}
@@ -2763,7 +2777,7 @@ function MyHomeCard({home,onOpen,onRegister}){
  },[home&&home.complex_name,home&&home.lawd_cd,home&&home.property_type]);
  if(!home)return (
   <div className="card" style={{padding:"14px 15px",marginTop:8,display:"flex",alignItems:"center",gap:12}}>
-   <div style={{fontSize:26,flex:"none"}}>🏠</div>
+   <div style={{flex:"none",lineHeight:0}}><Icon name="home" active color={TEAL} size={26}/></div>
    <div style={{minWidth:0,flex:1}}>
     <div style={{fontWeight:800,fontSize:14.5}}>우리집 등록하기</div>
     <div style={{fontSize:12,color:MUTED,marginTop:2}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 봐요</div>
@@ -2777,7 +2791,7 @@ function MyHomeCard({home,onOpen,onRegister}){
  return (
   <div className="card" style={{padding:"14px 15px",marginTop:8}}>
    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-    <span style={{fontWeight:800,fontSize:14.5}}>🏠 우리집</span>
+    <span style={{fontWeight:800,fontSize:14.5,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="home" active color={INK} size={16}/>우리집</span>
     <button onClick={onRegister} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12,cursor:"pointer"}}>변경</button>
    </div>
    <div onClick={()=>onOpen&&onOpen(home)} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpen&&onOpen(home))} style={{cursor:"pointer"}}>
@@ -2809,7 +2823,7 @@ function CityIssues(){
  if(!items||!items.length)return null;   // 데이터 없으면 표시 안 함(왜곡 없음)
  return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
   <div style={{display:"flex",alignItems:"center",gap:6}}>
-   <span style={{fontWeight:800,fontSize:15}}>🏗 청주는 지금</span>
+   <span style={{fontWeight:800,fontSize:15,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="rocket" active color={INK} size={17}/>청주는 지금</span>
    <span style={{fontSize:11.5,color:MUTED}}>개발 이슈</span>
   </div>
   <div style={{fontSize:11.5,color:MUTED,margin:"2px 0 6px"}}>청주 부동산에 영향을 줄 만한 개발 이슈예요. 출처를 함께 확인하세요.</div>
@@ -2882,7 +2896,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   </div>}
 
   {!onbDone&&<button onClick={onOnboard} style={{width:"100%",textAlign:"left",border:"none",cursor:"pointer",borderRadius:16,padding:"15px 16px",marginTop:8,background:"linear-gradient(100deg, rgba(15,118,110,.14), rgba(15,118,110,.04))",display:"flex",alignItems:"center",gap:12}}>
-   <span style={{fontSize:26,flex:"none"}}>🧭</span>
+   <span style={{flex:"none",lineHeight:0}}><Icon name="compass" active color={TEAL} size={26}/></span>
    <span style={{minWidth:0,flex:1}}>
     <span style={{display:"block",fontWeight:800,fontSize:14.5,color:INK}}>청주가 처음이세요?</span>
     <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>직장·예산만 알려주면 맞춤 단지를 찾아드려요 · 3분</span>
@@ -2900,8 +2914,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   <BargainRadar onOpen={onOpen}/>
 
   {b.trending&&b.trending.items&&b.trending.items.length>0&&
-   <TickerBanner label={b.trending.basis==="surge"?"🔥 거래 급상승":"🔥 거래 활발"} color={UP} bg="rgba(200,50,42,.10)"
-    title={b.trending.basis==="surge"?"🔥 거래 급상승":"🔥 거래 활발"}
+   <TickerBanner icon="flame" label={b.trending.basis==="surge"?"거래 급상승":"거래 활발"} color={UP} bg="rgba(200,50,42,.10)"
+    title={b.trending.basis==="surge"?"거래 급상승":"거래 활발"}
     info="최근 90일 거래 신고가 직전 90일보다 늘어난 단지 순입니다. 조회수가 아니라 실제 거래 건수 기준이며, 신고 지연·정정이 반영될 수 있어요."
     items={b.trending.items}
     metric={it=>it.delta>0
@@ -2911,8 +2925,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
 
   {b.landmark&&b.landmark.length>0&&(()=>{
    const lm=b.landmark.slice().sort((x,y)=>(y.price||0)-(x.price||0)).map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));
-   return <TickerBanner label="👑 대장 아파트" color="#9A6B00" bg="rgba(178,106,0,.12)"
-    title="👑 대장 아파트" info="단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요. 최근 집계 기간 거래 기준."
+   return <TickerBanner icon="crown" label="대장 아파트" color="#9A6B00" bg="rgba(178,106,0,.12)"
+    title="대장 아파트" info="단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요. 최근 집계 기간 거래 기준."
     items={lm}
     metric={it=><span className="num" style={{fontWeight:800,fontSize:13}}>{eok(it.price)}</span>}
     onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:b.property_type||"apartment"})}/>;
@@ -3220,7 +3234,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   fetch(`${API}/landmarks`).then(r=>r.json()).then(list=>{ if(!alive)return; clearLm();
    (Array.isArray(list)?list:[]).forEach(L=>{ if(L.lat==null||L.lng==null)return;
     const sc=L.status==="confirmed"?"#0E7C71":L.status==="ongoing"?"#C77A1A":"#69737D";
-    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${sc};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">🏗 ${L.name}</div>`;
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${sc};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c2.6 1.8 3.8 4.6 3.8 7.5 0 1.9-.8 3.7-1.6 5H9.8c-.8-1.3-1.6-3.1-1.6-5 0-2.9 1.2-5.7 3.8-7.5Z"/><circle cx="12" cy="10" r="1.5"/></svg>${L.name}</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(L.lat,L.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:100});
     n.maps.Event.addListener(mk,"click",()=>{try{new n.maps.InfoWindow({content:`<div style="padding:9px 12px;max-width:240px;font-size:12px;line-height:1.55"><b>${L.name}</b><br/>${L.summary||""}${L.source_name?`<br/><span style='color:#888'>출처: ${L.source_name}</span>`:""}</div>`,borderWidth:0}).open(map,mk);}catch(e){}});
     lmObjs.current.push(mk);
@@ -3237,7 +3251,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   let alive=true;
   fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{ if(!alive)return; clearBg();
    ((j&&j.items)||[]).forEach(B=>{ if(B.lat==null||B.lng==null)return;
-    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:#1E5FC4;color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">📉 ${B.diff_pct}%</div>`;
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:#1E5FC4;color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12.5"/><path d="M6.5 12.5 12 18l5.5-5.5"/></svg>${B.diff_pct}%</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(B.lat,B.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:110});
     n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:B.name,lawd_cd:B.lawd_cd,property_type:"apartment",gu:B.gu}); });
     bgObjs.current.push(mk);
@@ -3254,7 +3268,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{ if(!alive)return; clearJr();
    ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
     const col=J.level==="high"?"#C8322A":"#C77A1A";
-    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${col};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px">🏠 ${J.ratio}%</div>`;
+    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${col};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 5l8 6"/><path d="M6 10v9h12v-9"/></svg>${J.ratio}%</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(J.lat,J.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:109});
     n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment",gu:J.gu}); });
     jrObjs.current.push(mk);
@@ -3808,7 +3822,7 @@ function CommuteMap({dest,rows,mapCfg,onOpen}){
   const map=new n.maps.Map(ref.current,{center:new n.maps.LatLng(dest.lat,dest.lng),zoom:12});
   const bounds=new n.maps.LatLngBounds(new n.maps.LatLng(dest.lat,dest.lng),new n.maps.LatLng(dest.lat,dest.lng));
   new n.maps.Marker({position:new n.maps.LatLng(dest.lat,dest.lng),map,zIndex:1000,
-   icon:{content:`<div style="transform:translate(-50%,-100%);background:#1B2733;color:#fff;font-size:12px;font-weight:800;padding:6px 11px;border-radius:13px;box-shadow:0 2px 8px rgba(0,0,0,.5);white-space:nowrap">🏢 ${dest.name}</div>`,anchor:new n.maps.Point(0,0)}});
+   icon:{content:`<div style="transform:translate(-50%,-100%);background:#1B2733;color:#fff;font-size:12px;font-weight:800;padding:6px 11px;border-radius:13px;box-shadow:0 2px 8px rgba(0,0,0,.5);white-space:nowrap;display:flex;align-items:center;gap:4px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11l4.5 2.5V11L13 13.5V11l4.5 2.5V7.5H20V20z"/></svg>${dest.name}</div>`,anchor:new n.maps.Point(0,0)}});
   pts.forEach(r=>{const c=minColor(r.minutes); bounds.extend(new n.maps.LatLng(r.lat,r.lng));
    const mk=new n.maps.Marker({position:new n.maps.LatLng(r.lat,r.lng),map,
     icon:{content:`<div style="transform:translate(-50%,-50%);background:${c};color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:12px;box-shadow:0 1px 5px rgba(0,0,0,.4);white-space:nowrap;cursor:pointer">${r.minutes}분</div>`,anchor:new n.maps.Point(0,0)}});
@@ -3962,20 +3976,20 @@ function HoodProfile({d}){
  const chips=[];
  const yr=d.build_year;
  if(yr){const age=new Date().getFullYear()-yr; const tag=age<=10?"신축":age<=25?"준신축":"구축";
-  chips.push(["🏗", yr+"년·"+tag]);}
+  chips.push(["build", yr+"년·"+tag]);}
  if(d.vs_region&&d.vs_region.pct!=null){const p=d.vs_region.pct;
   const tag=p<=-5?"구 평균보다 저렴":p>=5?"구 평균보다 높음":"구 평균 수준";
-  chips.push(["📍", d.vs_region.gu+" 대비 "+(p>0?"+":"")+p+"% · "+tag]);}
+  chips.push(["map", d.vs_region.gu+" 대비 "+(p>0?"+":"")+p+"% · "+tag]);}
  const jobs=(d.work_access||[]).filter(h=>h.category==="job").sort((a,b)=>(a.distance_km||0)-(b.distance_km||0));
- if(jobs.length) chips.push(["🏭", jobs[0].name+" "+jobs[0].distance_km+"km"]);
+ if(jobs.length) chips.push(["factory", jobs[0].name+" "+jobs[0].distance_km+"km"]);
  const el=d.school_access&&d.school_access.elementary;
- if(el&&el.distance!=null) chips.push(["🏫", (el.name||"초등학교")+" "+(el.distance<=400?"도보 5분·초품아":distM(el.distance))]);
- if(d.landmarks&&d.landmarks.length) chips.push(["🚀", "인근 개발 호재 "+d.landmarks.length+"건"]);
+ if(el&&el.distance!=null) chips.push(["academy", (el.name||"초등학교")+" "+(el.distance<=400?"도보 5분·초품아":distM(el.distance))]);
+ if(d.landmarks&&d.landmarks.length) chips.push(["rocket", "인근 개발 호재 "+d.landmarks.length+"건"]);
  if(!chips.length) return null;
  return (<div className="card" style={{padding:"12px 14px",marginTop:10}}>
-  <div style={{fontWeight:800,fontSize:13.5,marginBottom:8}}>🏘 이 단지 한눈에</div>
+  <div style={{fontWeight:800,fontSize:13.5,marginBottom:8,display:"flex",alignItems:"center",gap:6}}><Icon name="home" active color={INK} size={15}/>이 단지 한눈에</div>
   <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-   {chips.map(([ic,t],i)=><span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:"var(--surface-2)",borderRadius:9,padding:"6px 10px",fontSize:12.5,fontWeight:600}}>{ic} {t}</span>)}
+   {chips.map(([ic,t],i)=><span key={i} style={{display:"inline-flex",alignItems:"center",gap:5,background:"var(--surface-2)",borderRadius:9,padding:"6px 10px",fontSize:12.5,fontWeight:600}}><Icon name={ic} active color={INK} size={13}/>{t}</span>)}
   </div>
   <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>실거래·공공데이터 기반 사실 요약이에요. 직선거리·공개분 기준이며 동네 분위기 등 주관적 평가는 담지 않습니다.</div>
  </div>);

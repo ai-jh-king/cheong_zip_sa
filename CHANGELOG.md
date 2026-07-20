@@ -3,6 +3,17 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.185 (2026-07-20) — 아이콘 SVG 전면 전환(콘텐츠 이모지 → Icon)
+> UI 아이콘을 이모지 → SVG(Icon 컴포넌트)로 대거 통일. OS/폰트별 이모지 렌더 편차 제거, 톤 일관.
+- **Icon 컴포넌트에 14종 신규**: compass·rocket·won·shield·megaphone·kids·factory·train·gov·hospital·pill·book·crown·flame.
+- **홈 섹션/카드**: 우리집(home)·청주는 지금(rocket)·온보딩 배너(compass)·이 단지 한눈에(home + 칩 build/map/factory/academy/rocket).
+- **홈 티커 라벨**: TickerBanner에 icon prop 추가 → 급매(bargain)·거래급상승(flame)·대장(crown). 이모지 제거.
+- **더보기**: Quick(관심 star·청약 subscription·게시판 board)·Tool(통근 compass·예산 won·대출 loan)·전세안전(shield)·공식링크 헤더(search)·친구알리기(megaphone).
+- **공식 링크 10종**: 등기부(doc)·건축물대장(build)·실거래(rank)·공시가격(won)·전세보증(shield)·금리(won)·임대차신고(doc)·세금(loan)·청약(subscription)·시청(gov).
+- **단지 상세**: 육아환경(kids + kids/academy/hospital/book/sports/pill)·직장거점(factory + factory/train/gov/academy/hospital).
+- **지도 핀**: 호재(🏗)·급매(📉)·전세위험(🏠)·통근거점(🏢) → 흰색 인라인 SVG.
+- 남은 이모지(임장 🧭·검색 빈상태 🔎·일부 라벨 🔥·공유 텍스트 🏠·팁 💡)는 텍스트/플레이버로 유지.
+- 검증: verify_all PASS · pytest 152 · 브라우저 스모크(홈 티커·더보기 도구/링크·상세 한눈에/육아/직장 SVG·콘솔 에러 0). 지도 핀은 로컬 네이버키 미등록으로 코드 검증(배포 도메인 정상).
 ## v1.184 (2026-07-20) — UI 크롬 아이콘 SVG 통일
 - **[상단바] 메뉴(☰)·알림(🔔) → SVG**: 이모지 대신 Icon 컴포넌트(more/bell), 메뉴는 '청집사' 타이틀(18px)과 어울리게 size 21·INK 색. OS/폰트별 이모지 렌더 편차 제거.
 - **[게시판] 게시판/매물 탭 → SVG**: 💬/🏠 → Icon board/listing(활성 INK·비활성 MUTED).

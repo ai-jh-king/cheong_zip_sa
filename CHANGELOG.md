@@ -3,6 +3,9 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.190 (2026-07-20) — 프런트 부채: Sel 컴포넌트 모듈 승격(§10 트랩)
+- **`Sel`(공용 select) 두 개의 렌더 본문 내 정의 → 모듈 레벨 1개로 병합**: interactive `<select>`라 부모 리렌더 시 열린 드롭다운·포커스가 유실될 수 있는 §10 트랩#1(코드 건전성 감사가 실위험으로 지목). `wide`(폼 width:100%)·`ph`(필터 플레이스홀더) 프롭으로 두 변형 통합. 호출부 7곳 유지.
+- 검증: verify_frontend PASS · 빌드 OK · pytest 154 · 브라우저 스모크(매물 필터 select 렌더·변경 동작·콘솔 에러 0).
 ## v1.189 (2026-07-20) — 하드닝 후속: ADMIN 타이밍세이프 + 캐시·워밍업
 - **ADMIN_TOKEN 타이밍-세이프 비교**: `!=` → `hmac.compare_digest`(토큰 문자단위 타이밍 추정 차단).
 - **`coords_map`에 `@stat_cached`**: `/dashboard/ranking` 매 요청 Complex 전체 풀스캔이던 것 캐시(지오코딩 시 무효화).

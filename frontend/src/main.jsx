@@ -591,6 +591,9 @@ function LField({label,req,children}){
   {children}</label>;
 }
 function FormHead({children}){return <div style={{fontWeight:800,fontSize:14,margin:"18px 2px 8px",color:INK}}>{children}</div>;}
+// 공용 select — 모듈 레벨(렌더 본문 안에 정의하면 매 렌더 리마운트로 열린 드롭다운·포커스 유실, §10 트랩#1).
+// wide=폼용(width:100%), ph 주면 맨 앞에 '전체' 플레이스홀더(필터용).
+const Sel=({value,set,opts,ph,wide})=>(<select className="sel" style={wide?{width:"100%"}:{flex:1,minWidth:0}} value={value} onChange={e=>set(e.target.value)}>{(ph!=null?[["",ph],...opts]:opts).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>);
 function ListingForm({onCancel,onCreated,account,initial}){
  const I=initial||{}, isEdit=!!(initial&&initial.id);
  const sv=v=>v==null?"":String(v);   // 숫자/널 → 입력용 문자열
@@ -639,7 +642,6 @@ function ListingForm({onCancel,onCreated,account,initial}){
    const j=await r.json();onCreated(j.item,isEdit);}
   catch(_e){ onCreated({...body,id:isEdit?initial.id:Date.now(),source:"listing",gu:GU_NAME[gu],dong,is_sample:false,created_at:isEdit?(initial.created_at||new Date().toISOString()):new Date().toISOString()},isEdit); }
  };
- const Sel=({value,set,opts})=>(<select className="sel" style={{width:"100%"}} value={value} onChange={e=>set(e.target.value)}>{opts.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>);
  return (<div style={{marginTop:6}}>
   <BackBtn onBack={onCancel}/>
   <div style={{fontSize:19,fontWeight:800,margin:"6px 2px 0"}}>{isEdit?"매물 수정":"매물 등록"}</div>
@@ -653,8 +655,8 @@ function ListingForm({onCancel,onCreated,account,initial}){
     </div>
    </LField>
    <div className="grid2">
-    <LField label="거래형태" req><Sel value={deal} set={setDeal} opts={LP_DEALS}/></LField>
-    <LField label="매물 종류" req><Sel value={prop} set={setProp} opts={LP_PROPS}/></LField>
+    <LField label="거래형태" req><Sel value={deal} set={setDeal} opts={LP_DEALS} wide/></LField>
+    <LField label="매물 종류" req><Sel value={prop} set={setProp} opts={LP_PROPS} wide/></LField>
    </div>
    <LField label="제목" req><input style={INP} value={title} onChange={e=>setTitle(e.target.value)} placeholder="예: 가경아이파크 84㎡ 남향 로열층"/></LField>
 
@@ -671,7 +673,7 @@ function ListingForm({onCancel,onCreated,account,initial}){
 
    <FormHead>소재지</FormHead>
    <div className="grid2">
-    <LField label="구" req><Sel value={gu} set={setGu} opts={Object.entries(GU_NAME)}/></LField>
+    <LField label="구" req><Sel value={gu} set={setGu} opts={Object.entries(GU_NAME)} wide/></LField>
     <LField label="동(법정동)"><input style={INP} value={dong} onChange={e=>setDong(e.target.value)} placeholder="가경동"/></LField>
    </div>
    <LField label="단지·건물명"><input style={INP} value={cpx} onChange={e=>setCpx(e.target.value)} placeholder="예: 가경아이파크 4단지"/></LField>
@@ -685,7 +687,7 @@ function ListingForm({onCancel,onCreated,account,initial}){
     <LField label="총 층"><input style={INP} type="number" value={tfloor} onChange={e=>setTfloor(e.target.value)}/></LField>
     <LField label="방 수"><input style={INP} type="number" value={rooms} onChange={e=>setRooms(e.target.value)}/></LField>
     <LField label="욕실 수"><input style={INP} type="number" value={baths} onChange={e=>setBaths(e.target.value)}/></LField>
-    <LField label="방향"><Sel value={dir} set={setDir} opts={[["","선택"],...DIRECTIONS.map(d=>[d,d])]}/></LField>
+    <LField label="방향"><Sel value={dir} set={setDir} opts={[["","선택"],...DIRECTIONS.map(d=>[d,d])]} wide/></LField>
     <LField label="입주 가능일"><input style={INP} value={movein} onChange={e=>setMovein(e.target.value)} placeholder="즉시 / 협의 / 날짜"/></LField>
     <LField label="준공일(사용승인)"><input style={INP} value={approval} onChange={e=>setApproval(e.target.value)} placeholder="예: 2019-03"/></LField>
     <LField label="옵션"><input style={INP} value={opts} onChange={e=>setOpts(e.target.value)} placeholder="냉장고,에어컨,…"/></LField>
@@ -870,7 +872,6 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
   }).catch(()=>{const d=DEMO_LISTINGS.find(x=>x.id===openId);if(d){setSel(d);setMode("detail");}onConsumeOpen&&onConsumeOpen();});
  },[openId]);
  if(mode==="form")return <ListingForm account={account} onCancel={()=>setMode("list")} onCreated={x=>{setItems(it=>[x,...(it||[])]);setSel(x);setMode("detail");}}/>;
- const Sel=({value,set,opts,ph})=>(<select className="sel" style={{flex:1,minWidth:0}} value={value} onChange={e=>set(e.target.value)}>{[["",ph],...opts].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>);
  return (<div style={{marginTop:6}}>
   <Notice>등록 매물은 사용자·중개업자가 올린 정보로 <b>실거래가 아니며</b> 검증되지 않습니다. 허위·과장광고에 주의하고, 계약 전 현장·등기·실거래 시세를 꼭 확인하세요.</Notice>
   {!account&&<div style={{display:"flex",alignItems:"center",gap:8,margin:"10px 0 0",background:"rgba(15,118,110,.07)",borderRadius:10,padding:"9px 12px"}}>

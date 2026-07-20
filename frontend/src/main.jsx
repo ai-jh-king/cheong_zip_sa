@@ -493,8 +493,8 @@ const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnt
 const Quick=({icon,label,onClick})=>(<button onClick={onClick} style={{flex:1,border:"none",background:"var(--surface-2)",borderRadius:12,padding:"13px 6px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
   <span style={{fontSize:22}}>{icon}</span><span style={{fontSize:12,fontWeight:700,color:INK}}>{label}</span>
  </button>);
-function Icon({name,active,size=24}){
- const c=active?TEAL:"#9aa3a8";
+function Icon({name,active,size=24,color}){
+ const c=color||(active?TEAL:"#9aa3a8");
  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:c,strokeWidth:active?2.3:2,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,focusable:false};
  if(name==="home")return <svg {...p}><path d="M3 11.4 12 4l9 7.4"/><path d="M5.5 9.8V20h13V9.8"/></svg>;
  if(name==="rank")return <svg {...p}><path d="M5.5 21V11"/><path d="M12 21V4.5"/><path d="M18.5 21v-6.5"/></svg>;
@@ -521,6 +521,7 @@ function Icon({name,active,size=24}){
  if(name==="subscription")return <svg {...p}><path d="M4 7h16v4a2 2 0 0 0 0 2v4H4v-4a2 2 0 0 0 0-2z"/><path d="M14 7v10"/></svg>;
  if(name==="bookmark")return <svg {...p} fill={active?TEAL:"none"} stroke={active?TEAL:"#9aa3a8"}><path d="M7 4h10v16l-5-3.2L7 20z"/></svg>;
  if(name==="more")return <svg {...p}><path d="M4 7h16M4 12h16M4 17h16"/></svg>;
+ if(name==="edit")return <svg {...p}><path d="M4 20h4L18.7 9.3a1.9 1.9 0 0 0-2.7-2.7L5 17.5z"/><path d="M13.5 6.7l3.8 3.8"/></svg>;
  return null;
 }
 function SecTitle({icon,children}){
@@ -1259,14 +1260,14 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
  const renderTab=(v,label)=>(<button key={v} onClick={()=>setView(v)} style={{border:"none",background:"none",borderBottom:"2.5px solid "+(view===v?TEAL:"transparent"),color:view===v?INK:MUTED,fontWeight:800,fontSize:14,padding:"7px 4px",cursor:"pointer"}}>{label}</button>);
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
-   <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?INK:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>💬 게시판</button>
-   <button onClick={()=>setSection&&setSection("listing")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section==="listing"?"var(--surface-solid)":"transparent",color:section==="listing"?INK:MUTED,boxShadow:section==="listing"?"0 1px 3px rgba(30,64,90,.12)":"none"}}>🏠 매물</button>
+   <button onClick={()=>setSection&&setSection("board")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section!=="listing"?"var(--surface-solid)":"transparent",color:section!=="listing"?INK:MUTED,boxShadow:section!=="listing"?"0 1px 3px rgba(30,64,90,.12)":"none",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="board" active={section!=="listing"} color={section!=="listing"?INK:MUTED} size={15}/>게시판</button>
+   <button onClick={()=>setSection&&setSection("listing")} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:section==="listing"?"var(--surface-solid)":"transparent",color:section==="listing"?INK:MUTED,boxShadow:section==="listing"?"0 1px 3px rgba(30,64,90,.12)":"none",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name="listing" active={section==="listing"} color={section==="listing"?INK:MUTED} size={15}/>매물</button>
   </div>
   {section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <div style={{fontWeight:800,fontSize:17}}>게시판</div>
    <span style={{fontSize:12,color:MUTED}}>부동산 소통</span>
-   <button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 글쓰기</button>
+   <button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="edit" size={14} color="#fff"/>글쓰기</button>
   </div>
   <div style={{display:"flex",gap:14,borderBottom:"1px solid rgba(99,120,128,.14)",margin:"8px 0 0"}}>
    {renderTab("all","전체글")}{renderTab("scrap","스크랩")}{renderTab("mine","내 활동")}
@@ -1321,7 +1322,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
        {items.map(p=><PostCard key={p.id} p={p} onOpen={openPost} onAuthor={openAuthor}/>)}
        {hasMore&&<button onClick={()=>{const n=page+1;setPage(n);load(n);}} style={{width:"100%",border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:2}}>더 보기</button>}
       </React.Fragment>)
-     :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px"}}>+ 글쓰기</button>}>아직 게시글이 없습니다. 첫 글을 남겨보세요.</Empty></div>}
+     :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="edit" size={14} color="#fff"/>글쓰기</button>}>아직 게시글이 없습니다. 첫 글을 남겨보세요.</Empty></div>}
    </div>
    <div style={{height:16}}/>
   </React.Fragment>)}
@@ -1337,7 +1338,7 @@ function PushToggle(){
  const toggle=async()=>{setBusy(true);setMsg("");try{if(on){await disablePush();setOn(false);setMsg("푸시 알림을 껐어요.");}else{await enablePush();setOn(true);setMsg("켜짐! 로그인 상태의 관심 단지 알림을 푸시로 받아요.");}}catch(e){setMsg(e.message||"설정에 실패했어요.");}setBusy(false);};
  return (<div className="card" style={{padding:"11px 13px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
   <div style={{minWidth:0}}>
-   <div style={{fontWeight:700,fontSize:13.5}}>🔔 푸시 알림 {on?"켜짐":"꺼짐"}</div>
+   <div style={{fontWeight:700,fontSize:13.5,display:"flex",alignItems:"center",gap:6}}><Icon name="bell" size={15} color={INK}/>푸시 알림 {on?"켜짐":"꺼짐"}</div>
    <div style={{fontSize:11.5,color:MUTED,marginTop:2,lineHeight:1.5}}>{msg||"관심 단지 신고가·새 실거래를 휴대폰 알림으로 받아요."}</div>
   </div>
   <button onClick={toggle} disabled={busy} className={"tog "+(on?"on":"")} style={{marginLeft:"auto",flex:"none"}}>{busy?"…":on?"끄기":"켜기"}</button>
@@ -1778,11 +1779,11 @@ function App(){
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
     </div>
-    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK}}>🔔
+    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="bell" size={20} color={INK}/>
      {unread>0&&<span style={{position:"absolute",top:-5,right:-5,minWidth:17,height:17,borderRadius:9,background:"#C8322A",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{unread>99?"99+":unread}</span>}
     </button>}
     <div style={{position:"relative",flex:"none"}}>
-     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{fontSize:19,lineHeight:1,padding:"7px 10px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK}}>☰</button>
+     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{lineHeight:1,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="more" size={21} color={INK}/></button>
      {acctMenu&&<div onClick={()=>setAcctMenu(false)} style={{position:"fixed",inset:0,zIndex:80}}/>}
      {acctMenu&&<div style={{position:"absolute",right:0,top:"112%",zIndex:90,background:"var(--surface-solid)",borderRadius:12,boxShadow:"0 10px 28px rgba(30,64,90,.22)",padding:6,minWidth:208,color:INK}}>
       <div style={{fontSize:11,color:MUTED,padding:"6px 10px 3px",fontWeight:700}}>설정</div>

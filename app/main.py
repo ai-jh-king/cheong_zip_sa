@@ -113,12 +113,21 @@ def _rl_rule(method: str, path: str, s):
             return ("report", s.rate_limit_report_per_min)
         if path == "/auth/dev-login" or path.startswith("/auth/login"):
             return ("auth", s.rate_limit_auth_per_min)
-        if path == "/listings":
+        if path == "/listings" or path == "/listings/upload":   # 업로드=디스크 DoS 방어(미보호였음)
             return ("listing", s.rate_limit_listing_per_min)
         if path == "/inquiries":
             return ("inquiry", s.rate_limit_inquiry_per_min)
         if path.startswith("/billing/"):
             return ("billing", s.rate_limit_billing_per_min)
+        if path.startswith("/push/"):
+            return ("push", s.rate_limit_push_per_min)
+        if path == "/complex/quotes":                            # 배치 집계 남용 방어
+            return ("search", s.rate_limit_search_per_min)
+        if path in ("/me/recent", "/me/searches"):
+            return ("personal", s.rate_limit_personal_per_min)
+    elif method == "PUT":
+        if path == "/me/prefs":                                  # device_id 기반 개인화 쓰기 남용 방어
+            return ("personal", s.rate_limit_personal_per_min)
     elif method == "GET" and path == "/search":
         return ("search", s.rate_limit_search_per_min)
     return None

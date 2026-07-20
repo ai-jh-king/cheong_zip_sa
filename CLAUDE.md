@@ -28,7 +28,7 @@
 - **프런트 — 단일 소스(컷오버 확정)**: 웹 UI의 권위 소스는 **`frontend/src/`(Vite)**. 모든 UI/기능 수정은 **여기서만** → `npm run build` → 배포(웹·PWA·Capacitor가 같은 `dist` 공유). `app/web/index.html`(레거시)은 **동결 — 편집 금지**, bare 로컬 실행의 폴백으로만 잔존(한 배포 사이클 후 제거 예정).
   - **서빙**: `app/main.py`의 `WEB_DIR` 환경변수. **프로덕션 이미지는 멀티스테이지 Dockerfile이 프런트를 빌드하고 `WEB_DIR=/app/frontend/dist`로 dist를 서빙**(컷오버 확정). bare 로컬에서 미설정 시 레거시 폴백. dist 지정 시 `SPA_MODE`로 `/assets`·manifest·icons 정적 마운트(명시 라우트·API 우선). 절차·검증·롤백: **`CUTOVER.md`**. 상세: `MOBILE_APP_STRATEGY.md`·`frontend/README.md`.
 - **DB**: 기본 SQLite ↔ `DATABASE_URL` 설정 시 PostgreSQL. **Alembic이 운영 스키마 권위 소스**(0001→0002 baseline).
-- **캐시**: `app/core/cache.py` — 외부호출 `@ttl_cached`, **시세 집계는 `@stat_cached`(데이터 버전 기반)**.
+- **캐시**: `app/core/cache.py` — 외부호출 `@ttl_cached`, **시세 집계는 `@stat_cached`(데이터 버전 기반)**. ⚠️ **`data_version`은 DB(app_meta)에 저장**(v1.187) — 수집이 별도 컨테이너(cron)에서 돌아도 bump가 웹에 전파되어야 하기 때문(인프로세스 int면 크론 bump가 웹에 안 보여 캐시가 TTL로만 갱신됨=콜드 반복). 조회는 30초 로컬 캐시. TTL(`cache_ttl_stats_sec`, 6h)은 백스톱이고 1차 무효화는 버전. **새 무거운 집계엔 반드시 `@stat_cached`**(실제 누락 사고: pricecheck 3종·v1.187 교정).
 - 비즈니스 로직(시세집계·대출·세금)은 **백엔드 집중**, 프런트는 표시/입력만. "1 백엔드 N 프론트".
 
 ### 확장성 관련 핵심 규약 (대규모 운영 대비)

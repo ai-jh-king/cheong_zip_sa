@@ -3,6 +3,21 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.187 (2026-07-20) — 대규모 서비스 대비 하드닝(보안·성능)
+> 6축 전면 감사(성능·확장성·코드·보안·문서·기능) 후속. "많은 사용자 서비스" 관점의 P0 결함 처리.
+**보안**
+- **`AUTH_DEV_LOGIN=true` 프로덕션 부팅 거부**(인증 우회 백도어 차단). render.yaml `APP_ENV=production` 추가(이게 없으면 v1.178 가드 전부 무력이었음).
+- **매물 목록에서 연락처·상세주소 제거**(_row_light) → 순번 ID 대량 스크래핑 PII 차단(상세 조회에선 유지).
+- **미보호 쓰기 엔드포인트 레이트리밋 추가**: `/listings/upload`(디스크 DoS), `/me/prefs`·`/me/recent`·`/me/searches`(개인화 남용), `/push/*`, `/complex/quotes`. PUT 메서드도 `_rl_rule`이 처리하도록.
+**성능(초기 로딩)**
+- **집계 캐시 무효화를 DB(app_meta) 기반으로**: `data_version`을 DB에 저장 → **별도 컨테이너(cron) 수집의 bump가 웹 프로세스/다중 워커에 전파**(과거 인프로세스 int라 크론 bump가 웹에 안 보여, 캐시가 사실상 TTL로만 갱신 = "10분마다 콜드 재계산" 유발). 조회 폭주 방지 위해 30초 로컬 캐시.
+- **`cache_ttl_stats_sec` 600→21600(6h)**: 1차 신선도는 data_version 무효화, TTL은 백스톱. "매 방문이 콜드" 해소.
+- **`pricecheck` 3종(gu_context·bargain_radar·jeonse_risk_map)에 `@stat_cached`**: 매 요청 풀스캔 제거(CLAUDE.md 규약 위반 교정).
+- **`/home/feed` 외부 API 3종 병렬화**: 청약·경쟁률·뉴스 직렬 호출(콜드 최악 34초)을 ThreadPoolExecutor로 병렬(최대값)로 단축. 첫 페인트 지연 완화.
+**코드 건전성**
+- **매물 조회수 원자화**: `x.views=(x.views or 0)+1` → `update(...).values(func.coalesce)`. 회귀 테스트 신설(test_listings.py).
+- 테스트: 집계 캐시 프로세스 격리(conftest `_clean`에서 cache 초기화), pricecheck 캐시 무효화(_bump). pytest **154**(+2).
+- 검증: verify_all PASS · pytest 154 · smoke_e2e 18.
 ## v1.186 (2026-07-20) — 단지 상세: 전체 평균 제거·면적별 통합
 - **[상세] '단지 전체 최근 매매가'(평수 혼합 평균) 제거**: 평형 탭이 생겨 평수별로 볼 수 있으므로, 평수가 섞여 의미가 흐린 단지 전체 평균 큰 숫자·단지 추세·메트릭 그리드를 삭제. 전체 탭에서는 **면적 무관하게 유효한 '구 평균 대비 포지션' + 안내**만 슬림 스트립으로 남기고, 실제 시세는 **면적별 카드가 담당**(평형 탭과 완전 통합). 요약↔면적별 개념 중복 해소.
 - 검증: verify_all PASS · pytest 152 · 브라우저 스모크(전체 평균 제거·구 대비 스트립·면적 카드, 콘솔 에러 0).

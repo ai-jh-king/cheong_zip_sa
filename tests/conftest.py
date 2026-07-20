@@ -41,11 +41,17 @@ def _schema():
 
 @pytest.fixture(autouse=True)
 def _clean():
-    """각 테스트 후 모든 테이블 비우기(테스트 간 격리)."""
+    """각 테스트 후 모든 테이블 비우기 + 집계 캐시 초기화(테스트 간 격리).
+    집계 캐시(stat_cached)는 프로세스 전역이라 안 지우면 이전 테스트 결과가 다음 테스트로 샌다
+    (특히 data_version 이 DB 기반이라 _clean 후 0 으로 리셋되어 버전키가 재충돌할 수 있음)."""
     yield
     with engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             conn.execute(table.delete())
+    from app.core import cache as _cache
+    _cache.cache.clear()
+    _cache._dv_cache["v"] = None
+    _cache._dv_cache["exp"] = 0.0
 
 
 @pytest.fixture

@@ -64,9 +64,11 @@ class Settings(BaseSettings):
     rate_limit_comment_per_min: int = 30     # 댓글
     rate_limit_report_per_min: int = 30      # 신고
     rate_limit_search_per_min: int = 60      # 검색
-    rate_limit_listing_per_min: int = 10     # 매물 등록
+    rate_limit_listing_per_min: int = 10     # 매물 등록·사진 업로드(디스크 DoS 방어)
     rate_limit_inquiry_per_min: int = 6      # 매물 문의(연락처 포함 → 스팸·PII 보호)
     rate_limit_billing_per_min: int = 20     # 결제 시작/확인
+    rate_limit_personal_per_min: int = 30    # 개인화 쓰기(me/prefs·recent·searches — device_id 남용 방어)
+    rate_limit_push_per_min: int = 20        # 웹푸시 구독/해제/테스트
 
     # 단지 기본정보 보강(공동주택관리정보 K-apt) — data.go.kr 공통키 사용. Swagger 로 URL 확정.
     # 미설정(빈 값) 시 보강 건너뜀(절대 날조하지 않음).
@@ -106,7 +108,7 @@ class Settings(BaseSettings):
     # --- 공유/SEO ---
     public_base_url: str = ""              # 예: https://cheongju.example.com (OG·sitemap 절대 URL). 비면 요청 기반 추론
     # --- 외부 API 응답 캐시 TTL(초). 매 요청 외부호출 방지 + 레이트리밋 보호 ---
-    cache_ttl_stats_sec: int = 600        # 시세 집계 캐시(10분, 수집 시 즉시 무효화)
+    cache_ttl_stats_sec: int = 21600      # 시세 집계 캐시 백스톱(6h). 1차 신선도=data_version 무효화(수집 시 DB 통해 전파), TTL은 안전망. 과거 600초는 '10분마다 콜드 재계산' 유발
     cache_ttl_loan_sec: int = 21600       # 대출 금리(6시간)
     cache_ttl_news_sec: int = 600         # 뉴스(10분)
     cache_ttl_subs_sec: int = 1800        # 청약/분양(30분)

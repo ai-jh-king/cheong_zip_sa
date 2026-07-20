@@ -69,20 +69,55 @@ cache = TTLCache()
 # (매 요청 전체 스캔+Python median 제거). 서버 여러 대면 서버당 1회 계산.
 import copy as _copy
 
+# 데이터 버전을 DB(app_meta)에 저장 → 수집이 '별도 컨테이너(cron)'에서 돌아도 그 bump가
+# 웹 프로세스/다중 워커에 전파된다(인프로세스 int 였을 땐 크론 bump가 웹에 안 보여
+# 캐시가 사실상 무효화되지 않았음 — TTL 만료로만 갱신되던 문제 해결).
+# 매 stat 조회마다 DB를 때리지 않도록 로컬에 짧게(30초) 캐시 → bump는 최대 30초 내 전파.
 _dv_guard = threading.Lock()
-_data_version = 0
+_dv_cache = {"v": None, "exp": 0.0}
+_DV_KEY = "data_version"
+_DV_LOCAL_TTL = 30
+
+
+def _read_dv_from_db() -> int:
+    from app.db.session import SessionLocal
+    from app.services import appmeta
+    with SessionLocal() as db:
+        return appmeta.get_int(db, _DV_KEY, 0)
 
 
 def get_data_version() -> int:
-    return _data_version
+    now = time.time()
+    with _dv_guard:
+        if _dv_cache["v"] is not None and _dv_cache["exp"] > now:
+            return _dv_cache["v"]
+    try:
+        v = _read_dv_from_db()
+    except Exception:
+        with _dv_guard:
+            return _dv_cache["v"] if _dv_cache["v"] is not None else 0
+    with _dv_guard:
+        _dv_cache["v"] = v
+        _dv_cache["exp"] = now + _DV_LOCAL_TTL
+    return v
 
 
 def bump_data_version() -> int:
-    """원천 데이터 변경 후 호출 → 집계 캐시 무효화(신선도 보장)."""
-    global _data_version
+    """원천 데이터 변경 후 호출 → 집계 캐시 무효화(신선도 보장). DB에 반영돼 프로세스 간 전파."""
+    v = None
+    try:
+        from app.db.session import SessionLocal
+        from app.services import appmeta
+        with SessionLocal() as db:
+            v = appmeta.get_int(db, _DV_KEY, 0) + 1
+            appmeta.set(db, _DV_KEY, v)
+    except Exception:
+        with _dv_guard:                       # DB 불가 시 최소한 로컬 무효화는 유지
+            v = (_dv_cache["v"] or 0) + 1
     with _dv_guard:
-        _data_version += 1
-        return _data_version
+        _dv_cache["v"] = v
+        _dv_cache["exp"] = time.time() + _DV_LOCAL_TTL
+    return v
 
 
 def stat_cached(default_ttl: int = 3600, ttl_attr: str = "cache_ttl_stats_sec"):

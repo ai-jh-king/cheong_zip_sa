@@ -18,11 +18,17 @@ def feed(db: Session = Depends(get_db), property_type: str = Query("apartment"))
     actives = stats.active_regions(db, "all")
     medium = next((b for b in ap["buckets"] if b["bucket"] == "medium"), None)
 
+    # 외부 API 3종(청약·경쟁률·뉴스)을 병렬 호출 — 콜드 시 '직렬 합(최악 34초)'을 '최대값'으로 단축.
+    # 각자 @ttl_cached 라 웜이면 즉시. (첫 화면이 이 응답을 기다리므로 지연이 곧 첫 페인트 지연이었음)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=3) as _ex:
+        _fs = _ex.submit(lambda: fetch_subscriptions(limit=10))
+        _fn = _ex.submit(lambda: fetch_news(limit=6))
+        _fc = _ex.submit(fetch_competition)
+        subs_live, news_live, comp = _fs.result(), _fn.result(), _fc.result()
     # 키 있으면 실데이터, 없거나 실패하면 예시로 폴백
-    subs_live = fetch_subscriptions(limit=10)
     if subs_live is not None:
-        subs_live = attach_competition(subs_live, fetch_competition())
-    news_live = fetch_news(limit=6)
+        subs_live = attach_competition(subs_live, comp)
     subscriptions = subs_live if subs_live is not None else SUBSCRIPTIONS
     news = news_live if news_live is not None else NEWS
     policies = POLICIES  # 정책은 큐레이션(예시) 유지

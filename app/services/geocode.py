@@ -25,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.cache import bump_data_version
+from app.core.cache import bump_data_version, stat_cached
 from app.data.region_codes import DISTRICT_BY_CODE
 from app.models import Complex, Transaction
 
@@ -199,7 +199,8 @@ def run_geocode_places(db: Session, limit: int | None = None) -> dict:
     return {"geocoded": done, "failed": failed, "total": len(rows)}
 
 
+@stat_cached()
 def coords_map(db: Session) -> dict:
-    """{(단지명, lawd_cd): (lat, lng)} — 좌표 있는 것만."""
+    """{(단지명, lawd_cd): (lat, lng)} — 좌표 있는 것만. 매 요청 풀스캔 방지 위해 캐시(지오코딩 시 무효화)."""
     return {(c.name, c.lawd_cd): (c.lat, c.lng)
             for c in db.scalars(select(Complex).where(Complex.lat.isnot(None)))}

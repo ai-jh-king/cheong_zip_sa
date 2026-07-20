@@ -3,6 +3,11 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.189 (2026-07-20) — 하드닝 후속: ADMIN 타이밍세이프 + 캐시·워밍업
+- **ADMIN_TOKEN 타이밍-세이프 비교**: `!=` → `hmac.compare_digest`(토큰 문자단위 타이밍 추정 차단).
+- **`coords_map`에 `@stat_cached`**: `/dashboard/ranking` 매 요청 Complex 전체 풀스캔이던 것 캐시(지오코딩 시 무효화).
+- **워밍업 커버리지 확대**: `/dashboard/ranking`(top_trades·top_by_ppm·complex_movers·newly_high/low·active_regions, 프런트 첫 로드 limit=60 정확 인자)·`/home/feed`(ppm_by_area·volume)·coords_map 프리워밍 추가 — 부팅 직후 첫 사용자도 재계산 안 하도록.
+- 검증: verify_all PASS · pytest 154 · smoke_e2e 18.
 ## v1.188 (2026-07-20) — 의존성 CVE 패치 + 운영 백업(pg_dump)
 - **CVE 의존성 업그레이드**: `fastapi 0.115.0→0.115.6`(starlette 0.38→0.41, CVE-2024-47874 멀티파트 DoS 해소) · `python-multipart 0.0.9→0.0.18`(CVE-2024-53981 해소).
 - **Dockerfile에 postgresql-client 설치** → `scripts/backup.py`의 `pg_dump`가 동작(과거 슬림 이미지에 미포함이라 **운영 PG 백업이 항상 실패**했음).

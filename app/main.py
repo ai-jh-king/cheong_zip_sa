@@ -263,9 +263,12 @@ def _startup():
         try:
             from app.db.session import SessionLocal
             from app.services import stats
+            from app.services.geocode import coords_map
             db = SessionLocal()
             try:
+                coords_map(db)   # /dashboard/ranking 매 요청 풀스캔이던 것(캐시 프리워밍)
                 for pt in ("apartment",):
+                    # /dashboard/board
                     stats.city_summary(db, pt)
                     stats.city_trend(db, pt, 12)
                     stats.gu_price_ranking(db, pt)
@@ -275,6 +278,16 @@ def _startup():
                     stats.landmark_apts(db, pt, 50)
                     stats.top_movers(db, pt, 10)
                     stats.landmark_by_band(db, pt, 5)
+                    # /dashboard/ranking (프런트 첫 로드 limit=60, area_band=all) — 미커버였음
+                    stats.top_trades(db, pt, 60, "all")
+                    stats.top_trades_by_ppm(db, pt, 60, "all")
+                    stats.complex_movers(db, pt, 10)
+                    stats.newly_high(db, pt, 10)
+                    stats.newly_low(db, pt, 10)
+                    stats.active_regions(db, "all")
+                    # /home/feed
+                    stats.ppm_by_area(db, pt)
+                    stats.volume(db, pt)
                 logging.getLogger(__name__).info("캐시 워밍업 완료")
             finally:
                 db.close()

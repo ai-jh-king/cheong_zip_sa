@@ -5,6 +5,7 @@
 - 동시 실행 방지(in-process 플래그). 장시간 작업은 백그라운드 처리.
 - 간단한 관리자 UI(/admin/ui) 제공 — 토큰은 클라이언트에서 입력(서버 저장 안 함).
 """
+import hmac
 import threading
 
 from fastapi import APIRouter, Depends, Header, HTTPException, BackgroundTasks, Query
@@ -26,8 +27,8 @@ def _require_admin(x_admin_token: str | None):
     s = get_settings()
     if not s.admin_token:
         raise HTTPException(status_code=403, detail="관리자 API가 비활성화되어 있습니다(ADMIN_TOKEN 미설정).")
-    if x_admin_token != s.admin_token:
-        raise HTTPException(status_code=401, detail="관리자 토큰이 올바르지 않습니다.")
+    if not (x_admin_token and hmac.compare_digest(x_admin_token, s.admin_token)):
+        raise HTTPException(status_code=401, detail="관리자 토큰이 올바르지 않습니다.")   # 타이밍-세이프 비교
 
 
 def _coverage(db: Session) -> dict:

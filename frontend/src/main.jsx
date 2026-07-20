@@ -4057,31 +4057,16 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    <button onClick={()=>setTabPy(null)} className={"tog "+(focusPy==null?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>전체</button>
    {pyList.map(py=><button key={py} onClick={()=>setTabPy(py)} className={"tog "+(focusPy===py?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>{py}평</button>)}
   </div>}
-  {focusPy==null&&pyList.length>1&&<div className="card" style={{padding:16,marginTop:12}}>
-   <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
-    <div style={{minWidth:0}}>
-     <div style={{fontSize:12.5,color:MUTED}}>단지 전체 최근 매매가 <span style={{fontSize:10.5}}>· 최근 {AGG_MONTHS}개월 기준</span></div>
-     <div className="num" style={{fontSize:26,fontWeight:800,lineHeight:1.1,marginTop:3}}>{card.latest!=null?eok(card.latest):"—"}</div>
-    </div>
-    <div style={{marginLeft:"auto",textAlign:"right",flex:"none"}}>
-     <div style={{fontSize:17,fontWeight:800}}><Delta v={card.fromPeak}/></div>
-     <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>최근 {AGG_MONTHS}개월 고점 {card.peak!=null?eok(card.peak):"—"} 대비</div>
-    </div>
-   </div>
-   {d.vs_region&&<div style={{marginTop:11,padding:"10px 12px",borderRadius:11,background:"var(--surface-2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-    <span style={{fontSize:13}}>📍</span>
+  {/* 전체 탭: 평수 섞인 '단지 평균'은 의미가 흐려 큰 숫자를 빼고, 구 대비 포지션(면적 무관)만 슬림하게.
+      실제 시세는 아래 평형별 카드가 담당(평형 탭과 통합). */}
+  {focusPy==null&&pyList.length>1&&<div className="card" style={{padding:"12px 14px",marginTop:12}}>
+   {d.vs_region&&<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+    <Icon name="map" active color={INK} size={15}/>
     <span style={{fontSize:13,fontWeight:700}}>{d.vs_region.gu} 평균 대비</span>
     <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
     <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>평단가 {d.vs_region.complex_ppm?.toLocaleString?.()||d.vs_region.complex_ppm} vs {d.vs_region.gu_ppm?.toLocaleString?.()||d.vs_region.gu_ppm} 만원/평</span>
    </div>}
-   {(card.ts||[]).length>1&&<TrendBlock ts={card.ts}/>}
-   <div style={{height:1,background:"rgba(99,120,128,.12)",margin:"13px 0 11px"}}/>
-   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"11px 10px"}}>
-    <DMetric label="매매 거래" val={`${card.count!=null?card.count:0}건`}/>
-    <JeonseMetric ratio={card.jr}/>
-    <DMetric label="면적 타입" val={`${areas.length}개`}/>
-   </div>
-   <div style={{fontSize:11,color:MUTED,marginTop:9,lineHeight:1.5}}>위 평형 탭에서 평수를 고르면 그 평형의 상세(중앙값·최근 실거래·적정가 등)로 바뀝니다.</div>
+   <div style={{fontSize:11.5,color:MUTED,marginTop:d.vs_region?9:0,lineHeight:1.55}}>최근 {AGG_MONTHS}개월 매매 {d.trade_count}건 · 면적 {areas.length}타입. <b>평형마다 시세가 다르니</b> 위 탭에서 평수를 고르거나 아래 평형별 카드에서 확인하세요.</div>
   </div>}
   {/* 면적별 상세를 평형 탭과 통합 — 전체면 각 면적 카드(접힘), 평형 선택 시 그 평형만(펼침). 하단 별도 섹션 제거. */}
   <div style={{marginTop:12}}>

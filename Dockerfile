@@ -21,6 +21,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# pg_dump(백업 스크립트가 사용) — 없으면 운영 PostgreSQL 백업이 항상 실패. 슬림 이미지엔 미포함이라 설치.
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 # 파이썬 의존성(레이어 캐시)
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt

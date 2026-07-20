@@ -3,6 +3,10 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.188 (2026-07-20) — 의존성 CVE 패치 + 운영 백업(pg_dump)
+- **CVE 의존성 업그레이드**: `fastapi 0.115.0→0.115.6`(starlette 0.38→0.41, CVE-2024-47874 멀티파트 DoS 해소) · `python-multipart 0.0.9→0.0.18`(CVE-2024-53981 해소).
+- **Dockerfile에 postgresql-client 설치** → `scripts/backup.py`의 `pg_dump`가 동작(과거 슬림 이미지에 미포함이라 **운영 PG 백업이 항상 실패**했음).
+- 검증: verify_all PASS · pytest 154 · smoke_e2e 18(업그레이드된 fastapi/starlette로 회귀 없음).
 ## v1.187 (2026-07-20) — 대규모 서비스 대비 하드닝(보안·성능)
 > 6축 전면 감사(성능·확장성·코드·보안·문서·기능) 후속. "많은 사용자 서비스" 관점의 P0 결함 처리.
 **보안**

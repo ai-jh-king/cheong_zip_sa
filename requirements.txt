@@ -1,5 +1,5 @@
 # 청주 부동산 플랫폼 — 백엔드 (M1: 데이터 파이프라인)
-fastapi==0.115.0
+fastapi==0.115.6      # starlette>=0.40 요구(CVE-2024-47874 멀티파트 DoS 해소). 0.115.x 패치라 호환.
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
@@ -9,7 +9,7 @@ python-dotenv==1.0.1
 # DB 드라이버: 운영=PostgreSQL, 로컬개발=SQLite(기본 내장)
 psycopg[binary]==3.2.3 # PostgreSQL 사용 시에만 필요. SQLite로 돌릴 땐 불필요.
 alembic==1.13.2         # DB 스키마 마이그레이션(운영). 로컬 SQLite 개발엔 불필요.
-python-multipart==0.0.9
+python-multipart==0.0.18   # CVE-2024-53981(악성 멀티파트 DoS) 해소
 # boto3  # (선택) STORAGE_BACKEND=s3 사용 시 설치: pip install boto3
 
 # --- 테스트/CI (개발 전용) ---

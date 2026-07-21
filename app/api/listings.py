@@ -190,7 +190,13 @@ def get_listing(listing_id: int, device_id: str = Query(""),
                    .values(views=func.coalesce(Listing.views, 0) + 1))
         db.commit()
         db.refresh(x)
-    return _row_full(x)
+    resp = _row_full(x)
+    # '말릴 수 있는' 신호 — 이 매물 가격이 그 단지 실거래 대비 어디쯤인지(중개·광고 0이라 매물 위험도 솔직히).
+    from app.services.pricecheck import listing_signal
+    resp["market_signal"] = listing_signal(db, x.deal_type, x.complex_name, x.lawd_cd,
+                                            x.price, x.deposit, x.exclusive_area,
+                                            x.property_type or "apartment")
+    return resp
 
 
 @router.post("")

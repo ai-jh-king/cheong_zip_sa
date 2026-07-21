@@ -778,6 +778,38 @@ function InquiryBox({listing}){
      </div>}
  </div>);
 }
+function ListingSignal({sig}){
+ // 등록 매물의 '말릴 수 있는' 신호 — 이 가격이 그 단지 실거래 대비 어디쯤인지. 새 수치 만들지 않고 실거래 사실만(왜곡 없음).
+ if(!sig) return null;
+ if(sig.kind==="trade"){
+  const d=sig.diff_pct, c=d>0?UP:d<0?DOWN:INK;
+  const tag=d<=-12?"시세보다 크게 낮음":d<=-3?"시세보다 낮음":d>=3?"시세보다 높음":"시세 수준";
+  return (<div className="card" style={{padding:"12px 14px",marginTop:10,background:"var(--callout-bg)",border:"none"}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+    <Icon name="price" active color={INK} size={15}/><span style={{fontWeight:800,fontSize:13.5,color:INK}}>실거래 대비</span>
+    {sig.bargain&&<span className="pill" style={{background:"rgba(30,95,196,.14)",color:DOWN,fontWeight:800,fontSize:11}}>급매 가능성</span>}
+   </div>
+   <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
+    <span className="num" style={{fontSize:20,fontWeight:800,color:c}}>{d>0?"+":""}{d}%</span>
+    <span style={{fontSize:12.5,fontWeight:700,color:c}}>{tag}</span>
+    <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>같은 평형 중앙값 {eok(sig.median)} · 최근 {sig.months}개월 {sig.count}건</span>
+   </div>
+   <div style={{fontSize:11,color:MUTED,marginTop:7,lineHeight:1.5}}>이 가격 이하 실거래가 {sig.percentile}%. {sig.disclaimer}</div>
+  </div>);
+ }
+ if(sig.kind==="jeonse"){
+  const warn=sig.level==="high"||sig.level==="elevated", c=warn?"#C77A1A":sig.level==="low"?TEAL:MUTED;
+  return (<div className="card" style={{padding:"12px 14px",marginTop:10,background:"var(--callout-bg)",border:"none"}}>
+   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+    <Icon name="alerthome" active color={INK} size={15}/><span style={{fontWeight:800,fontSize:13.5,color:INK}}>전세가율</span>
+    <span className="num" style={{fontWeight:800,fontSize:18,color:c,marginLeft:2}}>{sig.jeonse_ratio}%</span>
+   </div>
+   {sig.note&&<div style={{fontSize:12.5,color:INK,lineHeight:1.55}}>{warn?"⚠️ ":sig.level==="low"?"💧 ":""}{sig.note}</div>}
+   <div style={{fontSize:11,color:MUTED,marginTop:7,lineHeight:1.5}}>단지 같은 평형 매매 중앙값 {eok(sig.sale_median)} 기준. {sig.disclaimer}</div>
+  </div>);
+ }
+ return null;
+}
 function ListingDetail({x,onBack}){
  const unit=useUnit();
  const photos=x.photos||[];
@@ -797,6 +829,8 @@ function ListingDetail({x,onBack}){
   <div className="num" style={{fontSize:26,fontWeight:800,margin:"6px 2px 0"}}>{listingPrice(x)}</div>
   <div style={{fontSize:18,fontWeight:800,margin:"6px 2px 0",overflowWrap:"anywhere"}}>{x.title}</div>
   <div style={{fontSize:13,color:MUTED,margin:"2px 2px 0"}}>{x.gu}{x.dong?` ${x.dong}`:""}{x.complex_name?` · ${x.complex_name}`:""}</div>
+
+  <ListingSignal sig={x.market_signal}/>
 
   <Collapsible icon="doc" defaultOpen={true} title="매물 정보">
    <div style={{padding:"2px 14px 10px"}}>
@@ -889,7 +923,10 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
   </div>
   {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
    :items.length?<React.Fragment>
-     {items.map(x=><ListingCard key={x.id} x={x} onOpen={y=>{setSel(y);setMode("detail");}}/>)}
+     {items.map(x=><ListingCard key={x.id} x={x} onOpen={y=>{
+       // 상세를 재fetch — 목록(_row_light)엔 연락처·market_signal이 없음(목록 스크래핑 방지). 실패 시 목록 데이터로 폴백.
+       fetch(`${API}/listings/${y.id}`).then(r=>r.ok?r.json():null).then(j=>{setSel(j&&j.id?j:y);setMode("detail");window.scrollTo(0,0);}).catch(()=>{setSel(y);setMode("detail");});
+     }}/>)}
      {hasMore&&<button onClick={loadMore} disabled={loadingMore} style={{display:"block",width:"100%",margin:"8px 0 2px",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"11px",borderRadius:10,cursor:loadingMore?"default":"pointer",opacity:loadingMore?.6:1}}>{loadingMore?"불러오는 중…":"더보기"}</button>}
     </React.Fragment>
    :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}

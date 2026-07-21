@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.models import Transaction
 from app.core.config import get_settings
 from app.core.cache import stat_cached
-from app.services.stats import PYEONG, _gu_name
+from app.services.stats import PYEONG, _gu_name, rent_gap_signal
 
 
 def _agg_months() -> int:
@@ -59,6 +59,41 @@ def quote_check(db: Session, name: str, lawd_cd: str, asking: int,
 
 
 @stat_cached()
+def listing_signal(db: Session, deal_type: str, name: str | None, lawd_cd: str | None,
+                   price: int | None, deposit: int | None, area: float | None = None,
+                   property_type: str = "apartment") -> dict | None:
+    """등록 매물이 그 단지 '실거래 대비' 어디쯤인지 — '말릴 수 있는 앱'의 증명(중개·광고 0이라 매물 위험을 솔직히 표시).
+    같은 평형 실거래와 비교(면적 착시 방지). 판정 아님·표본부족/단지 미매칭이면 None(숨김).
+    - 매매: 중앙값 대비 %·백분위 + 급매(≤-12%) 사실 표시.
+    - 전세: 보증금÷단지 매매 중앙값 = 이 매물의 전세가율 → 역전세 유의 신호(단정 아님)."""
+    if not (name and lawd_cd):
+        return None
+    months = _agg_months()
+    rows = _recent_trades(db, name, lawd_cd, property_type, months)
+    if area:                                   # 같은 평형만(면적 착시 방지)
+        py = round(area / PYEONG)
+        rows = [r for r in rows if r.exclusive_area and round(r.exclusive_area / PYEONG) == py]
+    amts = sorted(r.deal_amount for r in rows)
+    if len(amts) < 3:                          # 표본 부족 → 비교 안 함(왜곡 방지)
+        return None
+    med = round(median(amts))
+    if deal_type == "trade" and price:
+        diff = round((price - med) / med * 100, 1)
+        below = sum(1 for a in amts if a <= price)
+        return {"kind": "trade", "median": med, "diff_pct": diff,
+                "percentile": round(below / len(amts) * 100), "count": len(amts),
+                "months": months, "bargain": diff <= -12, "disclaimer": _DISC}
+    if deal_type == "jeonse" and deposit:
+        ratio = round(deposit / med * 100, 1)
+        sig = rent_gap_signal(ratio)
+        return {"kind": "jeonse", "jeonse_ratio": ratio, "sale_median": med,
+                "count": len(amts), "level": sig["level"] if sig else None,
+                "note": sig["note"] if sig else None,
+                "disclaimer": "이 보증금을 같은 평형 매매 중앙값과 비교한 전세가율입니다. "
+                              "개별 계약·선순위 채권·시점에 따라 다르며 역전세를 단정하지 않습니다."}
+    return None
+
+
 def gu_context(db: Session, months: int | None = None) -> dict:
     """② 구별 기존 아파트 시세 맥락(분양가 옆에 참고로). 평단가·중앙값·표본수."""
     months = months or _agg_months()

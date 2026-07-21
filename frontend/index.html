@@ -35,6 +35,22 @@
   .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;}
   .ex{background:rgba(225,120,40,.14);color:#A85420;}
   .sel{padding:9px 12px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2);min-height:42px;font:inherit;font-size:14px;font-weight:600;color:var(--ink);width:100%;min-width:0;}
+  /* 커스텀 드롭다운 — 네이티브 select 리스트('붕뜬' 회색 OS 리스트) 대신 앱 테마 패널(body 포털+뷰포트 클램프). */
+  .dd-btn{display:flex;align-items:center;gap:6px;width:100%;min-width:0;min-height:42px;padding:9px 12px;border-radius:11px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left;}
+  .dd-btn:disabled{opacity:.5;cursor:default;}
+  .dd-btn .dd-lbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dd-btn .dd-lbl.ph{color:var(--muted);font-weight:500;}
+  .dd-btn .dd-chev{flex:none;color:var(--muted);font-size:10px;transition:transform .16s ease;}
+  .dd-btn.open .dd-chev{transform:rotate(180deg);}
+  .dd-backdrop{position:fixed;inset:0;z-index:2500;}
+  .dd-menu{position:fixed;z-index:2600;background:var(--surface-solid);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 12px 34px rgba(16,24,32,.24);padding:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:ddin .14s ease;}
+  @keyframes ddin{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+  .dd-opt{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:9px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;}
+  .dd-opt:hover,.dd-opt:focus-visible{background:var(--surface-2);outline:none;}
+  .dd-opt.on{color:var(--teal);font-weight:800;}
+  .dd-opt .dd-check{margin-left:auto;color:var(--teal);font-weight:900;}
   .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   @media(max-width:520px){.grid2{grid-template-columns:1fr;}}

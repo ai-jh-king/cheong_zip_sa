@@ -632,7 +632,53 @@ function LField({label,req,children}){
 function FormHead({children}){return <div style={{fontWeight:800,fontSize:14,margin:"18px 2px 8px",color:INK}}>{children}</div>;}
 // 공용 select — 모듈 레벨(렌더 본문 안에 정의하면 매 렌더 리마운트로 열린 드롭다운·포커스 유실, §10 트랩#1).
 // wide=폼용(width:100%), ph 주면 맨 앞에 '전체' 플레이스홀더(필터용).
-const Sel=({value,set,opts,ph,wide})=>(<select className="sel" style={wide?{width:"100%"}:{flex:1,minWidth:0}} value={value} onChange={e=>set(e.target.value)}>{(ph!=null?[["",ph],...opts]:opts).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>);
+// 커스텀 드롭다운 — 네이티브 select 의 OS 리스트('붕뜬' 회색) 대신 앱 테마 패널을 body 포털로.
+// 열릴 때 트리거 위치 기준 좌우 클램프 + 위/아래 공간 따라 방향 결정(툴팁과 동일 원리). opts=[[value,label],...].
+function Dropdown({value,set,opts,ph,wide,disabled,style}){
+ const [open,setOpen]=useState(false);
+ const [pos,setPos]=useState(null);
+ const btnRef=useRef(null);
+ const items=ph!=null?[["",ph],...opts]:opts;
+ const cur=items.find(o=>String(o[0])===String(value));
+ const isPh=value===""||value==null;
+ const place=useCallback(()=>{
+  const el=btnRef.current; if(!el)return;
+  const r=el.getBoundingClientRect();
+  const vw=document.documentElement.clientWidth||window.innerWidth, vh=window.innerHeight, M=8;
+  const spaceBelow=vh-r.bottom-M, spaceAbove=r.top-M;
+  const below=spaceBelow>=200||spaceBelow>=spaceAbove;   // 아래 공간 넉넉하거나 위보다 넓으면 아래로
+  const width=Math.max(r.width,120);
+  const left=Math.max(M,Math.min(r.left,vw-width-M));
+  setPos({left,width,below,top:r.bottom+6,bottomCss:vh-r.top+6,maxH:Math.min(300,Math.max(120,below?spaceBelow:spaceAbove))});
+ },[]);
+ const openIt=useCallback(()=>{if(!disabled){place();setOpen(true);}},[disabled,place]);
+ useEffect(()=>{if(!open)return;
+  const close=()=>setOpen(false);
+  window.addEventListener("scroll",close,true); window.addEventListener("resize",close);
+  const onKey=e=>{if(e.key==="Escape")setOpen(false);};
+  document.addEventListener("keydown",onKey);
+  return ()=>{window.removeEventListener("scroll",close,true);window.removeEventListener("resize",close);document.removeEventListener("keydown",onKey);};
+ },[open]);
+ return (<div style={{position:"relative",...(wide?{width:"100%"}:{flex:1,minWidth:0}),...style}}>
+  <button type="button" ref={btnRef} disabled={disabled} className={"dd-btn"+(open?" open":"")} aria-haspopup="listbox" aria-expanded={open}
+   onClick={e=>{e.stopPropagation();open?setOpen(false):openIt();}}>
+   <span className={"dd-lbl"+(isPh?" ph":"")}>{cur?cur[1]:(ph||"선택")}</span>
+   <span className="dd-chev">▾</span>
+  </button>
+  {open&&pos&&ReactDOM.createPortal(
+   <React.Fragment>
+    <div className="dd-backdrop" onClick={()=>setOpen(false)}/>
+    <div className="dd-menu" role="listbox" style={{left:pos.left,width:pos.width,maxHeight:pos.maxH,...(pos.below?{top:pos.top}:{bottom:pos.bottomCss})}}>
+     {items.map(([v,l])=>(<div key={v} role="option" aria-selected={String(v)===String(value)} tabIndex={0}
+       className={"dd-opt"+(String(v)===String(value)?" on":"")}
+       onClick={()=>{set(v);setOpen(false);}} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();set(v);setOpen(false);}}}>
+       <span style={{flex:1,minWidth:0}}>{l}</span>{String(v)===String(value)&&<span className="dd-check">✓</span>}</div>))}
+    </div>
+   </React.Fragment>, document.body)}
+ </div>);
+}
+// 공용 select — 커스텀 드롭다운(Dropdown) 래퍼. wide=폼용(width:100%), ph=플레이스홀더.
+const Sel=({value,set,opts,ph,wide})=><Dropdown value={value} set={set} opts={opts} ph={ph} wide={wide}/>;
 // 매물 등록 표준 선택지 — 자유입력 대신 기준에서 고르게(오타·비표준값 방지). 그 외 값은 '직접입력'.
 const LP_AREAS=[16,23,29,33,39,49,59,74,84,101,114,134,145,165];   // 전용면적(㎡) 표준
 const LP_ROOMS=[1,2,3,4,5],LP_BATHS=[1,2,3];
@@ -646,11 +692,9 @@ function PickNum({value,set,presets,unit,ph}){
   <input style={{...INP,flex:1,minWidth:0}} type="number" value={value} onChange={e=>set(e.target.value)} placeholder={ph}/>
   <button type="button" className="tog" onClick={()=>{setCustom(false);set("");}} style={{flex:"none"}}>목록</button>
  </div>);
- return (<select className="sel" value={value} onChange={e=>{const v=e.target.value;if(v==="__c"){setCustom(true);set("");}else set(v);}}>
-  <option value="">선택</option>
-  {presets.map(p=><option key={p} value={p}>{p}{unit||""}</option>)}
-  <option value="__c">직접입력</option>
- </select>);
+ return (<Dropdown value={value} wide ph="선택"
+   opts={[...presets.map(p=>[String(p),`${p}${unit||""}`]),["__c","직접입력"]]}
+   set={v=>{if(v==="__c"){setCustom(true);set("");}else set(v);}}/>);
 }
 // 다중 선택 칩 — 선택값을 콤마 문자열로 저장(옵션·관리비 포함내역 등, 자유입력 대체).
 function OptChips({value,set,items}){
@@ -993,7 +1037,7 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
      }}/>)}
      {hasMore&&<button onClick={loadMore} disabled={loadingMore} style={{display:"block",width:"100%",margin:"8px 0 2px",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"11px",borderRadius:10,cursor:loadingMore?"default":"pointer",opacity:loadingMore?.6:1}}>{loadingMore?"불러오는 중…":"더보기"}</button>}
     </React.Fragment>
-   :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} className="btn-outline" style={{fontSize:13.5,padding:"10px 18px"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}
+   :<div className="card" style={{padding:30}}><Empty>아직 등록된 매물이 없어요. 위 ‘+ 매물 등록’ 버튼으로 첫 매물을 올려보세요.</Empty></div>}
   <div style={{height:16}}/>
   {mode==="detail"&&sel&&<ListingSheet x={sel} onClose={()=>setMode("list")}/>}
  </div>);
@@ -1186,8 +1230,8 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
  return (<div style={{marginTop:6}}>
   <div style={{fontWeight:800,fontSize:17,margin:"2px 2px 10px"}}>{edit?"글 수정":"글쓰기"}</div>
   <div style={{display:"flex",gap:6}}>
-   <select className="sel" style={{flex:1,minWidth:0}} value={cat} onChange={e=>setCat(e.target.value)}>{CAT_ORDER.map(k=><option key={k} value={k}>{CAT_LABEL[k]}</option>)}</select>
-   <select className="sel" style={{flex:1,minWidth:0}} value={gu} onChange={e=>setGu(e.target.value)} disabled={!!cx}>{[["","지역(선택)"],...Object.entries(GU_NAME)].map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+   <Dropdown value={cat} set={setCat} opts={CAT_ORDER.map(k=>[k,CAT_LABEL[k]])}/>
+   <Dropdown value={gu} set={setGu} opts={Object.entries(GU_NAME)} ph="지역(선택)" disabled={!!cx}/>
   </div>
   {cx?(<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,background:"rgba(15,118,110,.07)",borderRadius:10,padding:"9px 12px"}}>
     <span style={{fontWeight:700,fontSize:13}}>📍 {cx.complex_name}</span><span style={{fontSize:12,color:MUTED}}>{(cx.gu||"").replace("청주시 ","")}</span>
@@ -1416,8 +1460,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
      <input value={qIn} onChange={e=>setQIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")setQ(qIn.trim());}} placeholder="게시판 검색" style={{flex:1,border:"none",outline:"none",fontSize:13.5,background:"none",minWidth:0}}/>
      {qIn&&<button onClick={()=>{setQIn("");setQ("");}} style={{border:"none",background:"none",color:MUTED,cursor:"pointer",fontSize:13}}>✕</button>}
     </div>
-    <select className="sel" style={{flex:"none",width:96}} value={sort} onChange={e=>setSort(e.target.value)}>
-     <option value="recent">최신순</option><option value="popular">인기순</option></select>
+    <Dropdown value={sort} set={setSort} style={{flex:"none",width:96}} opts={[["recent","최신순"],["popular","인기순"]]}/>
    </div>
    {(!cat&&!q&&best.length>0)&&<div style={{margin:"12px 0 4px"}}>
     <Collapsible title="🔥 이번 주 베스트" right={<span style={{fontSize:12,color:MUTED,fontWeight:700,marginLeft:2}}>{best.length}</span>} defaultOpen={false}>
@@ -1438,7 +1481,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
        {items.map(p=><PostCard key={p.id} p={p} onOpen={openPost} onAuthor={openAuthor}/>)}
        {hasMore&&<button onClick={()=>{const n=page+1;setPage(n);load(n);}} style={{width:"100%",border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:2}}>더 보기</button>}
       </React.Fragment>)
-     :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>account?setMode("write"):onNeedLogin()} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="edit" size={14} color="#fff"/>글쓰기</button>}>아직 게시글이 없습니다. 첫 글을 남겨보세요.</Empty></div>}
+     :<div className="card" style={{padding:30}}><Empty>아직 게시글이 없어요. 위 ‘글쓰기’ 버튼으로 첫 글을 남겨보세요.</Empty></div>}
    </div>
    <div style={{height:16}}/>
   </React.Fragment>)}
@@ -3922,10 +3965,7 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
     <div style={{display:"flex",gap:3,background:"var(--chip)",borderRadius:9,padding:3}}>
      {[["car","🚗 자동차"],["transit","🚌 대중교통"]].map(([k,l])=><button key={k} onClick={()=>setMode(k)} style={{border:"none",cursor:"pointer",fontWeight:700,fontSize:12,padding:"7px 11px",borderRadius:7,background:mode===k?"var(--surface-solid)":"transparent",color:mode===k?TEAL:MUTED}}>{l}</button>)}
     </div>
-    <select className="sel" style={{maxWidth:130}} value={ptype} onChange={e=>setPtype(e.target.value)}>
-     <option value="전체">전체 유형</option>
-     {Object.entries(TYPE_LABEL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-    </select>
+    <Dropdown value={ptype} set={setPtype} style={{maxWidth:130}} opts={[["전체","전체 유형"],...Object.entries(TYPE_LABEL)]}/>
    </div>
    <div style={{display:"flex",alignItems:"center",gap:9,marginTop:12}}>
     <span style={{fontSize:12,color:MUTED,fontWeight:700,flex:"none"}}>{maxMin}분 이내</span>
@@ -4187,7 +4227,7 @@ function Rank({ptype,d,mapCfg,onOpen}){
  const [page,setPage]=useState(1);
  const PER=10;
  const pt=(ptype&&ptype!=="전체")?ptype:"apartment";
- const changeMetric=e=>{setMetric(e.target.value);setPage(1);};
+ const changeMetric=v=>{setMetric(v);setPage(1);};
  const needType=metric!=="active";
  const byBand=(metric==="amount"||metric==="ppm");
  const METRICS=[["amount","매매가 순"],["ppm","평단가(만원/평) 순"],["mover","등락폭 순"],["high","신고가"],["low","신저가"],["active","거래 활발 구"]];
@@ -4199,8 +4239,7 @@ function Rank({ptype,d,mapCfg,onOpen}){
  const mapItems=metric==="amount"?(rk.top_trades||[]):metric==="ppm"?(rk.top_by_ppm||[]):[];
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-   <select className="sel" style={{flex:"2 1 150px"}} value={metric} onChange={changeMetric}>
-    {METRICS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+   <Dropdown value={metric} set={changeMetric} style={{flex:"2 1 150px"}} opts={METRICS}/>
    {needType&&<span style={{fontSize:12,color:MUTED}}>{TYPE_LABEL[pt]||"아파트"} 기준</span>}
   </div>
   <div style={{fontSize:12,color:MUTED,margin:"8px 2px 0"}}>{metric==="active"?"전 유형 합산":byBand?"대표 평형별 · 같은 단지·면적은 묶고 대표값(중앙값)":"실거래 신고 기준"} · 총 {full.length}건</div>
@@ -4568,10 +4607,7 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
   {V==="map"?<div>
    <div className="card" style={{padding:"9px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
     <span style={{fontSize:12,color:MUTED,fontWeight:700}}>유형</span>
-    <select className="sel" style={{maxWidth:150}} value={ptype} onChange={e=>setPtype(e.target.value)}>
-     <option value="전체">전체 유형</option>
-     {Object.entries(TYPE_LABEL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-    </select>
+    <Dropdown value={ptype} set={setPtype} style={{maxWidth:150}} opts={[["전체","전체 유형"],...Object.entries(TYPE_LABEL)]}/>
     {ptype==="전체"&&<span style={{fontSize:11,color:MUTED}}>지도는 아파트 기준</span>}
    </div>
    <HeatTab ptype={ptype} mapCfg={mapCfg} onOpen={onOpen} onGu={onGu}/>
@@ -4593,18 +4629,13 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
    </div>
    <div style={{display:"flex",alignItems:"center",marginTop:10,marginBottom:2}}>
     <span style={{fontSize:13,fontWeight:800}}>단지 {complexes.length}곳{ovLoading&&<span style={{fontSize:11,fontWeight:600,color:MUTED,marginLeft:6}}>불러오는 중…</span>}</span>
-    <select className="sel" style={{marginLeft:"auto",maxWidth:140,fontSize:12.5}} value={sort} onChange={e=>setSort(e.target.value)}>
-     {SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-    </select>
+    <Dropdown value={sort} set={setSort} style={{marginLeft:"auto",maxWidth:140}} opts={SORTS}/>
     <button onClick={()=>setMore(m=>!m)} style={{marginLeft:8,border:"1px solid var(--line)",background:"var(--surface-2)",color:more?TEAL:MUTED,fontWeight:700,fontSize:12,borderRadius:8,padding:"6px 10px",cursor:"pointer"}}>상세 {more?"▲":"▼"}</button>
    </div>
    {more&&<div className="card" style={{padding:"11px 13px",marginTop:8}}>
     <div style={{display:"flex",gap:8,alignItems:"center"}}>
      <span style={{fontSize:11.5,color:MUTED,fontWeight:700,width:28,flex:"none"}}>유형</span>
-     <select className="sel" style={{flex:1}} value={ptype} onChange={e=>setPtype(e.target.value)}>
-      <option value="전체">전체 유형</option>
-      {Object.entries(TYPE_LABEL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-     </select>
+     <Dropdown value={ptype} set={setPtype} style={{flex:1}} opts={[["전체","전체 유형"],...Object.entries(TYPE_LABEL)]}/>
     </div>
     <div style={{display:"flex",alignItems:"center",gap:10,marginTop:9}}>
      <span style={{fontSize:11.5,color:MUTED,fontWeight:700,width:28,flex:"none"}}>평형</span>
@@ -4668,14 +4699,8 @@ function Price({ptype,onTypeChange,gu,setGu,tx,onOpen,favs}){
    </div>
    {/* 유형 · 구 */}
    <div style={{display:"flex",gap:8,marginTop:9}}>
-    <select className="sel" style={{flex:1,minWidth:0}} value={type} onChange={e=>onTypeChange&&onTypeChange(e.target.value)}>
-     <option value="전체">전체 유형</option>
-     {Object.entries(TYPE_LABEL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
-    </select>
-    <select className="sel" style={{flex:1,minWidth:0}} value={gu} onChange={e=>setGu&&setGu(e.target.value)}>
-     <option value="전체">전체 구</option>
-     {Object.values(GU_NAME).map(n=><option key={n} value={n}>{n}</option>)}
-    </select>
+    <Dropdown value={type} set={v=>onTypeChange&&onTypeChange(v)} opts={[["전체","전체 유형"],...Object.entries(TYPE_LABEL)]}/>
+    <Dropdown value={gu} set={v=>setGu&&setGu(v)} opts={[["전체","전체 구"],...Object.values(GU_NAME).map(n=>[n,n])]}/>
    </div>
    {/* 평형 */}
    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>

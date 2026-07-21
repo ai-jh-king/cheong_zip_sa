@@ -260,7 +260,45 @@ function SkeletonStat(){return (<div className="card" style={{padding:"14px 15px
    <div style={{marginLeft:"auto"}}><Skeleton h={18} w={70}/></div>
   </div>
 </div>);}
-function Info({text}){return (<span className="tip"><span className="tipdot">?</span><span className="tiptext">{text}</span></span>);}
+// 설명 툴팁 — 열릴 때 점(dot) 위치 기준으로 뷰포트에 맞춰 좌우 클램프·상하 반전 후 body 포털로 렌더.
+// (기존 CSS-only 방식은 화면 우측/좌측 끝·상단에서 잘리고, 바텀시트 transform 안에서 위치가 어긋났음.)
+function Info({text}){
+ const [open,setOpen]=useState(false);
+ const [pos,setPos]=useState(null);   // {left, top, width, below}
+ const dotRef=useRef(null);
+ const place=useCallback(()=>{
+  const el=dotRef.current; if(!el)return;
+  const r=el.getBoundingClientRect();
+  const vw=document.documentElement.clientWidth||window.innerWidth, vh=window.innerHeight;
+  const M=8;                                    // 뷰포트 여백
+  const W=Math.min(240,vw-M*2);                 // 툴팁 폭
+  let left=r.left+r.width/2-W/2;                // 점 중앙 기준
+  left=Math.max(M,Math.min(left,vw-W-M));       // 좌우 클램프
+  const spaceAbove=r.top, spaceBelow=vh-r.bottom;
+  const below=spaceAbove<150&&spaceBelow>spaceAbove;  // 위 공간 부족+아래가 더 넓으면 아래로
+  const top=below?r.bottom+8:r.top-8;
+  setPos({left,top,width:W,below});
+ },[]);
+ const show=useCallback(()=>{place();setOpen(true);},[place]);
+ const hide=useCallback(()=>setOpen(false),[]);
+ useEffect(()=>{
+  if(!open)return;
+  const close=()=>setOpen(false);
+  window.addEventListener("scroll",close,true);   // 어떤 스크롤 컨테이너든(capture)
+  window.addEventListener("resize",close);
+  document.addEventListener("click",close);        // 바깥 클릭 닫기(점 클릭은 stopPropagation)
+  return ()=>{window.removeEventListener("scroll",close,true);window.removeEventListener("resize",close);document.removeEventListener("click",close);};
+ },[open]);
+ return (<span className="tip">
+  <span ref={dotRef} className="tipdot" role="button" tabIndex={0} aria-label="설명"
+   onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
+   onClick={e=>{e.preventDefault();e.stopPropagation();open?hide():show();}}
+   onKeyDown={e=>{if(e.key==="Escape")hide();if(e.key==="Enter"||e.key===" "){e.preventDefault();open?hide():show();}}}>?</span>
+  {open&&pos&&ReactDOM.createPortal(
+   <span className="tiptext-fx" style={{position:"fixed",left:pos.left,top:pos.top,width:pos.width,transform:pos.below?"none":"translateY(-100%)"}}>{text}</span>,
+   document.body)}
+ </span>);
+}
 function Card({label,big,sub}){
  return <div className="card" style={{padding:18}}>
   <div style={{fontSize:13,color:MUTED}}>{label}</div>

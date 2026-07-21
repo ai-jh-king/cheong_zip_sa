@@ -9,7 +9,7 @@ PriceStat / Subscription / News / LoanProduct / LoanRule 등은
 from datetime import datetime, date
 
 from sqlalchemy import (
-    String, Integer, Float, Date, DateTime, ForeignKey, JSON, Boolean, Index, UniqueConstraint
+    String, Integer, Float, Date, DateTime, ForeignKey, JSON, Boolean, Index, UniqueConstraint, Text
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -345,6 +345,18 @@ class AppMeta(Base):
     value: Mapped[str] = mapped_column(String(200))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AggSnapshot(Base):
+    """일일 집계 스냅샷(프리컴퓨트). 무거운 대시보드 집계를 요청 경로에서 제거.
+    데이터는 하루 1회(수집)만 바뀌므로 매 요청 계산은 낭비 → cron 수집 후 구워 저장,
+    웹은 읽기 1회. payload=JSON, data_version 불일치(수집 뒤 미갱신) 시 라이브 폴백.
+    value 는 대형 JSON 이라 Text(무제한). app_meta(String200)로는 부족."""
+    __tablename__ = "agg_snapshot"
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    payload: Mapped[str] = mapped_column(Text)
+    data_version: Mapped[int] = mapped_column(Integer, default=0)
+    baked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Consent(Base):

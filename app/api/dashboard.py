@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services import stats
+from app.services import stats, snapshot
 from app.services.geocode import coords_map
 
 
@@ -52,12 +52,8 @@ def trend(db: Session = Depends(get_db),
     return res
 
 
-@router.get("/ranking")
-def ranking(db: Session = Depends(get_db),
-            property_type: str = Query("apartment", description="apartment/officetel/rowhouse/detached/all"),
-            limit: int = Query(15, ge=1, le=500),
-            area_band: str = Query("all", description="all/small/medium/large")):
-    """랭킹 화면: 매매가순·평단가순·등락·거래활발구·신고가."""
+def build_ranking(db: Session, property_type: str, limit: int, area_band: str) -> dict:
+    """랭킹 페이로드 조립(라이브). 엔드포인트·스냅샷 굽기가 공유하는 단일 소스."""
     pt = property_type
     pt_for_complex = pt if pt != "all" else "apartment"
     cmap = coords_map(db)
@@ -72,6 +68,20 @@ def ranking(db: Session = Depends(get_db),
         "newly_high": stats.newly_high(db, pt_for_complex, 10),
         "newly_low": stats.newly_low(db, pt_for_complex, 10),
     }
+
+
+@router.get("/ranking")
+def ranking(db: Session = Depends(get_db),
+            property_type: str = Query("apartment", description="apartment/officetel/rowhouse/detached/all"),
+            limit: int = Query(15, ge=1, le=500),
+            area_band: str = Query("all", description="all/small/medium/large")):
+    """랭킹 화면: 매매가순·평단가순·등락·거래활발구·신고가.
+    프런트 첫 로드(apartment·60·all)는 일일 스냅샷을 우선 서빙(있고 최신일 때) → 즉시 응답."""
+    if property_type == "apartment" and limit == 60 and area_band == "all":
+        snap = snapshot.get_fresh(db, snapshot.RANKING_KEY)
+        if snap is not None:
+            return snap
+    return build_ranking(db, property_type, limit, area_band)
 
 
 @router.get("/overview")
@@ -114,10 +124,8 @@ def distribution(db: Session = Depends(get_db),
             "disclaimer": DISCLAIMER}
 
 
-@router.get("/board")
-def board(db: Session = Depends(get_db),
-          property_type: str = Query("apartment")):
-    """홈 대시보드: 전체 매매 추이 · 구별 매매/평단가 랭킹 · 구별 최신 실거래.
+def build_board(db: Session, property_type: str) -> dict:
+    """board 페이로드 조립(라이브). 엔드포인트·스냅샷 굽기가 공유하는 단일 소스.
     구 정렬은 '평단가 랭킹 순서'로 전 섹션 통일(추후 확장 시에도 동일 기준)."""
     gu_ranking = stats.gu_price_ranking(db, property_type)
     order = {g["code"]: i for i, g in enumerate(gu_ranking)}          # 통일 기준
@@ -141,3 +149,15 @@ def board(db: Session = Depends(get_db),
         "gu_order": [g["code"] for g in gu_ranking],
         "volume": stats.volume(db, property_type),
     }
+
+
+@router.get("/board")
+def board(db: Session = Depends(get_db),
+          property_type: str = Query("apartment")):
+    """홈 대시보드: 전체 매매 추이 · 구별 매매/평단가 랭킹 · 구별 최신 실거래.
+    기본(apartment)은 일일 스냅샷을 우선 서빙(있고 최신일 때) → 첫 로드 즉시 응답."""
+    if property_type == "apartment":
+        snap = snapshot.get_fresh(db, snapshot.BOARD_KEY)
+        if snap is not None:
+            return snap
+    return build_board(db, property_type)

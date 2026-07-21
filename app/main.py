@@ -288,6 +288,13 @@ def _startup():
                     # /home/feed
                     stats.ppm_by_area(db, pt)
                     stats.volume(db, pt)
+                # 위 집계는 이미 캐시 워밍됨 → 스냅샷 굽기는 저렴(캐시 히트)하고,
+                # 신규 배포로 cron 전 부팅한 인스턴스도 첫 사용자 전에 스냅샷을 준비한다.
+                try:
+                    from app.services import snapshot
+                    snapshot.bake(db)
+                except Exception:  # noqa
+                    logging.getLogger(__name__).warning("스냅샷 워밍 실패(무시)")
                 logging.getLogger(__name__).info("캐시 워밍업 완료")
             finally:
                 db.close()

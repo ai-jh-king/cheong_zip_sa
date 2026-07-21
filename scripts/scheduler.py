@@ -45,6 +45,13 @@ def _cycle() -> None:
             log.info("지오코딩 결과: %s", record_job(db, "geocode", _geo))
         except Exception as e:  # noqa
             log.warning("지오코딩 실패: %s", e)
+        # 집계 스냅샷 굽기 — 수집/지오코딩으로 데이터가 갱신된 뒤 board/ranking 을 미리 계산해
+        # 저장(웹은 요청 시 읽기 1회). 데이터가 하루 1회만 바뀌므로 매 요청 계산 낭비 제거.
+        try:
+            from app.services import snapshot
+            log.info("스냅샷 결과: %s", record_job(db, "snapshot", lambda: snapshot.bake(db)))
+        except Exception as e:  # noqa
+            log.warning("스냅샷 굽기 실패: %s", e)   # record_job 이 이미 기록·경보함
         if getattr(s, "scheduler_run_backup", False):
             try:
                 from scripts.backup import run_backup

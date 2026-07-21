@@ -28,7 +28,7 @@
 - **프런트 — 단일 소스(컷오버 확정)**: 웹 UI의 권위 소스는 **`frontend/src/`(Vite)**. 모든 UI/기능 수정은 **여기서만** → `npm run build` → 배포(웹·PWA·Capacitor가 같은 `dist` 공유). `app/web/index.html`(레거시)은 **동결 — 편집 금지**, bare 로컬 실행의 폴백으로만 잔존(한 배포 사이클 후 제거 예정).
   - **서빙**: `app/main.py`의 `WEB_DIR` 환경변수. **프로덕션 이미지는 멀티스테이지 Dockerfile이 프런트를 빌드하고 `WEB_DIR=/app/frontend/dist`로 dist를 서빙**(컷오버 확정). bare 로컬에서 미설정 시 레거시 폴백. dist 지정 시 `SPA_MODE`로 `/assets`·manifest·icons 정적 마운트(명시 라우트·API 우선). 절차·검증·롤백: **`CUTOVER.md`**. 상세: `MOBILE_APP_STRATEGY.md`·`frontend/README.md`.
 - **DB**: 기본 SQLite ↔ `DATABASE_URL` 설정 시 PostgreSQL. **Alembic이 운영 스키마 권위 소스**(0001→0002 baseline).
-- **캐시**: `app/core/cache.py` — 외부호출 `@ttl_cached`, **시세 집계는 `@stat_cached`(데이터 버전 기반)**. ⚠️ **`data_version`은 DB(app_meta)에 저장**(v1.187) — 수집이 별도 컨테이너(cron)에서 돌아도 bump가 웹에 전파되어야 하기 때문(인프로세스 int면 크론 bump가 웹에 안 보여 캐시가 TTL로만 갱신됨=콜드 반복). 조회는 30초 로컬 캐시. TTL(`cache_ttl_stats_sec`, 6h)은 백스톱이고 1차 무효화는 버전. **새 무거운 집계엔 반드시 `@stat_cached`**(실제 누락 사고: pricecheck 3종·v1.187 교정).
+- **캐시**: `app/core/cache.py` — 외부호출 `@ttl_cached`, **시세 집계는 `@stat_cached`(데이터 버전 기반)**. **데이터가 하루 1회(수집)만 바뀌므로, 무거운 첫 로드 집계(board·ranking)는 요청마다 계산하지 않고 `app/services/snapshot.py`가 수집 직후·부팅 워밍업에 미리 구워 `agg_snapshot` 테이블에 저장 → 웹은 읽기 1회(3.4s→2ms). data_version 불일치 시 라이브 폴백(왜곡 없음).** ⚠️ **`data_version`은 DB(app_meta)에 저장**(v1.187) — 수집이 별도 컨테이너(cron)에서 돌아도 bump가 웹에 전파되어야 하기 때문(인프로세스 int면 크론 bump가 웹에 안 보여 캐시가 TTL로만 갱신됨=콜드 반복). 조회는 30초 로컬 캐시. TTL(`cache_ttl_stats_sec`, 6h)은 백스톱이고 1차 무효화는 버전. **새 무거운 집계엔 반드시 `@stat_cached`**(실제 누락 사고: pricecheck 3종·v1.187 교정).
 - 비즈니스 로직(시세집계·대출·세금)은 **백엔드 집중**, 프런트는 표시/입력만. "1 백엔드 N 프론트".
 
 ### 확장성 관련 핵심 규약 (대규모 운영 대비)
@@ -60,13 +60,13 @@ frontend/                ★ 웹 정본(+ capacitor.config.json = 스토어 앱 
                          ⚠️ 단일 파일이 커서 블라인드 편집 위험 — 컴포넌트는 반드시 모듈 레벨(아래 10). 향후 파일 분리 권장.
 scripts/                 run_collect / geocode / scheduler / db_upgrade / verify_region_codes / verify_frontend
                          seed_landmarks(호재) / seed_commute(통근거점·직주근접 공유) / collect_places(시설)
-migrations/              Alembic (env.py가 앱 설정 URL 사용) — **head 0019**
+migrations/              Alembic (env.py가 앱 설정 URL 사용) — **head 0020**
 skills/                  ★ 모듈별 상세지침(아래 9)
 ```
 
 ## 5. 데이터 모델
-`Region` · `Complex` · `Transaction`(dedup_key 유니크·raw_payload 보존) · `Favorite` · `UserPref`(data JSON — **우리집 my_home 포함**) · `RecentView` · `SavedSearch` · `Account` · `DeviceLink` · `Listing` · `Post` · `Comment`(parent_id 대댓글) · `PostLike`(uq post+owner) · `ReportLog`(uq target+owner) · `Notification`(account_id 인덱스·type comment/reply/transaction/new_high) · `Bookmark`(uq owner+post) · `CommuteDestination`·`CommuteTime`(통근·**직주근접 hub_access 재사용**) · `PushSubscription`(웹푸시 구독·endpoint 유니크) · `JobRun`(배치 실행 이력) · `Landmark`(개발 호재 — category/status/lat/lng/summary/expected_year/source_*) · `Place`(생활·교육·운동 시설 — category/subcategory/lat/lng/source) · `Consent`(개인정보·약관 동의 이력·버전).
-> **스키마 규칙**: 신규 컬럼은 ①모델에 추가 ②Alembic 마이그레이션 파일 생성(운영 PG) — SQLite 는 `_ensure_columns`(모델 자동 도출)가 시작 시 보강. 'no such column'은 대개 마이그레이션 미적용 or 운영이 SQLite. **마이그레이션 head = 0019**(…0018_landmarks → 0019_post_resident). 스키마 변경은 반드시 Alembic(아래 3).
+`Region` · `Complex` · `Transaction`(dedup_key 유니크·raw_payload 보존) · `Favorite` · `UserPref`(data JSON — **우리집 my_home 포함**) · `RecentView` · `SavedSearch` · `Account` · `DeviceLink` · `Listing` · `Post` · `Comment`(parent_id 대댓글) · `PostLike`(uq post+owner) · `ReportLog`(uq target+owner) · `Notification`(account_id 인덱스·type comment/reply/transaction/new_high) · `Bookmark`(uq owner+post) · `CommuteDestination`·`CommuteTime`(통근·**직주근접 hub_access 재사용**) · `PushSubscription`(웹푸시 구독·endpoint 유니크) · `JobRun`(배치 실행 이력) · `Landmark`(개발 호재 — category/status/lat/lng/summary/expected_year/source_*) · `Place`(생활·교육·운동 시설 — category/subcategory/lat/lng/source) · `Consent`(개인정보·약관 동의 이력·버전) · `AggSnapshot`(일일 집계 스냅샷 — board/ranking 프리컴퓨트 payload JSON·data_version·baked_at).
+> **스키마 규칙**: 신규 컬럼은 ①모델에 추가 ②Alembic 마이그레이션 파일 생성(운영 PG) — SQLite 는 `_ensure_columns`(모델 자동 도출)가 시작 시 보강. 'no such column'은 대개 마이그레이션 미적용 or 운영이 SQLite. **마이그레이션 head = 0020**(…0019_post_resident → 0020_agg_snapshot). 스키마 변경은 반드시 Alembic(아래 3).
 
 ## 6. 수정 후 필수 검증 루틴 (반드시 실행)
 **프런트(`frontend/src/main.jsx`) 수정 시 — 표준 검증**: 괄호 균형(`()`·`{}`·`[]` 모두 0) + `verify_frontend`. **모든 UI 수정은 여기서만**(레거시 `app/web/index.html`은 **동결 — 편집 금지**, 폴백 잔존):
@@ -148,7 +148,7 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - `skills/personalization.md` — 개인화(device_id→로그인 승계 union)
 - `skills/auth-and-roles.md` — 소셜로그인·역할(user/agent)
 - `skills/community.md` — 게시판·댓글/대댓글·좋아요/신고·알림·스크랩·작성자·**원자 카운터·포커스 규칙**
-- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0019, head 0019_post_resident)·**웹푸시·모니터링·백업·doctor**·레이트리밋
+- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0020, head 0020_agg_snapshot)·**웹푸시·모니터링·백업·doctor**·레이트리밋
 - `skills/frontend.md` — UI 컨벤션·**SheetShell 바텀시트/스와이프 통일**·시세 드릴다운·상세 위젯·임장·푸시토글·데모폴백
 - `skills/testing.md` — 테스트·CI(pytest·격리·픽스처)
 - 외부 API 주소는 전부 config(.env 오버라이드, 빈 값이면 코드 기본값). 새 외부호출 추가 시 URL을 config 필드로 두고 `s.<field> or 상수` 패턴 사용.

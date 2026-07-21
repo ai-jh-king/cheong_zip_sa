@@ -1,11 +1,15 @@
 """공유·SEO 진입 페이지(서버 렌더링) — SPA(/)는 그대로, 발견·공유 통로만 추가.
 
-- GET /r/{lawd_cd}            지역(구) 시세 요약 + OG 메타 + 앱 링크
-- GET /c/{lawd_cd}/{name}     단지 시세 요약 + OG 메타 + 앱 링크
-- GET /sitemap.xml           검색엔진 색인용(지역 + 주요 단지)
+- GET /r/{lawd_cd}            지역(구) 시세 요약 + OG + 브레드크럼 + 내부링크
+- GET /c/{lawd_cd}/{name}     단지 시세 요약 + OG + 브레드크럼 + 같은 구 단지 링크(고립 해소)
+- GET /start                 전입자 온보딩 랜딩(창끝)
+- GET /guide                 청주 전입 가이드(에버그린·공유용 + FAQ 리치결과)
+- GET /sitemap.xml           검색엔진 색인용(지역 + 단지 최대 400/구 + lastmod)
 - GET /robots.txt            크롤링 허용 + sitemap 위치
 
-목적: ① 구글 색인(검색 유입) ② 카카오톡/링크 공유 시 리치 미리보기(OG) ③ SPA 재작성 없이.
+목적: ① 구글 색인(검색 유입) ② 카카오톡/링크 공유 시 리치 미리보기(OG+이미지) ③ SPA 재작성 없이.
+SEO: 모든 페이지에 robots meta·canonical·og:image·JSON-LD(WebSite/Organization),
+     /r·/c·/guide 에 BreadcrumbList, /guide 에 FAQPage. 내부 링크로 크롤 깊이·체류 확보.
 데이터 없으면 '수집 중' 안전 표기(왜곡 없음). 모든 동적 문자열은 html.escape.
 """
 from __future__ import annotations
@@ -80,22 +84,70 @@ def _base(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
-def _page(*, title: str, desc: str, url: str, body: str) -> HTMLResponse:
+def _jsonld(*nodes) -> str:
+    """유효 노드들을 <script type=ld+json> 로. 검색엔진 이해·리치결과용(왜곡 없는 사실만)."""
+    import json
+    items = [n for n in nodes if n]
+    if not items:
+        return ""
+    data = items[0] if len(items) == 1 else items
+    return f'<script type="application/ld+json">{json.dumps(data, ensure_ascii=False)}</script>'
+
+
+def _website_node(origin: str) -> dict:
+    return {"@context": "https://schema.org", "@type": "WebSite", "name": SITE,
+            "url": origin + "/", "inLanguage": "ko-KR",
+            "publisher": {"@type": "Organization", "name": SITE, "url": origin + "/"}}
+
+
+def _breadcrumb(origin: str, crumbs):
+    """crumbs=[(이름, 경로 or None)], 마지막=현재(링크 없음). (표시 HTML, JSON-LD 노드) 반환.
+    내부 링크(크롤 깊이·체류)+검색 브레드크럼 리치결과 동시 확보."""
+    parts, ld = [], []
+    for i, (name, path) in enumerate(crumbs):
+        ne = html.escape(name)
+        if path:
+            parts.append(f'<a href="{html.escape(path)}" style="color:var(--muted);text-decoration:none">{ne}</a>')
+        else:
+            parts.append(f'<span style="color:var(--ink)">{ne}</span>')
+        ld.append({"@type": "ListItem", "position": i + 1, "name": name,
+                   **({"item": origin + path} if path else {})})
+    nav = ('<nav style="font-size:12px;color:var(--muted);margin:2px 0 10px">'
+           + ' <span style="opacity:.5">›</span> '.join(parts) + '</nav>')
+    node = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": ld}
+    return nav, node
+
+
+def _page(*, title: str, desc: str, url: str, body: str, jsonld=None) -> HTMLResponse:
     t, d = html.escape(title), html.escape(desc)
     u = html.escape(url)
+    from urllib.parse import urlsplit
+    o = urlsplit(url)
+    origin = f"{o.scheme}://{o.netloc}" if o.scheme and o.netloc else ""
+    img = html.escape(origin + "/icons/icon-512.png") if origin else ""
+    nodes = ([_website_node(origin)] if origin else [])
+    if jsonld:
+        nodes += jsonld if isinstance(jsonld, list) else [jsonld]
+    ld = _jsonld(*nodes)
+    img_meta = (f'<meta property="og:image" content="{img}">'
+                f'<meta property="og:image:width" content="512"><meta property="og:image:height" content="512">'
+                f'<meta name="twitter:image" content="{img}">') if img else ""
     doc = f"""<!doctype html><html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{t}</title>
 <meta name="description" content="{d}">
+<meta name="robots" content="index,follow">
 <link rel="canonical" href="{u}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE}">
 <meta property="og:title" content="{t}">
 <meta property="og:description" content="{d}">
 <meta property="og:url" content="{u}">
+{img_meta}
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="{t}">
 <meta name="twitter:description" content="{d}">
+{ld}
 <style>
 :root{{--ink:#16242b;--muted:#5b6b73;--teal:#0F766E;--line:#e6ebec}}
 *{{box-sizing:border-box}}body{{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:var(--ink);background:#f6f8f8}}
@@ -160,14 +212,24 @@ def region_page(lawd_cd: str, request: Request, db: Session = Depends(get_db)):
         link = f'/c/{lawd_cd}/{quote(c["name"])}'
         items += (f'<a class="item" href="{link}"><span>{nm}</span>'
                   f'<span style="font-weight:800">{_eok(c["median"])} · {c["count"]}건</span></a>')
-    body = (f'<h1>{gu} 아파트 시세·실거래가</h1>'
+    bc_html, bc_ld = _breadcrumb(base, [("청주 실거래가", "/"), (gu, None)])
+    body = (bc_html
+            + f'<h1>{gu} 아파트 시세·실거래가</h1>'
             f'<div class="sub">청주시 {gu} 매매·전세 실거래가 요약</div>'
             f'{head}{sig_card}')
     if items:
         body += f'<div class="card"><div class="lbl" style="margin-bottom:6px">주요 단지</div>{items}</div>'
+    # 내부 링크: 다른 구 시세로(크롤 깊이·회유). + 전입 가이드.
+    others = "".join(
+        f'<a class="item" href="/r/{c}"><span>{html.escape(n)} 시세</span>'
+        f'<span style="color:var(--teal);font-weight:800">›</span></a>'
+        for c, n in _CODES.items() if c != lawd_cd)
+    body += (f'<div class="card"><div class="lbl" style="margin-bottom:6px">청주 다른 구</div>{others}</div>'
+             '<a class="item" href="/guide" style="border:none"><span>📖 청주 전입 가이드 — 동네·시세·조심할 점</span>'
+             '<span style="color:var(--teal);font-weight:800">›</span></a>')
     body += '<a class="cta" href="/">청주집사 앱에서 더 보기 →</a>'
     title = f"{gu} 아파트 시세·실거래가 | {SITE}"
-    return _page(title=title, desc=desc, url=url, body=body)
+    return _page(title=title, desc=desc, url=url, body=body, jsonld=[bc_ld])
 
 
 @router.get("/c/{lawd_cd}/{name}", response_class=HTMLResponse)
@@ -215,13 +277,29 @@ def complex_page(lawd_cd: str, name: str, request: Request, db: Session = Depend
             f'<div style="padding:5px 0"><b style="color:{c}">{t}</b> '
             f'<span class="lbl">{html.escape(sub)}</span></div>' for t, sub, c in badges) + '</div>'
         desc = " · ".join(t for t, _, _ in badges) + " · " + desc
-    body = (f'<h1>{nm}</h1><div class="sub">{gu} · 대표 시세</div>'
+    bc_html, bc_ld = _breadcrumb(base, [("청주 실거래가", "/"), (gu, f"/r/{lawd_cd}"), (name, None)])
+    # 같은 구 다른 단지 — 내부 링크(고립 페이지 해소·크롤 깊이·회유)
+    peers = ""
+    try:
+        ov = stats.price_overview(db, lawd_cd=lawd_cd, property_type="all", band="all")
+        pl = [c for c in (ov.get("complexes") or []) if c.get("name") != name][:6]
+        peers = "".join(
+            f'<a class="item" href="/c/{lawd_cd}/{quote(c["name"])}"><span>{html.escape(c["name"])}</span>'
+            f'<span style="font-weight:800">{_eok(c["median"])}</span></a>' for c in pl)
+    except Exception:  # noqa
+        peers = ""
+    body = (bc_html
+            + f'<h1>{nm}</h1><div class="sub">{gu} · 대표 시세</div>'
             f'<div class="card"><div class="lbl">대표 매매(중앙값)</div>'
             f'<div class="big">{_eok(med)}</div>'
             f'<div class="row" style="margin-top:10px">{rows}</div></div>'
             f'{sig_html}'
             f'<a class="cta" href="/">청주집사 앱에서 추이·상세 보기 →</a>')
-    return _page(title=f"{name} 시세·실거래가 | {SITE}", desc=desc, url=url, body=body)
+    if peers:
+        body += (f'<div class="card"><div class="lbl" style="margin-bottom:6px">{gu} 다른 단지 시세</div>{peers}</div>')
+    body += (f'<a class="item" href="/r/{lawd_cd}" style="border:none"><span>📊 {gu} 전체 시세·실거래가</span>'
+             '<span style="color:var(--teal);font-weight:800">›</span></a>')
+    return _page(title=f"{name} 시세·실거래가 | {SITE}", desc=desc, url=url, body=body, jsonld=[bc_ld])
 
 
 @router.get("/start", response_class=HTMLResponse)
@@ -285,6 +363,65 @@ def onboarding_landing(request: Request, dest: str = Query(""),
                  desc=desc, url=base + f"/start?dest={dest}", body=body)
 
 
+# 구별 한 줄 소개(전입자용·사실 기반). 지역 페이지로 내부 링크.
+_GU_BLURB = {
+    "43111": "원도심·행정 중심(도청·법원). 생활 인프라 성숙, 구도심 재정비 이슈.",
+    "43112": "충북대 등 대학가·주거지. 학군·정주 여건 선호.",
+    "43113": "가경·복대 상권과 신흥 주거. SK하이닉스·테크노폴리스 인접(직주근접 수요).",
+    "43114": "오창(산업단지·방사광가속기)·청주공항·북청주역세권. 개발 호재 밀집.",
+}
+
+
+@router.get("/guide", response_class=HTMLResponse)
+def newcomer_guide(request: Request, db: Session = Depends(get_db)):
+    """청주 전입 가이드(에버그린) — '창끝(전입자)' 공유용 + SEO 콘텐츠(내부링크·FAQ 리치결과).
+    회사 단톡/HR 공유에 적합한 '설치 없는' 유용한 페이지. 중개·광고 0 정체성 반영."""
+    base = _base(request)
+    url = base + "/guide"
+    bc_html, bc_ld = _breadcrumb(base, [("청주 실거래가", "/"), ("전입 가이드", None)])
+    regions = "".join(
+        f'<a class="item" href="/r/{c}"><span><b>{html.escape(n)}</b> '
+        f'<span class="lbl">{html.escape(_GU_BLURB.get(c, ""))}</span></span>'
+        f'<span style="color:var(--teal);font-weight:800">›</span></a>' for c, n in _CODES.items())
+    faqs = [
+        ("청주 어디에 살아야 하나요?",
+         "정답은 직장 위치예요. 통근 거리 기준으로 후보 단지를 좁힌 뒤 시세와 조심할 점을 함께 보세요. "
+         "청집사 ‘전입자 추천’에서 직장을 고르면 근처 단지를 시세·예산 차액과 함께 보여드려요."),
+        ("전세가율이 높으면 위험한가요?",
+         "전세가율(전세보증금÷매매가)이 높을수록 매매가 대비 보증금 비중이 커서, 시세가 내리면 보증금 회수가 "
+         "어려워지는 역전세 위험이 커질 수 있어요. 단정은 아니고, 계약 전 등기부(선순위)와 함께 꼭 확인하세요."),
+        ("급매면 무조건 좋은 건가요?",
+         "같은 평형 중앙값보다 크게 낮은 실거래라도 직거래·가족 간 거래 등 특수 사유일 수 있어요. "
+         "청집사는 이런 신호를 ‘사실’로만 보여주고 판정하지 않아요. 근거를 보고 판단하세요."),
+    ]
+    faq_html = "".join(
+        f'<div style="padding:9px 0;border-top:1px solid var(--line)"><b>Q. {html.escape(q)}</b>'
+        f'<div class="lbl" style="margin-top:4px;line-height:1.6">{html.escape(a)}</div></div>' for q, a in faqs)
+    faq_ld = {"@context": "https://schema.org", "@type": "FAQPage",
+              "mainEntity": [{"@type": "Question", "name": q,
+                              "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs]}
+    body = (bc_html
+            + '<h1>청주 전입 가이드</h1>'
+            '<div class="sub">청주가 처음이신 분(SK하이닉스·오송·오창 발령 등)을 위한 동네·시세·조심할 점. '
+            '중개·광고 없이 데이터만.</div>'
+            '<div class="card"><div class="lbl" style="margin-bottom:6px">① 청주 4개 구, 한눈에</div>'
+            f'{regions}</div>'
+            '<div class="card" style="background:rgba(15,118,110,.06);border-color:rgba(15,118,110,.2)">'
+            '<b>② 직장 근처부터 좁히세요</b><div class="lbl" style="margin-top:4px">직장을 고르면 근처 살 만한 '
+            '단지를 시세·예산 차액까지 3분에.</div>'
+            '<a class="cta" href="/start" style="margin-top:10px">전입자 맞춤 추천 받기 →</a></div>'
+            '<div class="card"><div class="lbl" style="margin-bottom:6px">③ 조심할 점 (자주 묻는 질문)</div>'
+            f'{faq_html}</div>'
+            '<div class="card">💡 청집사는 <b>중개·광고 수익이 없어요.</b> 그래서 “여기 사세요”가 아니라 '
+            '<b>급매·전세위험 같은 조심할 점</b>까지 솔직히 알려드릴 수 있어요. 계약 전 등기부·건축물대장 확인도 '
+            '앱에 정리돼 있어요.</div>'
+            '<a class="cta" href="/">청집사 앱 열기 →</a>')
+    desc = ("청주 전입 가이드 — SK하이닉스·오송·오창 발령 등 청주가 처음인 분을 위한 동네·시세·조심할 점. "
+            "중개·광고 없이 데이터만, 급매·전세위험까지 솔직히.")
+    return _page(title="청주 전입 가이드 — 동네·시세·조심할 점 | " + SITE,
+                 desc=desc, url=url, body=body, jsonld=[bc_ld, faq_ld])
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 def robots(request: Request):
     return f"User-agent: *\nAllow: /\nSitemap: {_base(request)}/sitemap.xml\n"
@@ -293,16 +430,24 @@ def robots(request: Request):
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap(request: Request, db: Session = Depends(get_db)):
     base = _base(request)
-    urls = [f"{base}/", f"{base}/start"]
+    # lastmod = 마지막 수집 날짜(데이터 신선도) — 크롤러 재방문 힌트.
+    try:
+        from app.services import appmeta
+        at = ((appmeta.get_json(db, "last_collect") or {}).get("at") or "")[:10]
+    except Exception:  # noqa
+        at = ""
+    lastmod = at if len(at) == 10 else ""
+    urls = [f"{base}/", f"{base}/start", f"{base}/guide"]
     for code in _CODES:
         urls.append(f"{base}/r/{code}")
         try:
             ov = stats.price_overview(db, lawd_cd=code, property_type="all", band="all")
-            for c in (ov.get("complexes") or [])[:30]:
+            for c in (ov.get("complexes") or [])[:400]:   # 단지 색인 커버리지 확대(구당 최대 400)
                 urls.append(f"{base}/c/{code}/{quote(c['name'])}")
         except Exception:  # noqa
             pass
-    body = "".join(f"<url><loc>{html.escape(u)}</loc></url>" for u in urls)
+    lm = f"<lastmod>{lastmod}</lastmod>" if lastmod else ""
+    body = "".join(f"<url><loc>{html.escape(u)}</loc>{lm}</url>" for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
            f"{body}</urlset>")

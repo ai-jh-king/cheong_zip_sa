@@ -64,6 +64,45 @@ def test_complex_landing_shows_jeonse_risk(client, db):
     assert "전세가율 높음" in html
 
 
+def test_guide_page_faq_and_links(client, db):
+    h = client.get("/guide").text
+    assert "청주 전입 가이드" in h
+    assert "FAQPage" in h            # FAQ 리치결과 구조화 데이터
+    assert 'href="/start"' in h      # 온보딩(창끝) 연결
+    assert 'href="/r/43113"' in h    # 지역 내부 링크
+    assert "중개·광고" in h            # 정체성 문구
+
+
+def test_region_page_seo(client, db):
+    for i, a in enumerate([50000, 51000, 52000]):
+        db.add(_trade("에스이오단지", a, f"seo{i}"))
+    db.commit(); cache.bump_data_version()
+    h = client.get("/r/43111").text
+    assert "BreadcrumbList" in h          # 브레드크럼 구조화
+    assert "og:image" in h                # 공유 미리보기 이미지
+    assert 'name="robots"' in h           # 색인 지시
+    assert 'href="/r/43112"' in h         # 다른 구 내부 링크
+    assert 'href="/guide"' in h           # 가이드 연결
+
+
+def test_complex_page_not_orphan(client, db):
+    from urllib.parse import quote
+    for i, a in enumerate([50000, 51000, 52000]):
+        db.add(_trade("대상단지", a, f"tg{i}"))
+    for i, a in enumerate([40000, 41000, 42000]):
+        db.add(_trade("이웃단지", a, f"nb{i}"))
+    db.commit(); cache.bump_data_version()
+    h = client.get(f"/c/43111/{quote('대상단지')}").text
+    assert "BreadcrumbList" in h
+    assert 'href="/r/43111"' in h         # 지역으로 돌아가는 링크(고립 해소)
+    assert "다른 단지 시세" in h            # 같은 구 다른 단지 내부 링크
+
+
+def test_sitemap_includes_guide(client, db):
+    xml = client.get("/sitemap.xml").text
+    assert "/guide" in xml
+
+
 def test_onboarding_landing_picker(client, db):
     from app.models import CommuteDestination
     db.add(CommuteDestination(key="skhy", name="SK하이닉스 청주캠퍼스", category="job",

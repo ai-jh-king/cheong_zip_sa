@@ -637,7 +637,7 @@ function FormHead({children}){return <div style={{fontWeight:800,fontSize:14,mar
 function Dropdown({value,set,opts,ph,wide,disabled,style}){
  const [open,setOpen]=useState(false);
  const [pos,setPos]=useState(null);
- const btnRef=useRef(null);
+ const btnRef=useRef(null), menuRef=useRef(null);
  const items=ph!=null?[["",ph],...opts]:opts;
  const cur=items.find(o=>String(o[0])===String(value));
  const isPh=value===""||value==null;
@@ -653,11 +653,13 @@ function Dropdown({value,set,opts,ph,wide,disabled,style}){
  },[]);
  const openIt=useCallback(()=>{if(!disabled){place();setOpen(true);}},[disabled,place]);
  useEffect(()=>{if(!open)return;
+  // 배경 스크롤이면 닫기(위치가 어긋나므로). 단, 메뉴 '내부' 스크롤은 예외(긴 목록을 스크롤해야 하므로).
+  const onScroll=e=>{const m=menuRef.current; if(m&&e.target&&m.contains(e.target))return; setOpen(false);};
   const close=()=>setOpen(false);
-  window.addEventListener("scroll",close,true); window.addEventListener("resize",close);
+  window.addEventListener("scroll",onScroll,true); window.addEventListener("resize",close);
   const onKey=e=>{if(e.key==="Escape")setOpen(false);};
   document.addEventListener("keydown",onKey);
-  return ()=>{window.removeEventListener("scroll",close,true);window.removeEventListener("resize",close);document.removeEventListener("keydown",onKey);};
+  return ()=>{window.removeEventListener("scroll",onScroll,true);window.removeEventListener("resize",close);document.removeEventListener("keydown",onKey);};
  },[open]);
  return (<div style={{position:"relative",...(wide?{width:"100%"}:{flex:1,minWidth:0}),...style}}>
   <button type="button" ref={btnRef} disabled={disabled} className={"dd-btn"+(open?" open":"")} aria-haspopup="listbox" aria-expanded={open}
@@ -668,7 +670,7 @@ function Dropdown({value,set,opts,ph,wide,disabled,style}){
   {open&&pos&&ReactDOM.createPortal(
    <React.Fragment>
     <div className="dd-backdrop" onClick={()=>setOpen(false)}/>
-    <div className="dd-menu" role="listbox" style={{left:pos.left,width:pos.width,maxHeight:pos.maxH,...(pos.below?{top:pos.top}:{bottom:pos.bottomCss})}}>
+    <div ref={menuRef} className="dd-menu" role="listbox" style={{left:pos.left,width:pos.width,maxHeight:pos.maxH,...(pos.below?{top:pos.top}:{bottom:pos.bottomCss})}}>
      {items.map(([v,l])=>(<div key={v} role="option" aria-selected={String(v)===String(value)} tabIndex={0}
        className={"dd-opt"+(String(v)===String(value)?" on":"")}
        onClick={()=>{set(v);setOpen(false);}} onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();set(v);setOpen(false);}}}>

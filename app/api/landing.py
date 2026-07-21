@@ -12,7 +12,7 @@ from __future__ import annotations
 import html
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
@@ -224,6 +224,67 @@ def complex_page(lawd_cd: str, name: str, request: Request, db: Session = Depend
     return _page(title=f"{name} 시세·실거래가 | {SITE}", desc=desc, url=url, body=body)
 
 
+@router.get("/start", response_class=HTMLResponse)
+def onboarding_landing(request: Request, dest: str = Query(""),
+                       budget: int = Query(0, ge=0), db: Session = Depends(get_db)):
+    """전입자 온보딩 공개 랜딩(설치 없이) — '창끝'. 직장 고르면 근처 단지+시세+예산 차액.
+    SK하이닉스·오송·오창 발령자 단톡/카페에 뿌릴 공유용. 판정 없음·면책은 recommend notice."""
+    from app.services import onboarding
+    base = _base(request)
+    opts = onboarding.options(db).get("destinations") or []
+    keys = {o["key"] for o in opts}
+
+    if not dest or dest not in keys:
+        btns = "".join(
+            f'<a class="item" href="/start?dest={o["key"]}"><span>🏭 {html.escape(o["name"])}'
+            f'{" · " + html.escape(o["gu"]) if o.get("gu") else ""}</span>'
+            f'<span style="color:var(--teal);font-weight:800">›</span></a>' for o in opts)
+        picker = (f'<div class="card"><div class="lbl" style="margin-bottom:6px">어디로 출근하세요?</div>{btns}</div>'
+                  if opts else '<div class="card">직장 거점 데이터 준비 중입니다. 곧 열립니다.</div>')
+        body = ('<h1>청주가 처음이세요?</h1>'
+                '<div class="sub">직장을 고르면 근처에 살 만한 단지를 <b>시세·조심할 점</b>까지 한눈에. 설치 없이.</div>'
+                f'{picker}'
+                '<div class="card" style="background:rgba(15,118,110,.06);border-color:rgba(15,118,110,.2)">'
+                '💡 청집사는 <b>중개·광고 수익이 없어요.</b> 그래서 “이 단지 사세요”가 아니라 '
+                '<b>조심할 점(급매·전세위험)</b>까지 솔직히 알려드릴 수 있어요.</div>'
+                '<a class="cta" href="/">청집사 앱 열기 →</a>')
+        desc = "청주 전입자 맞춤 — 직장 근처 살 만한 단지를 시세·조심할 점까지. 중개·광고 없이 데이터만."
+        return _page(title="청주가 처음이세요? 직장 근처 단지 추천 | " + SITE,
+                     desc=desc, url=base + "/start", body=body)
+
+    rec = onboarding.recommend(db, dest, budget=(budget or None), limit=6)
+    d = rec.get("destination") or {}
+    dnm = html.escape(d.get("name") or "직장")
+    items = rec.get("items") or []
+    bform = (f'<form method="get" action="/start" class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+             f'<input type="hidden" name="dest" value="{html.escape(dest)}">'
+             f'<span class="lbl" style="flex:none">보유 현금(만원)</span>'
+             f'<input name="budget" type="number" min="0" value="{budget or ""}" placeholder="예: 30000" '
+             f'style="flex:1;min-width:120px;padding:9px;border:1px solid var(--line);border-radius:9px">'
+             f'<button style="flex:none;background:var(--teal);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-weight:800">적용</button></form>')
+    cards = ""
+    for it in items:
+        price = _eok(it.get("latest_amount")) if it.get("latest_amount") else "—"
+        over = it.get("over_budget_by")
+        gap = ""
+        if over is not None:
+            gap = ('<span style="color:#1d7a4d;font-weight:800;font-size:12px">자기자본 이내</span>'
+                   if over <= 0 else f'<span style="color:#5b6b73;font-size:12px">+{_eok(over)} 더 필요</span>')
+        cards += (f'<a class="item" href="/c/{it["lawd_cd"]}/{quote(it["name"])}">'
+                  f'<span>{html.escape(it["name"])} <span style="color:#5b6b73;font-size:12px">🚗 {it["minutes"]}분</span></span>'
+                  f'<span style="text-align:right"><b>{price}</b><br>{gap}</span></a>')
+    body = (f'<h1>{dnm} 근처 살 만한 단지</h1>'
+            f'<div class="sub">직장에서 가깝고 시세를 확인한 단지예요. 예산을 넣으면 자기자본 대비 차액도.</div>'
+            f'{bform}'
+            + (f'<div class="card">{cards}</div>' if cards
+               else '<div class="card">주변 단지 데이터가 준비 중입니다(실거래 수집·지오코딩 후 채워집니다).</div>')
+            + f'<div class="muted">{html.escape(rec.get("notice") or "")}</div>'
+            + '<a class="cta" href="/">청집사 앱에서 상세·추이 보기 →</a>')
+    desc = f"{dnm} 근처 청주 아파트 — 통근시간·시세·예산 차액을 한눈에. 중개·광고 없이 데이터만, 조심할 점까지."
+    return _page(title=f"{dnm} 근처 살 만한 단지 | " + SITE,
+                 desc=desc, url=base + f"/start?dest={dest}", body=body)
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 def robots(request: Request):
     return f"User-agent: *\nAllow: /\nSitemap: {_base(request)}/sitemap.xml\n"
@@ -232,7 +293,7 @@ def robots(request: Request):
 @router.get("/sitemap.xml", include_in_schema=False)
 def sitemap(request: Request, db: Session = Depends(get_db)):
     base = _base(request)
-    urls = [f"{base}/"]
+    urls = [f"{base}/", f"{base}/start"]
     for code in _CODES:
         urls.append(f"{base}/r/{code}")
         try:

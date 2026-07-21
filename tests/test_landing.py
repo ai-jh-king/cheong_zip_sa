@@ -62,3 +62,16 @@ def test_complex_landing_shows_jeonse_risk(client, db):
     cache.bump_data_version()
     html = client.get("/c/43111/전세단지").text
     assert "전세가율 높음" in html
+
+
+def test_onboarding_landing_picker(client, db):
+    from app.models import CommuteDestination
+    db.add(CommuteDestination(key="skhy", name="SK하이닉스 청주캠퍼스", category="job",
+                              lat=36.675, lng=127.425, gu="흥덕구", is_active=True, sort_order=1))
+    db.commit()
+    html = client.get("/start").text
+    assert "청주가 처음이세요" in html
+    assert "SK하이닉스 청주캠퍼스" in html and "dest=skhy" in html
+    assert "중개·광고 수익이 없" in html          # 정체성(말릴 수 있는 앱) 문구
+    # 잘못된 dest → 픽커로 폴백
+    assert "어디로 출근하세요" in client.get("/start?dest=없는거점").text

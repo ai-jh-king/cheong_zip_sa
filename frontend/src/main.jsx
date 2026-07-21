@@ -746,7 +746,7 @@ function ListingForm({onCancel,onCreated,account,initial}){
    <LField label="연락처(전화)" req><input style={INP} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="010-0000-0000"/></LField>
 
    {err&&<div style={{color:UP,fontWeight:700,fontSize:13,margin:"6px 0 0"}}>{err}</div>}
-   <button onClick={submit} disabled={busy} className="btn-primary" style={{marginTop:14,width:"100%",fontSize:15,padding:"13px"}}>{busy?(isEdit?"저장 중…":"등록 중…"):(isEdit?"수정 저장":"매물 등록하기")}</button>
+   <button onClick={submit} disabled={busy} className="btn-outline" style={{marginTop:14,width:"100%",fontSize:15,padding:"13px"}}>{busy?(isEdit?"저장 중…":"등록 중…"):(isEdit?"수정 저장":"매물 등록하기")}</button>
    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.6}}>등록 시 표시·광고 명시사항과 허위매물 금지에 동의하는 것으로 간주합니다. 연락처는 매물 상세에 공개됩니다. 입력 정보는 매물 게시 목적에만 사용됩니다.</div>
   </div>
   <div style={{height:16}}/>
@@ -945,7 +945,7 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
   </div>
   <div style={{display:"flex",alignItems:"center",margin:"10px 2px 8px"}}>
    <button className={"tog "+(mine?"on":"")} onClick={()=>setMine(m=>!m)}>{account?"내 매물":"내 등록만"}</button>
-   <button onClick={()=>setMode("form")} className="btn-primary" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 매물 등록</button>
+   <button onClick={()=>setMode("form")} className="btn-outline" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 매물 등록</button>
   </div>
   {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
    :items.length?<React.Fragment>
@@ -955,7 +955,7 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
      }}/>)}
      {hasMore&&<button onClick={loadMore} disabled={loadingMore} style={{display:"block",width:"100%",margin:"8px 0 2px",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"11px",borderRadius:10,cursor:loadingMore?"default":"pointer",opacity:loadingMore?.6:1}}>{loadingMore?"불러오는 중…":"더보기"}</button>}
     </React.Fragment>
-   :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} className="btn-primary" style={{fontSize:13.5,padding:"10px 18px"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}
+   :<div className="card" style={{padding:30}}><Empty action={<button onClick={()=>setMode("form")} className="btn-outline" style={{fontSize:13.5,padding:"10px 18px"}}>+ 매물 등록</button>}>등록된 매물이 없습니다. 첫 매물을 등록해 보세요.</Empty></div>}
   <div style={{height:16}}/>
   {mode==="detail"&&sel&&<ListingSheet x={sel} onClose={()=>setMode("list")}/>}
  </div>);
@@ -2526,7 +2526,7 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
     </div>}
     <div style={{display:"flex",alignItems:"center",margin:"4px 2px 8px"}}>
      <span style={{fontWeight:800,fontSize:14}}>내 매물</span>
-     <button onClick={onGoListings} className="btn-primary" style={{marginLeft:"auto",fontSize:13,padding:"8px 13px"}}>+ 매물 등록</button>
+     <button onClick={onGoListings} className="btn-outline" style={{marginLeft:"auto",fontSize:13,padding:"8px 13px"}}>+ 매물 등록</button>
     </div>
     {a.length?a.map(x=>(<div key={x.id} onClick={()=>onOpenListing&&onOpenListing(x.id)} className="card" style={{padding:"10px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
        <div style={{minWidth:0,flex:1}}>

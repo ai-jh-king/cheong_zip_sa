@@ -49,6 +49,10 @@
   .btn-primary:active{transform:scale(.985);filter:brightness(.94);}
   .btn-primary:disabled{opacity:.55;cursor:default;}
   .btn-ghost{border:none;background:var(--surface-2);color:var(--teal);font:inherit;font-weight:800;font-size:13px;padding:9px 15px;border-radius:11px;cursor:pointer;}
+  /* 차분한 아웃라인 CTA — 솔리드 대신 테두리+teal글자(매물 등록 등 보조 액션용). */
+  .btn-outline{border:1.5px solid var(--teal);background:transparent;color:var(--teal);font:inherit;font-weight:800;font-size:14px;padding:11px 16px;border-radius:12px;cursor:pointer;transition:background .12s ease;}
+  .btn-outline:active{background:rgba(15,118,110,.09);}
+  .btn-outline:disabled{opacity:.5;cursor:default;}
   :focus-visible{outline:2.5px solid var(--teal);outline-offset:2px;border-radius:7px;}
   @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
   table{width:100%;border-collapse:collapse;} th,td{text-align:left;padding:10px 7px;font-size:13.5px;border-bottom:1px solid var(--line);vertical-align:top;}

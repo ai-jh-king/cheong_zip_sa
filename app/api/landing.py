@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.config import get_settings
 from app.data.region_codes import CHEONGJU_DISTRICTS
-from app.services import stats
+from app.services import stats, pricecheck
 
 router = APIRouter(tags=["landing"])
 
@@ -31,6 +31,46 @@ def _eok(manwon) -> str:
     if not manwon:
         return "—"
     return f"{manwon / 10000:.2f}억"
+
+
+def _gu_signals(db, lawd_cd: str):
+    """이 구의 '말릴 수 있는' 신호(급매·전세위험) — 공유/색인 콘텐츠 후크용.
+    경쟁 앱(중개·광고 수익)이 구조적으로 못 만드는 차별 콘텐츠. 데이터 없으면 빈 목록(왜곡 없음)."""
+    try:
+        bargains = [h for h in (pricecheck.bargain_radar(db, months=3, limit=40).get("items") or [])
+                    if h.get("lawd_cd") == lawd_cd]
+    except Exception:  # noqa
+        bargains = []
+    try:
+        risks = [h for h in (pricecheck.jeonse_risk_map(db, min_ratio=80, limit=200).get("items") or [])
+                 if h.get("lawd_cd") == lawd_cd]
+    except Exception:  # noqa
+        risks = []
+    return bargains, risks
+
+
+def _signal_card(bargains, risks) -> str:
+    """급매·전세위험 신호 카드 HTML. 신호 없으면 빈 문자열."""
+    if not (bargains or risks):
+        return ""
+    rows = ""
+    if bargains:
+        top = "".join(
+            f'<a class="item" href="/c/{b["lawd_cd"]}/{quote(b["name"])}"><span>📉 {html.escape(b["name"])} '
+            f'<span style="color:#5b6b73;font-size:12px">{b.get("pyeong","")}평</span></span>'
+            f'<span style="font-weight:800;color:#1E5FC4">{b["diff_pct"]}%</span></a>'
+            for b in bargains[:3])
+        rows += (f'<div class="lbl" style="margin:2px 0 4px"><b style="color:#1E5FC4">📉 급매 감지 {len(bargains)}건</b> '
+                 f'<span>· 같은 평형 중앙값보다 크게 낮은 실거래</span></div>{top}')
+    if risks:
+        top = "".join(
+            f'<a class="item" href="/c/{r["lawd_cd"]}/{quote(r["name"])}"><span>⚠️ {html.escape(r["name"])}</span>'
+            f'<span style="font-weight:800;color:#C77A1A">전세가율 {r["ratio"]}%</span></a>'
+            for r in sorted(risks, key=lambda x: -x["ratio"])[:3])
+        rows += (f'<div class="lbl" style="margin:12px 0 4px"><b style="color:#C77A1A">⚠️ 전세위험 {len(risks)}곳</b> '
+                 f'<span>· 전세가율 높아 역전세 유의(단정 아님)</span></div>{top}')
+    return (f'<div class="card"><div class="lbl" style="margin-bottom:6px;font-weight:800;color:var(--teal)">'
+            f'청집사 시그널 <span style="font-weight:400">· 중개·광고 없이 데이터만</span></div>{rows}</div>')
 
 
 def _base(request: Request) -> str:
@@ -103,6 +143,17 @@ def region_page(lawd_cd: str, request: Request, db: Session = Depends(get_db)):
         desc = f"청주시 {gu} 아파트·오피스텔·빌라 실거래가. 데이터 준비 중입니다."
         head = '<div class="card">아직 표시할 실거래가 없어요. 곧 업데이트됩니다.</div>'
 
+    # 우리만의 차별 신호(급매·전세위험) — 공유 미리보기(OG) 앞머리에 세워 클릭 유도.
+    bargains, risks = _gu_signals(db, lawd_cd)
+    sig_card = _signal_card(bargains, risks)
+    if bargains or risks:
+        hook = []
+        if bargains:
+            hook.append(f"📉 급매 {len(bargains)}건")
+        if risks:
+            hook.append(f"⚠️ 전세위험 {len(risks)}곳")
+        desc = " · ".join(hook) + " 감지 | " + desc
+
     items = ""
     for c in (ov.get("complexes") or [])[:6]:
         nm = html.escape(c["name"])
@@ -111,7 +162,7 @@ def region_page(lawd_cd: str, request: Request, db: Session = Depends(get_db)):
                   f'<span style="font-weight:800">{_eok(c["median"])} · {c["count"]}건</span></a>')
     body = (f'<h1>{gu} 아파트 시세·실거래가</h1>'
             f'<div class="sub">청주시 {gu} 매매·전세 실거래가 요약</div>'
-            f'{head}')
+            f'{head}{sig_card}')
     if items:
         body += f'<div class="card"><div class="lbl" style="margin-bottom:6px">주요 단지</div>{items}</div>'
     body += '<a class="cta" href="/">청주집사 앱에서 더 보기 →</a>'
@@ -146,10 +197,29 @@ def complex_page(lawd_cd: str, name: str, request: Request, db: Session = Depend
         rows = f'<div class="kv"><div class="lbl">전세가율</div><div class="v">{ratio}%</div></div>' + rows
     if by:
         rows += f'<div class="kv"><div class="lbl">건축</div><div class="v">{by}년</div></div>'
+    # 이 단지 차별 신호(전세위험·급매) — 공유 미리보기(OG) 앞세워 후크. 판정 아님·면책은 하단 공통.
+    badges = []
+    if ratio and ratio >= 75:
+        badges.append(("⚠️ 전세가율 높음", f"전세가율 {ratio}% · 역전세 유의(단정 아님)", "#C77A1A"))
+    try:
+        _bg = [b for b in (pricecheck.bargain_radar(db, months=3, limit=40).get("items") or [])
+               if b.get("lawd_cd") == lawd_cd and b.get("name") == name]
+    except Exception:  # noqa
+        _bg = []
+    if _bg:
+        _best = min(_bg, key=lambda x: x["diff_pct"])
+        badges.append(("📉 급매 감지", f"같은 평형 중앙값 대비 {_best['diff_pct']}% 실거래", "#1E5FC4"))
+    sig_html = ""
+    if badges:
+        sig_html = '<div class="card">' + "".join(
+            f'<div style="padding:5px 0"><b style="color:{c}">{t}</b> '
+            f'<span class="lbl">{html.escape(sub)}</span></div>' for t, sub, c in badges) + '</div>'
+        desc = " · ".join(t for t, _, _ in badges) + " · " + desc
     body = (f'<h1>{nm}</h1><div class="sub">{gu} · 대표 시세</div>'
             f'<div class="card"><div class="lbl">대표 매매(중앙값)</div>'
             f'<div class="big">{_eok(med)}</div>'
             f'<div class="row" style="margin-top:10px">{rows}</div></div>'
+            f'{sig_html}'
             f'<a class="cta" href="/">청주집사 앱에서 추이·상세 보기 →</a>')
     return _page(title=f"{name} 시세·실거래가 | {SITE}", desc=desc, url=url, body=body)
 

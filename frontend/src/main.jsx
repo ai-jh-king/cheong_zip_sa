@@ -3767,52 +3767,12 @@ function VolumeSignal({volume}){
   <span style={{flex:"none"}}><Info text="최근 3개월 매매 신고 건수를 직전 3개월과 비교한 거래 동향입니다. 가격만으로는 알기 어려운 ‘거래를 동반한 변화’인지 참고하세요. 표본이 적으면 변동이 크니 참고용입니다."/></span>
  </div>);
 }
-function FairPriceCheck({a}){
- const [v,setV]=useState("");
- const amts=(a.amounts||[]).filter(x=>x!=null);
- const med=a.price_median, lo=a.price_min, hi=a.price_max;
- if(med==null||!amts.length)return null;
- const price=v===""?null:+v;
- const span=(hi!=null&&lo!=null&&hi>lo)?hi-lo:null;
- let pct=null,below=null,P=null,verdict=null,vc=INK,note=null,markerPos=50;
- if(price!=null&&price>0){
-  pct=Math.round((price-med)/med*1000)/10;
-  below=amts.filter(x=>x<price).length; P=Math.round(below/amts.length*100);
-  markerPos=span?Math.max(0,Math.min(100,(price-lo)/span*100)):50;
-  if(pct<=-7){verdict="시세보다 저렴한 편";vc=DOWN;}
-  else if(pct>=7){verdict="시세보다 비싼 편";vc=UP;}
-  else {verdict="대체로 시세 수준";vc=INK;}
-  if(lo!=null&&price<lo)note="최근 실거래 최저가보다 낮아요(급매·특수거래일 수 있어요).";
-  else if(hi!=null&&price>hi)note="최근 실거래 최고가보다 높아요(신고가 수준).";
- }
- const medPos=span?Math.max(0,Math.min(100,(med-lo)/span*100)):50;
- return (<div style={{marginTop:14,padding:"12px 13px",background:"var(--surface-2)",borderRadius:12}}>
-  <div style={{fontSize:12.5,fontWeight:800,display:"flex",alignItems:"center",gap:5}}>적정가 체크<Info text="입력한 가격이 이 평형의 최근 실거래 분포에서 어디쯤인지 보여줍니다. 층·향·동·시점에 따라 실제 적정가는 다를 수 있는 참고용 정보예요."/></div>
-  <div style={{fontSize:11.5,color:MUTED,marginTop:3}}>매물·호가를 넣어보면 이 평형 시세 대비 위치를 알려드려요.</div>
-  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:9}}>
-   <input value={v} onChange={e=>setV(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="예: 35000" style={{flex:1,minWidth:0,border:"1px solid var(--line)",borderRadius:9,padding:"10px 12px",fontSize:14,background:"var(--surface-solid)",color:"var(--ink)"}}/>
-   <span className="num" style={{fontSize:12.5,color:MUTED,flex:"none"}}>만원{price?` · ${eok(price)}`:""}</span>
-  </div>
-  {price!=null&&price>0&&<div style={{marginTop:13}}>
-   <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-    <span style={{fontWeight:800,fontSize:15,color:vc}}>{verdict}</span>
-    <span className="num" style={{fontSize:12.5,color:vc,fontWeight:700}}>중앙값 대비 {pct>0?"+":""}{pct}%</span>
-   </div>
-   <div style={{position:"relative",height:8,borderRadius:5,marginTop:13,background:"linear-gradient(90deg,rgba(30,95,196,.30),rgba(99,120,128,.18),rgba(200,50,42,.30))"}}>
-    <div style={{position:"absolute",left:`${medPos}%`,top:-3,width:2,height:14,background:MUTED,transform:"translateX(-1px)"}}/>
-    <div style={{position:"absolute",left:`${markerPos}%`,top:-5,transform:"translateX(-50%)",width:13,height:18,borderRadius:4,background:vc,border:"2px solid var(--surface-solid)",boxShadow:"0 1px 4px rgba(0,0,0,.25)"}}/>
-   </div>
-   <div className="num" style={{display:"flex",justifyContent:"space-between",fontSize:10.5,color:MUTED,marginTop:6}}><span>저점 {eok(lo)}</span><span>중앙 {eok(med)}</span><span>고점 {eok(hi)}</span></div>
-   <div style={{fontSize:11.5,color:MUTED,marginTop:9}}>최근 거래 {amts.length}건 중 이 가격보다 낮은 거래 {below}건 (하위 {P}%){amts.length<5?" · 표본 적어 참고만":""}</div>
-   {note&&<div style={{fontSize:11.5,color:vc,marginTop:4,fontWeight:600}}>※ {note}</div>}
-  </div>}
-  <div style={{fontSize:10.5,color:MUTED,marginTop:9,lineHeight:1.6}}>※ 같은 평형 최근 실거래 기준 참고 위치예요. 층·향·동·시점·옵션에 따라 실제 적정가는 달라지며, 신고 지연·정정·이상거래가 섞일 수 있습니다.</div>
- </div>);
-}
 function AreaSection({a,unit,onLoan,open=true}){
  const months=(a.timeseries||[]).map(t=>t.month.slice(5)), vals=(a.timeseries||[]).map(t=>t.avg);
+ // 제목은 탭 라벨과 동일하게 정수 평(㎡ 모드는 정수 ㎡) — 소수 버리고 통일.
+ const label=a.area!=null?(unit==="py"?`${Math.round(a.area/PY)}평`:`${Math.round(a.area)}㎡`):(a.label||"—");
  return (<Collapsible icon="price" defaultOpen={open}
-   title={<span>{areaTxt(a,unit)}</span>}
+   title={<span>{label}</span>}
    right={<span className="num" style={{fontSize:12,color:MUTED}}>{a.trade_count}건</span>}>
   <div style={{padding:"6px 14px 12px"}}>
    <div style={{display:"flex",alignItems:"flex-end",gap:10,flexWrap:"wrap"}}>
@@ -3829,7 +3789,6 @@ function AreaSection({a,unit,onLoan,open=true}){
     <DMetric label={<React.Fragment>평단가<Info text="전용 1평(3.3㎡)당 가격(만원). 면적이 다른 단지·평형을 비교할 때 씁니다."/></React.Fragment>} val={a.ppm_median!=null?a.ppm_median.toLocaleString("ko-KR"):"—"} sub="만원/평"/>
     <DMetric label="매매 거래" val={`${a.trade_count}건`}/>
    </div>
-   <FairPriceCheck a={a}/>
    {months.length>0&&<div style={{marginTop:14}}><div style={{fontSize:12,color:MUTED,fontWeight:700,marginBottom:4}}>매매 시세 추이</div><DetailLine months={months} values={vals}/></div>}
    {(a.recent||[]).length>0&&<div style={{marginTop:14}}>
     <div style={{fontSize:12,color:MUTED,fontWeight:700,marginBottom:2}}>최근 실거래<Info text="정정=신고 후 금액이 정정된 거래 · 직거래=중개 없이 거래(가족 등 특수관계가 섞일 수 있어 시세 해석 주의) · 이상치=같은 평형 중앙 평단가 대비 ±30% 넘게 벗어난 거래."/>{a.reliability&&a.reliability!=="ok"&&<span className="pill" style={{marginLeft:6,background:"rgba(178,106,0,.14)",color:"#9A6B00",fontWeight:700}}>표본 적음 {a.trade_count}건</span>}</div>
@@ -4047,17 +4006,18 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
  if(!d.found)return <div style={{marginTop:6}}><Empty>이 단지의 거래 데이터를 찾지 못했습니다.</Empty></div>;
  const mapItem=[{rank:1,complex_name:d.name,lat:d.lat,lng:d.lng,deal_amount:d.latest_amount}];
  const areas=d.areas||[];
- const focusPy=tabPy;
  const pyList=[...new Set(areas.map(a=>Math.round(a.area/PY)).filter(x=>x))].sort((a,b)=>a-b);
+ // 전체 탭 제거 — 항상 특정 평형을 선택(기본=가장 작은 평형). 탭을 누르면 그 평형만 바로 표시.
+ const focusPy=tabPy!=null?tabPy:(pyList.length?pyList[0]:null);
  const matched=focusPy!=null?areas.filter(a=>Math.round(a.area/PY)===focusPy):[];
  const useAreas=matched.length?matched:areas;
- const narrowed=matched.length>0&&matched.length<areas.length;
+ const narrowed=focusPy!=null&&matched.length>0;
  const jrVals=useAreas.map(a=>a.jeonse_ratio).filter(v=>v!=null).sort((x,y)=>x-y);
  const jr=narrowed?(jrVals.length?jrVals[Math.floor(jrVals.length/2)]:null):d.jeonse_ratio;
  const repArea=narrowed?useAreas[0]:null;
  const ppmComplex=(()=>{const v=areas.map(a=>a.ppm_median).filter(x=>x!=null).sort((x,y)=>x-y);return v.length?v[Math.floor(v.length/2)]:null;})();
  const card={name:d.name,sub:[guOf(d.gu),d.dong,TYPE_LABEL[d.property_type],d.build_year?`${d.build_year}년`:null].filter(Boolean).join(" · "),
-  scope:narrowed?(matched.map(a=>areaTxt(a,unit)).join("·")+" 평형"):"단지 전체",
+  scope:focusPy!=null?`${focusPy}평`:"단지 전체",
   latest:repArea?repArea.latest_amount:d.latest_amount, fromPeak:repArea?repArea.from_peak_pct:d.from_peak_pct,
   peak:repArea?repArea.price_max:d.peak_amount, median:repArea?repArea.price_median:d.price_median,
   ppm:repArea?repArea.ppm_median:ppmComplex, jr:jr, count:repArea?repArea.trade_count:d.trade_count,
@@ -4092,23 +4052,11 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </button>}
   </div>
   {pyList.length>1&&<div style={{display:"flex",gap:6,overflowX:"auto",margin:"12px 0 0",paddingBottom:2}}>
-   <button onClick={()=>setTabPy(null)} className={"tog "+(focusPy==null?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>전체</button>
    {pyList.map(py=><button key={py} onClick={()=>setTabPy(py)} className={"tog "+(focusPy===py?"on":"")} style={{whiteSpace:"nowrap",flex:"none"}}>{py}평</button>)}
   </div>}
-  {/* 전체 탭: 평수 섞인 '단지 평균'은 의미가 흐려 큰 숫자를 빼고, 구 대비 포지션(면적 무관)만 슬림하게.
-      실제 시세는 아래 평형별 카드가 담당(평형 탭과 통합). */}
-  {focusPy==null&&pyList.length>1&&<div className="card" style={{padding:"12px 14px",marginTop:12}}>
-   {d.vs_region&&<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-    <Icon name="map" active color={INK} size={15}/>
-    <span style={{fontSize:13,fontWeight:700}}>{d.vs_region.gu} 평균 대비</span>
-    <span className="num" style={{fontSize:16,fontWeight:800,color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</span>
-    <span style={{fontSize:11.5,color:MUTED,marginLeft:"auto"}}>평단가 {d.vs_region.complex_ppm?.toLocaleString?.()||d.vs_region.complex_ppm} vs {d.vs_region.gu_ppm?.toLocaleString?.()||d.vs_region.gu_ppm} 만원/평</span>
-   </div>}
-   <div style={{fontSize:11.5,color:MUTED,marginTop:d.vs_region?9:0,lineHeight:1.55}}>최근 {AGG_MONTHS}개월 매매 {d.trade_count}건 · 면적 {areas.length}타입. <b>평형마다 시세가 다르니</b> 위 탭에서 평수를 고르거나 아래 평형별 카드에서 확인하세요.</div>
-  </div>}
-  {/* 면적별 상세를 평형 탭과 통합 — 전체면 각 면적 카드(접힘), 평형 선택 시 그 평형만(펼침). 하단 별도 섹션 제거. */}
+  {/* 선택한 평형만 바로 펼쳐서 표시(전체 탭·접힘 없음). 탭을 누르면 그 평형 카드가 즉시 열림. */}
   <div style={{marginTop:12}}>
-   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={i} a={a} unit={unit} onLoan={()=>goLoan(a)} open={narrowed||useAreas.length===1}/>)
+   {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={`${focusPy}-${a.area||i}`} a={a} unit={unit} onLoan={()=>goLoan(a)} open={true}/>)
     :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
   </div>
   <Collapsible icon="map" defaultOpen={true} title="위치">
@@ -4644,7 +4592,7 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
      </div>
     </div>)}/>:<div className="card" style={{padding:18,marginTop:4}}><Empty action={q?<button onClick={()=>setQ("")} style={{border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:13,padding:"9px 16px",borderRadius:10,cursor:"pointer"}}>검색 지우기</button>:null}>{q?"검색 결과가 없어요.":"이 조건의 거래가 아직 없어요. 구·유형을 바꿔보세요."}</Empty></div>}
    </div>
-   <div style={{fontSize:10.5,color:MUTED,margin:"12px 2px 0",lineHeight:1.6}}>자료: 국토교통부 실거래가(참고용·법적 효력 없음). 대표 시세=최근 {AGG_MONTHS}개월 매매 실거래 중앙값, 평단가=거래금액÷(전용면적÷3.3058), 전세가율=전세보증금 중앙값÷매매가 중앙값. 신고 지연·정정·해제로 값이 바뀔 수 있어요. 단지를 누르면 평형별 상세·적정가 체크를 볼 수 있습니다.</div>
+   <div style={{fontSize:10.5,color:MUTED,margin:"12px 2px 0",lineHeight:1.6}}>자료: 국토교통부 실거래가(참고용·법적 효력 없음). 대표 시세=최근 {AGG_MONTHS}개월 매매 실거래 중앙값, 평단가=거래금액÷(전용면적÷3.3058), 전세가율=전세보증금 중앙값÷매매가 중앙값. 신고 지연·정정·해제로 값이 바뀔 수 있어요. 단지를 누르면 평형별 상세를 볼 수 있습니다.</div>
   </div>}
  </div>);
 }

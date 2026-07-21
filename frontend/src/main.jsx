@@ -550,7 +550,8 @@ const LP_PROP=Object.fromEntries(LP_PROPS);
 const LP_DEAL=Object.fromEntries(LP_DEALS);
 const DIRECTIONS=["남향","남동향","남서향","동향","서향","북향","북동향","북서향"];
 const DEAL_COLOR={trade:TEAL,jeonse:"#1E5FC4",wolse:"#9A6B00"};
-const INP={width:"100%",border:"1px solid #dfe5e5",borderRadius:9,padding:"9px 11px",fontSize:14,background:"var(--surface-solid)",boxSizing:"border-box"};
+// 폼 입력 공통 스타일 — 테마 대응(color/border/background 모두 CSS 변수). color 누락 시 다크모드에서 글자 실종.
+const INP={width:"100%",border:"1px solid var(--line)",borderRadius:9,padding:"9px 11px",fontSize:14,background:"var(--surface-solid)",color:"var(--ink)",boxSizing:"border-box"};
 function listingPrice(x){
  if(x.deal_type==="wolse")return `보증 ${eok(x.deposit)} / 월 ${x.monthly_rent}만`;
  if(x.deal_type==="jeonse")return `전세 ${eok(x.price)}`;
@@ -594,6 +595,33 @@ function FormHead({children}){return <div style={{fontWeight:800,fontSize:14,mar
 // 공용 select — 모듈 레벨(렌더 본문 안에 정의하면 매 렌더 리마운트로 열린 드롭다운·포커스 유실, §10 트랩#1).
 // wide=폼용(width:100%), ph 주면 맨 앞에 '전체' 플레이스홀더(필터용).
 const Sel=({value,set,opts,ph,wide})=>(<select className="sel" style={wide?{width:"100%"}:{flex:1,minWidth:0}} value={value} onChange={e=>set(e.target.value)}>{(ph!=null?[["",ph],...opts]:opts).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>);
+// 매물 등록 표준 선택지 — 자유입력 대신 기준에서 고르게(오타·비표준값 방지). 그 외 값은 '직접입력'.
+const LP_AREAS=[16,23,29,33,39,49,59,74,84,101,114,134,145,165];   // 전용면적(㎡) 표준
+const LP_ROOMS=[1,2,3,4,5],LP_BATHS=[1,2,3];
+const LP_OPTS=["에어컨","냉장고","세탁기","인덕션","가스레인지","전자레인지","붙박이장","신발장","TV","인터넷","비데"];
+const LP_MAINT=["청소","경비","수도","난방","인터넷","TV","주차"];
+// 표준값 선택 + '직접입력' 탈출구(정확한 실측값 보존). presets=숫자배열.
+function PickNum({value,set,presets,unit,ph}){
+ const inList=v=>presets.some(p=>String(p)===String(v));
+ const [custom,setCustom]=useState(value!==""&&value!=null&&!inList(value));
+ if(custom)return (<div style={{display:"flex",gap:6}}>
+  <input style={{...INP,flex:1,minWidth:0}} type="number" value={value} onChange={e=>set(e.target.value)} placeholder={ph}/>
+  <button type="button" className="tog" onClick={()=>{setCustom(false);set("");}} style={{flex:"none"}}>목록</button>
+ </div>);
+ return (<select className="sel" value={value} onChange={e=>{const v=e.target.value;if(v==="__c"){setCustom(true);set("");}else set(v);}}>
+  <option value="">선택</option>
+  {presets.map(p=><option key={p} value={p}>{p}{unit||""}</option>)}
+  <option value="__c">직접입력</option>
+ </select>);
+}
+// 다중 선택 칩 — 선택값을 콤마 문자열로 저장(옵션·관리비 포함내역 등, 자유입력 대체).
+function OptChips({value,set,items}){
+ const cur=(value||"").split(",").map(s=>s.trim()).filter(Boolean);
+ const toggle=it=>{const next=cur.includes(it)?cur.filter(x=>x!==it):[...cur,it];set(next.join(","));};
+ return (<div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+  {items.map(it=><button type="button" key={it} className={"tog "+(cur.includes(it)?"on":"")} onClick={()=>toggle(it)}>{it}</button>)}
+ </div>);
+}
 function ListingForm({onCancel,onCreated,account,initial}){
  const I=initial||{}, isEdit=!!(initial&&initial.id);
  const sv=v=>v==null?"":String(v);   // 숫자/널 → 입력용 문자열
@@ -666,10 +694,8 @@ function ListingForm({onCancel,onCreated,account,initial}){
      <LField label="월세(만원)" req><input style={INP} type="number" value={rent} onChange={e=>setRent(e.target.value)}/></LField>
     </div>
     :<LField label={deal==="trade"?"매매가(만원)":"전세 보증금(만원)"} req><input style={INP} type="number" value={price} onChange={e=>setPrice(e.target.value)}/></LField>}
-   <div className="grid2">
-    <LField label="관리비(만원/월)"><input style={INP} type="number" value={mfee} onChange={e=>setMfee(e.target.value)}/></LField>
-    <LField label="관리비 포함내역"><input style={INP} value={mitems} onChange={e=>setMitems(e.target.value)} placeholder="청소·경비·수도 등"/></LField>
-   </div>
+   <LField label="관리비(만원/월)"><input style={INP} type="number" value={mfee} onChange={e=>setMfee(e.target.value)}/></LField>
+   <LField label="관리비 포함내역(선택)"><OptChips value={mitems} set={setMitems} items={LP_MAINT}/></LField>
 
    <FormHead>소재지</FormHead>
    <div className="grid2">
@@ -681,17 +707,17 @@ function ListingForm({onCancel,onCreated,account,initial}){
 
    <FormHead>면적 · 구조</FormHead>
    <div className="grid2">
-    <LField label="전용면적(㎡)"><input style={INP} type="number" value={area} onChange={e=>setArea(e.target.value)}/></LField>
-    <LField label="공급면적(㎡)"><input style={INP} type="number" value={sup} onChange={e=>setSup(e.target.value)}/></LField>
+    <LField label="전용면적(㎡)"><PickNum value={area} set={setArea} presets={LP_AREAS} unit="㎡" ph="㎡ 직접입력"/></LField>
+    <LField label="공급면적(㎡)"><PickNum value={sup} set={setSup} presets={LP_AREAS} unit="㎡" ph="㎡ 직접입력"/></LField>
     <LField label="해당 층"><input style={INP} type="number" value={floor} onChange={e=>setFloor(e.target.value)}/></LField>
     <LField label="총 층"><input style={INP} type="number" value={tfloor} onChange={e=>setTfloor(e.target.value)}/></LField>
-    <LField label="방 수"><input style={INP} type="number" value={rooms} onChange={e=>setRooms(e.target.value)}/></LField>
-    <LField label="욕실 수"><input style={INP} type="number" value={baths} onChange={e=>setBaths(e.target.value)}/></LField>
+    <LField label="방 수"><Sel value={rooms} set={setRooms} opts={LP_ROOMS.map(n=>[String(n),`${n}개`])} ph="선택" wide/></LField>
+    <LField label="욕실 수"><Sel value={baths} set={setBaths} opts={LP_BATHS.map(n=>[String(n),`${n}개`])} ph="선택" wide/></LField>
     <LField label="방향"><Sel value={dir} set={setDir} opts={[["","선택"],...DIRECTIONS.map(d=>[d,d])]} wide/></LField>
     <LField label="입주 가능일"><input style={INP} value={movein} onChange={e=>setMovein(e.target.value)} placeholder="즉시 / 협의 / 날짜"/></LField>
     <LField label="준공일(사용승인)"><input style={INP} value={approval} onChange={e=>setApproval(e.target.value)} placeholder="예: 2019-03"/></LField>
-    <LField label="옵션"><input style={INP} value={opts} onChange={e=>setOpts(e.target.value)} placeholder="냉장고,에어컨,…"/></LField>
    </div>
+   <LField label="옵션(선택)"><OptChips value={opts} set={setOpts} items={LP_OPTS}/></LField>
 
    <FormHead>사진</FormHead>
    {photos.length>0&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
@@ -1148,14 +1174,14 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
    {uploading&&<span style={{fontSize:12,color:MUTED,fontWeight:600}}>업로드 중…</span>}
   </div>
   {images.length>0&&<div style={{display:"flex",gap:8,overflowX:"auto",marginTop:10}}>
-   {images.map((u,i)=>(<div key={i} style={{position:"relative",width:74,height:74,flex:"none",borderRadius:8,background:`#EEF1F1 url(${u}) center/cover`}}>
-    <button onClick={()=>setImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:10,border:"none",background:"#1b2b2b",color:"#fff",fontSize:12,cursor:"pointer"}}>✕</button>
+   {images.map((u,i)=>(<div key={i} style={{position:"relative",width:74,height:74,flex:"none",borderRadius:8,background:`var(--surface-2) url(${u}) center/cover`}}>
+    <button onClick={()=>setImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:10,border:"none",background:"rgba(0,0,0,.6)",color:"#fff",fontSize:12,cursor:"pointer"}}>✕</button>
    </div>))}
   </div>}
   {err&&<div style={{color:UP,fontSize:12.5,marginTop:8}}>{err}</div>}
   <div style={{display:"flex",gap:8,marginTop:12}}>
-   <button onClick={onCancel} style={{flex:1,border:"1px solid var(--line)",background:"var(--surface-solid)",color:INK,fontWeight:700,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer"}}>취소</button>
-   <button onClick={submit} disabled={busy} style={{flex:2,border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"12px",borderRadius:11,cursor:"pointer",opacity:busy?.6:1}}>{busy?"저장 중…":(edit?"수정":"등록")}</button>
+   <button onClick={onCancel} className="btn-ghost" style={{flex:1,padding:"12px"}}>취소</button>
+   <button onClick={submit} disabled={busy} className="btn-primary" style={{flex:2,padding:"12px"}}>{busy?"저장 중…":(edit?"수정":"등록")}</button>
   </div>
   <div style={{height:80}}/>
  </div>);
@@ -2686,36 +2712,6 @@ function ComplexTalk({name,lawd}){
   </div>
  </Collapsible>);
 }
-function PriceCheck({name,lawd,pt}){
- const [v,setV]=useState(""),[r,setR]=useState(null),[busy,setBusy]=useState(false);
- const run=()=>{const eokV=parseFloat(v); if(!eokV||eokV<=0)return; setBusy(true);
-  fetch(`${API}/pricecheck/quote?name=${encodeURIComponent(name)}&lawd_cd=${lawd}&property_type=${pt||"apartment"}&asking=${Math.round(eokV*10000)}`)
-   .then(x=>x.json()).then(j=>{setR(j);setBusy(false);}).catch(()=>{setR(null);setBusy(false);});};
- return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
-  <div style={{fontWeight:800,fontSize:14.5}}>💬 이 가격, 괜찮은 거예요?</div>
-  <div style={{fontSize:12,color:MUTED,marginTop:2}}>어디서 본 매물 호가를 넣으면, 이 단지 최근 실거래에서 어디쯤인지 알려드려요.</div>
-  <div style={{display:"flex",gap:8,marginTop:10}}>
-   <input inputMode="decimal" value={v} onChange={e=>setV(e.target.value)} placeholder="예: 3.2" style={{flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 13px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK}}/>
-   <span style={{alignSelf:"center",fontWeight:800,color:MUTED}}>억</span>
-   <button onClick={run} disabled={busy} className="btn-primary" style={{flex:"none",padding:"0 18px"}}>{busy?"확인중":"확인"}</button>
-  </div>
-  {r&&(r.found
-   ?<div style={{marginTop:10,background:"var(--surface-2)",borderRadius:11,padding:"11px 13px"}}>
-     <div style={{display:"flex",alignItems:"baseline",gap:8,flexWrap:"wrap"}}>
-      <span style={{fontSize:12.5,color:MUTED}}>중앙값 대비</span>
-      <span className="num" style={{fontWeight:800,fontSize:18,color:r.diff_pct>0?UP:r.diff_pct<0?DOWN:INK}}>{r.diff_pct>0?"+":""}{r.diff_pct}%</span>
-      <span style={{fontSize:12.5,color:MUTED}}>· 이 가격 이하 거래 {r.percentile}%</span>
-     </div>
-     <div style={{fontSize:12,color:INK,marginTop:5,lineHeight:1.55}}>최근 {r.months}개월 {r.count}건 · 중앙값 {eok(r.median)} · 범위 {eok(r.min)}~{eok(r.max)}</div>
-     <button onClick={()=>{const t=`『${name}』 호가 ${eok(Math.round(parseFloat(v)*10000))} — 최근 ${r.months}개월 실거래 중앙값(${eok(r.median)}) 대비 ${r.diff_pct>0?"+":""}${r.diff_pct}% · 이 가격 이하 거래 ${r.percentile}%\n(참고용·적정가 단정 아님)\n🏠 청집사 ${location.origin}`;
-       if(navigator.share){navigator.share({title:"호가 검증 — 청집사",text:t}).catch(()=>{});}
-       else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>alert("결과를 복사했어요. 카톡 등에 붙여넣기!")).catch(()=>{});}}}
-      style={{marginTop:9,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-solid)",color:TEAL,fontWeight:800,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>📤 이 결과 공유하기</button>
-     <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{r.disclaimer}</div>
-    </div>
-   :<div style={{marginTop:10,fontSize:12.5,color:MUTED}}>{r.note}</div>)}
- </div>);
-}
 function GuContextBar(){
  const [d,setD]=useState(null);
  useEffect(()=>{fetch(`${API}/pricecheck/gu-context`).then(r=>r.json()).then(setD).catch(()=>setD(null));},[]);
@@ -4066,7 +4062,6 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   <CautionSignals card={card} d={d}/>
   <VolumeSignal volume={d.volume}/>
   <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
-  <PriceCheck name={d.name} lawd={d.lawd_cd||sel.lawd_cd} pt={d.property_type||sel.property_type}/>
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
     {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>

@@ -2307,21 +2307,24 @@ const _sheetStack=[];
 let _sheetPopBound=false;
 function _bindSheetPop(){
  if(_sheetPopBound)return;_sheetPopBound=true;
- window.addEventListener("popstate",()=>{const top=_sheetStack[_sheetStack.length-1];if(top){top.popped=true;top.close();}});
+ window.addEventListener("popstate",()=>{const top=_sheetStack[_sheetStack.length-1];if(top){top.close();}});
 }
 function useSheetDismiss(onClose){
  const closeRef=useRef(onClose);closeRef.current=onClose;
  useEffect(()=>{
   _bindSheetPop();
-  const r={close:()=>closeRef.current&&closeRef.current(),popped:false,pushed:false};
+  const r={close:()=>closeRef.current&&closeRef.current()};
   _sheetStack.push(r);
-  try{history.pushState({cjSheet:true},"");r.pushed=true;}catch(_){}
+  try{history.pushState({cjSheet:true},"");}catch(_){}
   const onKey=e=>{if(e.key==="Escape"&&_sheetStack[_sheetStack.length-1]===r){e.stopPropagation();r.close();}};
   document.addEventListener("keydown",onKey);
   return ()=>{
    document.removeEventListener("keydown",onKey);
    const i=_sheetStack.indexOf(r);if(i>=0)_sheetStack.splice(i,1);
-   if(r.pushed&&!r.popped){try{history.back();}catch(_){}}   // 수동 닫기 → 우리가 만든 entry 제거
+   // ⚠️ cleanup에서 history.back()으로 entry를 '정리'하지 말 것 — back()은 비동기라
+   // 목록시트→상세시트 '전환' 때 popstate가 뒤늦게 도착해 방금 연 시트를 닫아버림(실사고:
+   // v1.201 단지상세 안 열림). 잔존 entry는 같은 URL의 pushState라 무해(뒤로가기 1회가
+   // 조용히 소비될 뿐). 안전(시트 오작동 0) > 히스토리 청결.
   };
  },[]);
 }

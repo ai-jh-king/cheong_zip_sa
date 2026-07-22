@@ -41,10 +41,16 @@ def nearby(lat: float, lng: float, radius: int = 1500, per: int = 4) -> dict | N
                           timeout=3)
             if r.status_code == 200:
                 docs = r.json().get("documents", [])
+                def _f(v):
+                    try:
+                        return float(v)
+                    except (TypeError, ValueError):
+                        return None
                 return label, [{
                     "name": d.get("place_name"),
                     "distance": int(d.get("distance") or 0),
                     "category": d.get("category_name"),
+                    "lat": _f(d.get("y")), "lng": _f(d.get("x")),   # 카카오 x=경도,y=위도 → 지도 마커용
                 } for d in docs[:per]], True
         except (httpx.HTTPError, ValueError) as e:
             logger.debug("POI %s 실패: %s", label, e)

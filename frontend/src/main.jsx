@@ -3619,26 +3619,41 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:fMarkers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
  </div>);
 }
-function RankMap({items,mapCfg}){
+const POI_MAP_C={"학교":"#1E5FC4","지하철":"#0E7C71","마트":"#9A6B00","병원":"#C8322A","중개업소":"#7A5AF8"};
+function RankMap({items,mapCfg,poi}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const ref=React.useRef(null);
  const pts=(items||[]).filter(i=>i.lat&&i.lng);
- const sig=pts.map(i=>`${i.rank}:${i.lat},${i.lng}`).join("|");
+ // 지도에 찍을 POI(좌표 있는 것만) — 데이터는 이미 d.poi 로 로드됨(추가 요청 0).
+ const poiPts=[];
+ if(poi)Object.entries(poi).forEach(([label,list])=>(list||[]).forEach(p=>{if(p.lat!=null&&p.lng!=null)poiPts.push({...p,label});}));
+ const sig=pts.map(i=>`${i.rank}:${i.lat},${i.lng}`).join("|")+"#"+poiPts.length;
  useEffect(()=>{
   if(!ready||!ref.current||!window.naver)return;
   const n=window.naver;
   const center=pts.length?new n.maps.LatLng(pts[0].lat,pts[0].lng):new n.maps.LatLng(36.6424,127.489);
-  const map=new n.maps.Map(ref.current,{center,zoom:pts.length?13:11});
-  pts.forEach(it=>{const pos=new n.maps.LatLng(it.lat,it.lng);
-   const mk=new n.maps.Marker({position:pos,map});
-   const iw=new n.maps.InfoWindow({content:`<div style="padding:7px 10px;font-size:12px;white-space:nowrap;font-weight:600">#${it.rank} ${it.complex_name||"단지"}<br/><span style="color:#1A2128">${eok(it.deal_amount)}</span></div>`,borderWidth:0});
-   n.maps.Event.addListener(mk,"click",()=>iw.open(map,mk));});
+  const map=new n.maps.Map(ref.current,{center,zoom:pts.length?(poiPts.length?14:13):11});
+  try{
+   pts.forEach(it=>{const pos=new n.maps.LatLng(it.lat,it.lng);
+    const mk=new n.maps.Marker({position:pos,map});
+    const iw=new n.maps.InfoWindow({content:`<div style="padding:7px 10px;font-size:12px;white-space:nowrap;font-weight:600">#${it.rank} ${it.complex_name||"단지"}<br/><span style="color:#1A2128">${eok(it.deal_amount)}</span></div>`,borderWidth:0});
+    n.maps.Event.addListener(mk,"click",()=>iw.open(map,mk));});
+   poiPts.forEach(p=>{const color=POI_MAP_C[p.label]||"#69737D";
+    const html=`<div style="transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(p.lat,p.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:20});
+    const iw=new n.maps.InfoWindow({content:`<div style="padding:5px 9px;font-size:11.5px;white-space:nowrap;font-weight:600">${p.name} · <span style="color:${color}">${p.label}</span> ${distM(p.distance)}</div>`,borderWidth:0});
+    n.maps.Event.addListener(mk,"click",()=>iw.open(map,mk));});
+  }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 생략, 앱 유지 */}
  },[ready,sig]);
  if(!mapCfg.enabled)return <Notice>지도를 보려면 서버 <b>.env</b> 에 <b>NAVER_MAP_CLIENT_ID</b> 를 넣고 새로고침하세요. (네이버 클라우드 플랫폼 Maps의 Client ID)</Notice>;
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
+ const legend=[...new Set(poiPts.map(p=>p.label))];
  return (<div>
   <div ref={ref} style={{width:"100%",height:300,borderRadius:14,overflow:"hidden",background:"var(--chip)"}}/>
-  {ready&&!pts.length&&<div style={{marginTop:8}}><Notice>이 목록의 단지 좌표가 아직 없습니다. 서버에서 <b>python -m scripts.geocode</b> 실행 후 새로고침하세요. (매매가·평단가 순위에서 표시됩니다)</Notice></div>}
+  {legend.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:"6px 12px",marginTop:8,fontSize:11.5,color:MUTED}}>
+   {legend.map(l=><span key={l} style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:9,height:9,borderRadius:5,background:POI_MAP_C[l]||"#69737D",flex:"none"}}/>{l}</span>)}
+  </div>}
+  {ready&&!pts.length&&<div style={{marginTop:8}}><Notice>이 단지의 좌표가 아직 없습니다. 서버에서 <b>python -m scripts.geocode</b> 실행 후 새로고침하세요.</Notice></div>}
   {!ready&&!err&&<div style={{padding:10}}><Skeleton h={180} r={12}/></div>}
  </div>);
 }
@@ -4263,17 +4278,15 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    {useAreas.length?[...useAreas].sort((a,b)=>(a.area||0)-(b.area||0)).map((a,i)=><AreaSection key={`${focusPy}-${a.area||i}`} a={a} unit={unit} onLoan={()=>goLoan(a)} open={true}/>)
     :<Empty>면적 정보가 있는 거래가 없습니다.</Empty>}
   </div>
-  <Collapsible icon="map" defaultOpen={true} title="위치">
-   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg}/></div>
+  <Collapsible icon="map" defaultOpen={true} title="위치·인근 인프라">
+   <div style={{padding:14}}><RankMap items={mapItem} mapCfg={mapCfg} poi={d.poi}/></div>
   </Collapsible>
   <HoodProfile d={d}/>
-  <CautionSignals card={card} d={d}/>
-  <VolumeSignal volume={d.volume}/>
-  <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
+  {/* 입지(인근 인프라·직장 거점)를 '이 단지 한눈에' 바로 아래로 — 동네·입지를 한 흐름에 묶음 */}
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
     {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
-     <span style={{fontWeight:700,minWidth:48,flex:"none"}}>{label}</span>
+     <span style={{fontWeight:700,minWidth:48,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:9,height:9,borderRadius:5,background:POI_MAP_C[label]||"#69737D",flex:"none"}}/>{label}</span>
      <div style={{minWidth:0}}>
       {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))
        :<span style={{color:MUTED,fontSize:12.5}}>반경 내 없음</span>}
@@ -4283,6 +4296,9 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </Collapsible>}
   <WorkAccess items={d.work_access}/>
+  <CautionSignals card={card} d={d}/>
+  <VolumeSignal volume={d.volume}/>
+  <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
   <ComplexTalk name={d.name} lawd={d.lawd_cd||sel.lawd_cd}/>
   <button onClick={()=>setCardOpen(true)} style={{width:"100%",marginTop:12,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"13px 0",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>📤 이 시세 카드 공유하기</button>
   {cardOpen&&<ShareCard card={card} onClose={()=>setCardOpen(false)}/>}

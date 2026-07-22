@@ -1060,14 +1060,16 @@ function ListingsTab({account,onNeedLogin,openId,onConsumeOpen}){
    <span style={{fontSize:12.5,color:INK,fontWeight:600}}>로그인하면 내 매물을 계정에 저장·관리할 수 있어요.</span>
    <button onClick={onNeedLogin} className="btn-primary" style={{marginLeft:"auto",fontSize:12.5,padding:"7px 13px",borderRadius:10}}>로그인</button>
   </div>}
-  <div style={{display:"flex",gap:6,alignItems:"center",margin:"10px 0 0",flexWrap:"nowrap"}}>
-   <Sel value={fDeal} set={setFDeal} opts={LP_DEALS} ph="전체 거래"/>
+  {/* 게시판과 동일 구조: 칩 필터 행 + 컨트롤(드롭다운·등록) 행 */}
+  <div style={{display:"flex",gap:6,overflowX:"auto",margin:"10px 0 0",paddingBottom:2,alignItems:"center"}}>
+   {[["","전체"],["trade","매매"],["jeonse","전세"],["wolse","월세"]].map(([k,l])=>
+    <button key={k||"all"} onClick={()=>setFDeal(k)} className={"tog "+(fDeal===k?"on":"")} style={{flex:"none"}}>{l}</button>)}
+   <button className={"tog "+(mine?"on":"")} onClick={()=>setMine(m=>!m)} style={{flex:"none",marginLeft:"auto"}}>{account?"내 매물":"내 등록만"}</button>
+  </div>
+  <div style={{display:"flex",gap:6,alignItems:"center",margin:"8px 0 8px"}}>
    <Sel value={fProp} set={setFProp} opts={LP_PROPS} ph="전체 종류"/>
    <Sel value={fGu} set={setFGu} opts={Object.entries(GU_NAME)} ph="전체 구"/>
-  </div>
-  <div style={{display:"flex",alignItems:"center",margin:"10px 2px 8px"}}>
-   <button className={"tog "+(mine?"on":"")} onClick={()=>setMine(m=>!m)}>{account?"내 매물":"내 등록만"}</button>
-   <button onClick={()=>setMode("form")} className="btn-outline" style={{marginLeft:"auto",fontSize:13.5,padding:"9px 15px"}}>+ 매물 등록</button>
+   <button onClick={()=>setMode("form")} className="btn-outline" style={{flex:"none",fontSize:13,padding:"0 14px",height:42,display:"inline-flex",alignItems:"center",whiteSpace:"nowrap"}}>+ 매물 등록</button>
   </div>
   {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
    :items.length?<React.Fragment>
@@ -1498,9 +1500,9 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
     {renderChip("","전체")}{CAT_ORDER.map(k=>renderChip(k,CAT_LABEL[k]))}
    </div>
    <div style={{display:"flex",gap:8,alignItems:"center",margin:"10px 0 0"}}>
-    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,background:"var(--surface-solid)",border:"1px solid rgba(99,120,128,.16)",borderRadius:10,padding:"8px 11px"}}>
+    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:11,padding:"0 12px",height:42}}>
      <Icon name="search" active size={16}/>
-     <input value={qIn} onChange={e=>setQIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")setQ(qIn.trim());}} placeholder="게시판 검색" aria-label="게시판 검색" style={{flex:1,border:"none",outline:"none",fontSize:13.5,background:"none",minWidth:0}}/>
+     <input value={qIn} onChange={e=>setQIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")setQ(qIn.trim());}} placeholder="게시판 검색" aria-label="게시판 검색" style={{flex:1,border:"none",outline:"none",fontSize:14,background:"none",minWidth:0,color:"var(--ink)"}}/>
      {qIn&&<button onClick={()=>{setQIn("");setQ("");}} style={{border:"none",background:"none",color:MUTED,cursor:"pointer",fontSize:13}}>✕</button>}
     </div>
     <Dropdown value={sort} set={setSort} style={{flex:"none",width:96}} opts={[["recent","최신순"],["popular","인기순"]]}/>
@@ -2340,7 +2342,7 @@ function Sheet({title,info,onClose,children,fill}){
  const onTouchEnd=()=>{if(dragY>110)onClose();setDragY(0);start.current=null;};
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:120,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
-   <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:"93vh"}:{maxHeight:"86vh"}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
+   <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:"70vh"}:{maxHeight:"70vh"}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
     <div style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
     <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px 12px",flex:"none"}}>
      <span style={{fontWeight:800,fontSize:16,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span>
@@ -2364,7 +2366,7 @@ function SheetShell({onClose,zIndex=120,header,scrollKey,children}){
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
    <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-     style={{width:"100%",maxWidth:480,background:"var(--bg2)",borderRadius:"20px 20px 0 0",height:"93vh",display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",
+     style={{width:"100%",maxWidth:480,background:"var(--bg2)",borderRadius:"20px 20px 0 0",height:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",
        transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
     <div style={{padding:"8px 0 4px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
     {header}
@@ -2853,7 +2855,7 @@ function ComplexTalk({name,lawd}){
   return ()=>{on=false;};
  },[name,lawd]);
  if(!name||d===null)return null;
- return (<Collapsible icon="search" defaultOpen={d.length>0} title={`💬 단지 이야기${d.length?` (${d.length})`:""}`}>
+ return (<Collapsible icon="search" defaultOpen={false} title={`💬 단지 이야기${d.length?` (${d.length})`:""}`}>
   <div style={{padding:"4px 14px 12px"}}>
    {d.length?d.map((p,i)=>(<div key={p.id||i} style={{padding:"8px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
     <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -2923,7 +2925,7 @@ function WorkAccess({items}){
   <span style={{fontWeight:600,fontSize:13.5,minWidth:0,flex:1,overflowWrap:"anywhere"}}>{h.name}</span>
   <span className="num" style={{fontWeight:800,fontSize:13.5,flex:"none"}}>{h.distance_km}km</span>
  </div>);
- return (<Collapsible icon="factory" defaultOpen={true} title="직장·거점 거리">
+ return (<Collapsible icon="factory" defaultOpen={false} title="직장·거점 거리">
   <div style={{padding:"4px 14px 12px"}}>
    {jobs.length>0&&<React.Fragment>
     <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"4px 0 2px"}}>주요 직장 · 산업단지</div>
@@ -3321,7 +3323,7 @@ function useNaver(clientId,enabled){
  },[clientId,enabled]);
  return {ready,err};
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const ref=React.useRef(null);
  const mapObj=React.useRef(null);
@@ -3371,27 +3373,30 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
     avg:vs.length?Math.round(vs.reduce((s,v)=>s+v,0)/vs.length):null,
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
-  // 줌별 그리드 클러스터(줌인하면 개별 마커)
-  const cell=z>=14?0:(z>=13?0.01:z>=12?0.02:z>=11?0.04:0.08);
+  // 축소 시 행정구역(구/동) 클러스터 — 지역 단위로 묶어 이름+곳수 표시, 클릭하면 그 지역 목록.
+  // 확대(z>=14)하면 개별 단지 마커. (기존 그리드 클러스터는 지역 개념이 없어 교체)
   let items;
-  if(!cell){items=vis.map(m=>({t:"s",...m}));}
-  else{const cells={}; vis.forEach(m=>{const k=Math.floor(m.lat/cell)+":"+Math.floor(m.lng/cell);(cells[k]||(cells[k]=[])).push(m);});
-   items=Object.values(cells).map(arr=>{ if(arr.length===1)return {t:"s",...arr[0]};
+  if(z>=14){items=vis.map(m=>({t:"s",...m}));}
+  else{
+   const byGu=z<12;                       // 많이 축소=구, 중간 축소=동
+   const groups={};
+   vis.forEach(m=>{const key=byGu?(m.gu||m.lawd_cd||"기타"):((m.gu||"")+"·"+(m.dong||m.lawd_cd||"기타"));(groups[key]||(groups[key]=[])).push(m);});
+   items=Object.values(groups).map(arr=>{
     const la=arr.reduce((s,m)=>s+m.lat,0)/arr.length, ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;
+    const name=byGu?(arr[0].gu||"기타"):(arr[0].dong||arr[0].gu||"기타");
     const vs=arr.map(m=>m.value).sort((a,b)=>a-b);
-    const as=arr.map(m=>m.median_amount).filter(x=>x!=null).sort((a,b)=>a-b);
-    return {t:"c",lat:la,lng:ln,count:arr.length,value:vs[Math.floor(vs.length/2)],amt:as.length?as[Math.floor(as.length/2)]:null};});}
+    return {t:"c",lat:la,lng:ln,count:arr.length,region:name,members:arr,value:vs[Math.floor(vs.length/2)]};});}
   // 지도 인증 실패(키 미등록 도메인) 상태면 Marker.setMap 이 내부 null 참조로 throw →
   // 앱 전체 크래시(ErrorBoundary). try 로 감싸 마커만 건너뛰고 앱은 유지.
   try{
    markerObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); markerObjs.current=[];
    items.forEach(it=>{
     const html=it.t==="c"
-     ?`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;height:46px;background:rgba(15,118,110,.96);color:#fff;border-radius:50%;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.32);text-align:center"><div style="font-weight:800;font-size:13.5px;line-height:1">${it.count}</div><div style="font-size:8.5px;opacity:.92;line-height:1.25;font-weight:700">${mlabel(it)}</div></div>`
+     ?`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 13px;background:rgba(15,118,110,.96);color:#fff;border-radius:16px;border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.32);white-space:nowrap;text-align:center"><div style="font-weight:800;font-size:12.5px;line-height:1.1">${it.region}</div><div style="font-size:10px;opacity:.95;font-weight:700;margin-top:1px">${it.count}곳</div></div>`
      :`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
-    const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)}});
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:it.t==="c"?60:10});
     n.maps.Event.addListener(mk,"click",()=>{
-     if(it.t==="c"){map.setZoom(Math.min(map.getZoom()+2,16));map.panTo(new n.maps.LatLng(it.lat,it.lng));}
+     if(it.t==="c"){onRegionOpen?onRegionOpen(it.members,it.region):(map.setZoom(Math.min(map.getZoom()+2,16)),map.panTo(new n.maps.LatLng(it.lat,it.lng)));}
      else onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
     });
     markerObjs.current.push(mk);
@@ -3477,11 +3482,11 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
  return <div ref={ref} style={{width:"100%",height:full?"calc(100dvh - 108px)":"62vh",minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
 }
-function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompare}){
+function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompare,title}){
  const [sort,setSort]=useState("price");
  const arr=(items||[]).slice().sort((a,b)=>sort==="price"?b.value-a.value:(a.complex_name||"").localeCompare(b.complex_name||""));
  const fmt=(v)=>deal==="trade"?`${Number(v).toLocaleString()}만원/평`:eok(v);
- return (<Sheet title={`이 영역 단지 ${arr.length}곳`} fill onClose={onClose} info="지도에 보이는 영역의 단지입니다. 비교에 담아 나란히 볼 수 있어요.">
+ return (<Sheet title={`${title?title+" ":""}단지 ${arr.length}곳`} fill onClose={onClose} info="목록의 단지를 눌러 상세를, 비교에 담아 나란히 볼 수 있어요.">
   <div style={{display:"flex",gap:6,marginBottom:8}}>
    {[["price","가격순"],["name","이름순"]].map(([k,l])=><button key={k} onClick={()=>setSort(k)} style={{border:"none",cursor:"pointer",fontWeight:700,fontSize:12,padding:"6px 11px",borderRadius:8,background:sort===k?TEAL:"var(--surface-2)",color:sort===k?"#fff":MUTED}}>{l}</button>)}
   </div>
@@ -3535,6 +3540,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [loading,setLoading]=useState(true);
  const [viewport,setViewport]=useState(null);
  const [listOpen,setListOpen]=useState(false);
+ const [regionSel,setRegionSel]=useState(null);   // {title, items} — 구/동 클러스터 클릭 시
  useEffect(()=>{ let alive=true; setLoading(true); setViewport(null);
   fetch(`${API}/map/markers?deal_type=${deal}&property_type=${prop}`).then(r=>r.json())
    .then(j=>{if(alive)setData(j);}).catch(()=>{if(alive)setData({markers:[],bands:[]});}).finally(()=>{if(alive)setLoading(false);});
@@ -3569,16 +3575,19 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}/>
-  {/* 상단: 거래유형 + [필터] 버튼만(상세 조건은 시트로 모아 지도 위 깔끔). */}
-  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",gap:6,padding:"0 10px",pointerEvents:"none",alignItems:"flex-start"}}>
-   <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",pointerEvents:"auto",flex:"none"}}>
-    {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
+  <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true} onRegionOpen={(members,region)=>{setRegionSel({title:region,items:members});setListOpen(true);}}/>
+  {/* 상단: [필터] 버튼(최좌측) + 카테고리 셀렉박스 가로 스크롤로 바로 설정. 필터 버튼은 전체 조건(신호·시설 포함) 시트. */}
+  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
+   <div style={{display:"flex",gap:6,overflowX:"auto",pointerEvents:"auto",paddingBottom:3,WebkitOverflowScrolling:"touch"}}>
+    <button onClick={()=>setFilterOpen(true)} style={{flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"0 14px",height:42,fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
+     <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
+    </button>
+    <Dropdown value={deal} set={setDeal} opts={DEALS} style={{width:82,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={prop} set={setProp} opts={PROPS} style={{width:94,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={fPrice} set={setFPrice} ph={deal==="trade"?"가격대":"보증금"} opts={PRICE_OPTS} style={{width:100,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={fYear} set={setFYear} ph="연식" opts={YEAR_OPTS} style={{width:96,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={fBand} set={setFBand} ph="평형" opts={BAND_OPTS} style={{width:110,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
    </div>
-   <button onClick={()=>setFilterOpen(true)} style={{pointerEvents:"auto",flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"10px 13px",fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
-    <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
-   </button>
-   {activeCount>0&&<button onClick={resetAll} style={{pointerEvents:"auto",flex:"none",background:"var(--surface-solid)",color:MUTED,border:"none",borderRadius:11,padding:"10px 12px",fontWeight:700,fontSize:12,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>초기화</button>}
   </div>
   {filterOpen&&<Sheet title="지도 필터" onClose={()=>setFilterOpen(false)}>
    <div style={{padding:"2px 2px 4px"}}>
@@ -3606,17 +3615,11 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
    </div>
   </Sheet>}
   <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
-  {/* 하단 오버레이: 이 지역 요약 */}
-  <div style={{position:"absolute",left:10,right:10,bottom:20,zIndex:6}}>
-   <div style={{display:"flex",alignItems:"center",gap:9,background:"var(--surface-solid)",borderRadius:12,padding:"10px 13px",boxShadow:"0 3px 14px rgba(16,24,32,.2)"}}>
-    <span style={{fontSize:12,color:MUTED,fontWeight:700}}>이 지역</span>
-    <span style={{fontWeight:800,fontSize:14.5}}>{vc}곳</span>
-    <span style={{marginLeft:"auto",fontSize:12,color:MUTED}}>{deal==="trade"?"평단가":"보증금"} 중앙값</span>
-    <span style={{fontWeight:800,fontSize:14.5,color:TEAL}}>{fmtV(vm)}</span>
-    <button onClick={()=>setListOpen(true)} className="btn-primary" style={{flex:"none",marginLeft:4,fontSize:12,padding:"7px 13px"}}>목록</button>
-   </div>
-  </div>
-  {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:fMarkers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
+  {/* 하단 요약바 제거(요청) — 목록은 컴팩트 플로팅 버튼으로 유지(현위치 옆). */}
+  <button onClick={()=>setListOpen(true)} style={{position:"absolute",left:12,bottom:20,zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:22,padding:"10px 15px",fontWeight:800,fontSize:13,boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",color:INK}}>
+   <Icon name="rank" active size={16}/>목록{filterOn?` ${fMarkers.length}`:""}
+  </button>
+  {listOpen&&<AreaListSheet items={regionSel?regionSel.items:(viewport&&viewport.items?viewport.items:fMarkers)} title={regionSel?regionSel.title:""} deal={deal} onClose={()=>{setListOpen(false);setRegionSel(null);}} onOpenComplex={(m)=>{setListOpen(false);setRegionSel(null);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
  </div>);
 }
 const POI_MAP_C={"학교":"#1E5FC4","지하철":"#0E7C71","마트":"#9A6B00","병원":"#C8322A","중개업소":"#7A5AF8"};
@@ -4296,10 +4299,10 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </Collapsible>}
   <WorkAccess items={d.work_access}/>
+  <ComplexTalk name={d.name} lawd={d.lawd_cd||sel.lawd_cd}/>
   <CautionSignals card={card} d={d}/>
   <VolumeSignal volume={d.volume}/>
   <JeonseSafety ratio={card.jr} scope={card.scope} note={!narrowed?(d.rent_signal&&d.rent_signal.note):null}/>
-  <ComplexTalk name={d.name} lawd={d.lawd_cd||sel.lawd_cd}/>
   <button onClick={()=>setCardOpen(true)} style={{width:"100%",marginTop:12,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"13px 0",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>📤 이 시세 카드 공유하기</button>
   {cardOpen&&<ShareCard card={card} onClose={()=>setCardOpen(false)}/>}
   {d.complex_meta&&<Collapsible icon="search" defaultOpen={true} title="단지 정보">

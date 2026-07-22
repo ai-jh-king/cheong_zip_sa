@@ -15,12 +15,21 @@ def get(db: Session, key: str, default: str | None = None) -> str | None:
     return row.value if row else default
 
 
+# app_meta.value 는 String(200). 상태 기록(예: last_backup 실패 에러)이 이를 넘으면
+# psycopg StringDataRightTruncation 으로 '기록 자체가 크래시'해 배치 사이클을 오염시킨다(실사고).
+# 방어적으로 컬럼 한도로 잘라 저장(운영 상태 표시가 목적이라 손실 허용 > 크래시).
+_VALUE_MAX = 200
+
+
 def set(db: Session, key: str, value, commit: bool = True) -> None:  # noqa: A001
+    sval = str(value)
+    if len(sval) > _VALUE_MAX:
+        sval = sval[:_VALUE_MAX]
     row = db.get(AppMeta, key)
     if row:
-        row.value = str(value)
+        row.value = sval
     else:
-        db.add(AppMeta(key=key, value=str(value)))
+        db.add(AppMeta(key=key, value=sval))
     if commit:
         db.commit()
 

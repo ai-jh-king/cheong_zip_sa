@@ -21,8 +21,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# pg_dump(백업 스크립트가 사용) — 없으면 운영 PostgreSQL 백업이 항상 실패. 슬림 이미지엔 미포함이라 설치.
-RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client \
+# pg_dump(백업 스크립트가 사용) — pg_dump 는 서버 버전 이상이어야 함(낮으면 'server version mismatch'로 실패).
+# Render 관리형 PG 가 18.x 라 데비안 기본(구버전) 대신 PGDG 저장소에서 postgresql-client-18 설치.
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-18 \
+    && apt-get purge -y curl gnupg && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 파이썬 의존성(레이어 캐시)

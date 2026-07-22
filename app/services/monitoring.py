@@ -65,7 +65,8 @@ def record_job(db: Session, name: str, fn):
     except Exception as e:  # noqa
         db.rollback()
         _finish(db, rid, "fail", None, repr(e)[:500], t0)
-        appmeta.set_json(db, f"last_{name}", {"at": _now_iso(), "status": "fail", "error": str(e)[:200]})
+        # error 는 짧게 — app_meta.value(200) 안에 '유효한 JSON'으로 들어가도록(껍데기+시각≈72자)
+        appmeta.set_json(db, f"last_{name}", {"at": _now_iso(), "status": "fail", "error": str(e)[:100]})
         alert(f"[작업 실패] {name}", repr(e))
         raise
     _finish(db, rid, "ok", res, None, t0)

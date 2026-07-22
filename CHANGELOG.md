@@ -3,6 +3,23 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.201 (2026-07-22) — 4축 감사(프런트 성능/UX·백엔드 부하·확장성) 지적사항 일괄 수정
+> 병렬 감사 4건(프런트 성능·사용성/접근성·백엔드 부하·충청 확장성)에서 확인된 결함을 실증 후 수정. 실브라우저·pytest·마이그레이션 체인 검증.
+- **[백엔드 부하]**
+  - 단지상세 카카오 POI 5회 순차·무캐시(최악 40초 점유·쿼터 2만뷰 소진) → **`@ttl_cached`+5종 병렬+timeout 3s**(poi.py). `/complex/detail`·`/loan/*`·좋아요/스크랩 레이트리밋 추가.
+  - **인덱스 3종(0021)**: transactions(complex_name,lawd_cd) — 단지상세·호가검증·급매 풀스캔 제거 / places(lat,lng) bbox / listings(account_id).
+  - **매물 사진 데이터URL DB저장 거부**(OOM 벡터: 50건×3.5MB 응답) — URL만 허용. 프런트는 업로드 전 **canvas 리사이즈(장변 1280·JPEG)** + 실패 시 제외+토스트.
+  - TTLCache **만료 엔트리 sweep**(data_version 지날 때마다 영구 축적→메모리 우상향이던 것). 스냅샷 put **동시 bake 레이스 수정**(IntegrityError→rollback+update). PG 풀 10+20·pool_timeout 10s.
+  - **MOLIT 수집 페이지네이션**: pageNo=1 고정 → 월 1,000건 초과분 조용히 누락(왜곡·대도시 확장 차단) → 가득 찬 페이지면 다음 페이지 루프(상한 10).
+- **[프런트 UX·접근성]**
+  - **안드로이드/브라우저 뒤로가기 → 시트만 닫힘**(기존: 앱 통째 이탈). Sheet/SheetShell 공용 `useSheetDismiss`(history push+popstate 스택+Escape). 실브라우저 검증.
+  - **핀치줌 차단 해제**(WCAG 1.4.4, user-scalable=no 제거). 헤더 검색 키보드 접근(role/tabIndex). 알림행·청약카드 키보드 활성화. 입력 aria-label 보강.
+  - **alert() 11곳 → 테마 토스트**(.toast, confirm은 파괴적 액션용 유지). 매물 폼 검증 실패 시 **에러로 스크롤+토스트**(긴 폼 하단에만 떠서 안 보이던 것).
+  - **다크모드 저대비 수정**: 상태 시맨틱 토큰(--ok/--info/--warn/--neutral) 신설, 전세안전 밴드·정정/직거래/이상치 배지·청약 상태칩·카테고리칩(.cat-*) 전부 토큰화.
+  - 터치 타겟: 댓글 액션(패딩 0→히트영역 확대)·헤더 아이콘 44px. 렌더 내 컴포넌트 정의 2곳(Row) → 렌더 함수(§10). 인라인 teal 버튼 11곳 → `.btn-primary` 통일.
+- **[프런트 성능]**: 매물 썸네일 `background-image` → **`<img loading=lazy>`**(화면 밖 사진 즉시 다운로드 제거). 폰트 CDN **렌더 블로킹 해제**(preconnect+비동기 스왑).
+- 검증: verify_all PASS · pytest 전체 · head 0021 · 실브라우저(뒤로가기/Escape 시트, 줌, 다크 토큰, 드롭다운).
+- 미처리(별도 과제): React.memo 구조 개편·데드코드 10컴포넌트 제거·fetch 응답 캐시·충청 확장 리팩터(_gu_name·District 스키마·프런트 GU_* 상수).
 ## v1.200 (2026-07-22) — 유입 강화: SEO 색인·내부링크 + 전입 가이드(창끝)
 > 전략: 하이퍼로컬 앱의 유입은 '검색 장악(SEO)'과 '전입자 창끝'이 핵심. 둘의 제품 기반을 확실히 구축.
 - **구조화 데이터(JSON-LD)**: 전 페이지 WebSite/Organization, /r·/c·/guide 에 BreadcrumbList, /guide 에 FAQPage(FAQ 리치결과). robots meta·og:image(카톡/검색 미리보기) 추가.

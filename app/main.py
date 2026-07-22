@@ -125,11 +125,18 @@ def _rl_rule(method: str, path: str, s):
             return ("search", s.rate_limit_search_per_min)
         if path in ("/me/recent", "/me/searches"):
             return ("personal", s.rate_limit_personal_per_min)
+        if path.startswith("/loan/"):                            # 외부호출+CPU 계산(estimate/affordable)
+            return ("search", s.rate_limit_search_per_min)
+        if path.endswith("/like") or path.endswith("/bookmark"):  # 쓰기성(부하 감사 M2)
+            return ("personal", s.rate_limit_personal_per_min)
     elif method == "PUT":
         if path == "/me/prefs":                                  # device_id 기반 개인화 쓰기 남용 방어
             return ("personal", s.rate_limit_personal_per_min)
-    elif method == "GET" and path == "/search":
-        return ("search", s.rate_limit_search_per_min)
+    elif method == "GET":
+        if path == "/search":
+            return ("search", s.rate_limit_search_per_min)
+        if path == "/complex/detail":                            # 외부(카카오) 5종 호출 경로(부하 감사 H1)
+            return ("search", s.rate_limit_search_per_min)
     return None
 
 

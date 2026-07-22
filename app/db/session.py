@@ -14,8 +14,12 @@ if _url.startswith("sqlite"):
                            pool_pre_ping=True)
 else:
     # 운영: PostgreSQL 등. 커넥션 풀 + 끊긴 커넥션 자동 감지/재활용.
+    # 부하 감사 M1: sync 엔드포인트 스레드풀(기본 40) ≫ 풀(15)이면 16번째 동시 요청부터
+    # 커넥션 대기 → pool 상향(10+20=30, Render free PG 상한 ~97 내) + 대기 상한 10초 명시
+    # (기본 30초 대기는 스레드를 오래 묶어 연쇄 지연 유발).
     engine = create_engine(_url, echo=False, pool_pre_ping=True,
-                           pool_size=5, max_overflow=10, pool_recycle=1800)
+                           pool_size=10, max_overflow=20, pool_timeout=10,
+                           pool_recycle=1800)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()

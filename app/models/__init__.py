@@ -102,6 +102,8 @@ class Transaction(Base):
         Index("ix_tx_region_month", "lawd_cd", "contract_date"),
         Index("ix_tx_type_deal", "property_type", "deal_type"),
         Index("ix_tx_active", "property_type", "is_canceled"),
+        # 부하 감사 H2: 단지상세·호가검증·급매 등 핫패스가 complex_name 등가조건 풀스캔이던 것
+        Index("ix_tx_complex_lawd", "complex_name", "lawd_cd"),
     )
 
 
@@ -180,6 +182,7 @@ class Listing(Base):
     __table_args__ = (
         Index("ix_listing_region_deal", "lawd_cd", "deal_type"),
         Index("ix_listing_created", "created_at"),
+        Index("ix_listing_account", "account_id"),   # 부하 감사 L1: 내 매물 필터·로그인 흡수
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
@@ -550,6 +553,8 @@ class Place(Base):
     __table_args__ = (
         Index("ix_places_cat_lawd", "category", "lawd_cd"),
         Index("ix_places_subcat_lawd", "subcategory", "lawd_cd"),
+        # 부하 감사 M4: 단지상세·지도 bbox(lat/lng between) 조회가 풀스캔이던 것
+        Index("ix_places_lat_lng", "lat", "lng"),
     )
 
 

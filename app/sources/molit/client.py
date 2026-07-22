@@ -75,36 +75,51 @@ class MolitClient:
         meta = MOLIT_ENDPOINTS[(property_type, deal_fetch_type)]
         base = getattr(self.s, "molit_base_url", "") or MOLIT_BASE
         url = base + meta["path"]
-        params = {
-            "serviceKey": self._key,
-            "LAWD_CD": lawd_cd,
-            "DEAL_YMD": deal_ymd,
-            "numOfRows": num_of_rows,
-            "pageNo": 1,
-        }
 
-        for attempt in range(3):
-            try:
-                self._throttle()
-                resp = httpx.get(url, params=params, timeout=self.s.molit_request_timeout)
-                # 인증 실패는 재시도해도 동일 → 즉시 명확한 안내로 중단
-                if resp.status_code in (401, 403):
-                    raise MolitAuthError(self._auth_help(resp.status_code, meta["source"]))
-                resp.raise_for_status()
-                items = self._parse_xml_items(resp.text, source=meta["source"])
-                return items, meta["source"]
-            except MolitAuthError:
-                raise
-            except (httpx.HTTPError, ET.ParseError) as e:
-                wait = 1.5 * (attempt + 1)
-                logger.warning(
-                    "MOLIT 호출 실패(%s/%s) %s %s %s: %s — %.1fs 후 재시도",
-                    attempt + 1, 3, property_type, lawd_cd, deal_ymd, e, wait,
-                )
-                time.sleep(wait)
-
-        logger.error("MOLIT 호출 최종 실패: %s %s %s", property_type, lawd_cd, deal_ymd)
-        return [], meta["source"]
+        # 페이지네이션: 월 거래가 numOfRows(1000) 초과 시 pageNo=1 고정이면 초과분이
+        # '조용히 누락'된다(왜곡 없음 위반·대도시 확장 차단). 가득 찬 페이지면 다음 페이지 계속.
+        all_items: list[dict] = []
+        page = 1
+        MAX_PAGES = 10   # 폭주 방지(월 1만 건 상한 — 시군구 단위에선 도달 불가 수준)
+        while page <= MAX_PAGES:
+            params = {
+                "serviceKey": self._key,
+                "LAWD_CD": lawd_cd,
+                "DEAL_YMD": deal_ymd,
+                "numOfRows": num_of_rows,
+                "pageNo": page,
+            }
+            items = None
+            for attempt in range(3):
+                try:
+                    self._throttle()
+                    resp = httpx.get(url, params=params, timeout=self.s.molit_request_timeout)
+                    # 인증 실패는 재시도해도 동일 → 즉시 명확한 안내로 중단
+                    if resp.status_code in (401, 403):
+                        raise MolitAuthError(self._auth_help(resp.status_code, meta["source"]))
+                    resp.raise_for_status()
+                    items = self._parse_xml_items(resp.text, source=meta["source"])
+                    break
+                except MolitAuthError:
+                    raise
+                except (httpx.HTTPError, ET.ParseError) as e:
+                    wait = 1.5 * (attempt + 1)
+                    logger.warning(
+                        "MOLIT 호출 실패(%s/%s) %s %s %s p%s: %s — %.1fs 후 재시도",
+                        attempt + 1, 3, property_type, lawd_cd, deal_ymd, page, e, wait,
+                    )
+                    time.sleep(wait)
+            if items is None:                      # 이 페이지 최종 실패
+                if page == 1:
+                    logger.error("MOLIT 호출 최종 실패: %s %s %s", property_type, lawd_cd, deal_ymd)
+                    return [], meta["source"]
+                logger.warning("MOLIT p%s 실패 — 이전 페이지까지 %d건 반환", page, len(all_items))
+                break
+            all_items.extend(items)
+            if len(items) < num_of_rows:           # 마지막 페이지
+                break
+            page += 1
+        return all_items, meta["source"]
 
     @staticmethod
     def _auth_help(code: int, source: str) -> str:

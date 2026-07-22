@@ -309,28 +309,28 @@ function Card({label,big,sub}){
 function TxFlags({r}){
  if(!r) return null;
  const items=[];
- if(r.corrected) items.push(["정정","#1E5FC4","rgba(30,95,196,.12)"]);
- if(r.direct) items.push(["직거래","#9A6B00","rgba(178,106,0,.14)"]);
- if(r.outlier) items.push(["이상치","#C8322A","rgba(200,50,42,.12)"]);
+ if(r.corrected) items.push(["정정","var(--down)","rgba(30,95,196,.12)"]);
+ if(r.direct) items.push(["직거래","var(--warn-fg)","rgba(178,106,0,.14)"]);
+ if(r.outlier) items.push(["이상치","var(--up)","rgba(200,50,42,.12)"]);
  if(!items.length) return null;
  return (<React.Fragment>{items.map(([t,fg,bg],i)=>
   <span key={i} className="pill" style={{background:bg,color:fg,fontWeight:700,marginLeft:4}}>{t}</span>)}</React.Fragment>);
 }
 function jeonseRisk(r){
  if(r==null) return null;
- if(r>=90) return {label:"전세가율 매우 높음",bg:"rgba(200,50,42,.14)",fg:"#C8322A"};
- if(r>=80) return {label:"전세가율 높음",bg:"rgba(178,106,0,.16)",fg:"#9A6B00"};
+ if(r>=90) return {label:"전세가율 매우 높음",bg:"rgba(200,50,42,.14)",fg:"var(--up)"};
+ if(r>=80) return {label:"전세가율 높음",bg:"rgba(178,106,0,.16)",fg:"var(--warn-fg)"};
  return null;
 }
 function jeonseSafety(r){
  if(r==null) return null;
- if(r>=90) return {level:4,label:"위험 (깡통 우려)",color:"#C8322A",bg:"rgba(200,50,42,.12)",
+ if(r>=90) return {level:4,label:"위험 (깡통 우려)",color:"var(--up)",bg:"rgba(200,50,42,.12)",
    advice:"매매가 대비 보증금 비중이 매우 큽니다. 시세가 조금만 떨어져도 보증금 회수가 어려울 수 있어, 보증금 반환보증 가입과 등기부 확인이 특히 중요합니다."};
- if(r>=80) return {level:3,label:"주의",color:"#9A6B00",bg:"rgba(178,106,0,.14)",
+ if(r>=80) return {level:3,label:"주의",color:"var(--warn-fg)",bg:"rgba(178,106,0,.14)",
    advice:"보증금 비중이 높은 편입니다. 선순위 채권·근저당 여부를 확인하고 보증금 반환보증 가입을 권장합니다."};
- if(r>=70) return {level:2,label:"보통",color:"#1E5FC4",bg:"rgba(30,95,196,.12)",
+ if(r>=70) return {level:2,label:"보통",color:"var(--down)",bg:"rgba(30,95,196,.12)",
    advice:"일반적인 수준입니다. 그래도 등기부와 선순위 채권은 확인하는 것이 안전합니다."};
- return {level:1,label:"안전한 편",color:"#1d7a4d",bg:"rgba(29,122,77,.12)",
+ return {level:1,label:"안전한 편",color:"var(--ok-fg)",bg:"rgba(29,122,77,.12)",
    advice:"매매가 대비 보증금 비중이 낮아 상대적으로 회수 여력이 큽니다. 기본 확인(등기부 등)은 권장됩니다."};
 }
 function ShareCard({card,onClose}){
@@ -521,6 +521,16 @@ function MoreList({items,render,initial=8,step=10,label="더보기"}){
 /* 라인 아이콘 (이모지 대체) */
 /* 키보드 활성화: 클릭 div를 Enter/Space로도 누를 수 있게(접근성) */
 const onEnter=fn=>e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fn();}};
+/* 토스트 — alert() 대체(네이티브 다이얼로그는 테마 무시·전화면 차단·PWA UX 저해). 모듈 레벨 단일 인스턴스. */
+let _toastEl=null,_toastTimer=null;
+function toast(msg,ms=2600){
+ try{
+  if(_toastEl){_toastEl.remove();clearTimeout(_toastTimer);}
+  const el=document.createElement("div");el.className="toast";el.setAttribute("role","status");el.textContent=msg;
+  document.body.appendChild(el);_toastEl=el;
+  _toastTimer=setTimeout(()=>{el.classList.add("out");setTimeout(()=>{el.remove();if(_toastEl===el)_toastEl=null;},260);},ms);
+ }catch(_){/* DOM 불가 환경 무시 */}
+}
 /* 아래 순수 표시 컴포넌트는 모듈 레벨에 둔다 — 부모 렌더 본문 안에 정의하면 매 렌더 리마운트(포커스·성능 churn, CLAUDE.md §10 트랩#1). */
 const Stat=({label,val})=>(<div style={{flex:1,minWidth:72,background:"var(--surface-2)",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:MUTED}}>{label}</div><div className="num" style={{fontSize:20,fontWeight:800}}>{val}</div></div>);
 const Tool=({icon,title,desc,onClick})=>(<div onClick={onClick} onKeyDown={onEnter(onClick)} role="button" tabIndex={0} className="card" style={{padding:"15px 16px",marginTop:12,cursor:"pointer",background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))",display:"flex",alignItems:"center",gap:13}}>
@@ -602,7 +612,28 @@ const DEMO_LISTINGS=[
 ];
 
 function ListingThumb({photo,size=104}){
- return <div style={{width:size,height:size,flex:"none",borderRadius:12,overflow:"hidden",background:"var(--chip)",backgroundImage:photo?`url(${photo})`:"none",backgroundSize:"cover",backgroundPosition:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>{!photo&&<Icon name="camera" size={26}/>}</div>;
+ // <img loading=lazy>: background-image는 지연 로딩 불가 → 화면 밖 카드 사진까지 즉시 다운로드되던 것(감사 H2)
+ return <div style={{width:size,height:size,flex:"none",borderRadius:12,overflow:"hidden",background:"var(--chip)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+  {photo?<img src={photo} alt="매물 사진" loading="lazy" decoding="async" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>:<Icon name="camera" size={26}/>}
+ </div>;
+}
+// 업로드 전 클라이언트 리사이즈(감사 H3): 원본 수MB를 그대로 올리던 것 → 장변 1280px·JPEG 재인코딩.
+// 실패(비이미지·미지원)하면 원본 그대로 반환(기능 저하 없음).
+async function compressImage(file,maxSide=1280,quality=0.85){
+ try{
+  if(!/^image\//.test(file.type)||file.type==="image/gif")return file;
+  const url=URL.createObjectURL(file);
+  const img=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=url;});
+  URL.revokeObjectURL(url);
+  const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
+  if(scale>=1&&file.size<400_000)return file;   // 이미 작으면 그대로
+  const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+  const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+  cv.getContext("2d").drawImage(img,0,0,w,h);
+  const blob=await new Promise(res=>cv.toBlob(res,"image/jpeg",quality));
+  if(!blob)return file;
+  return new File([blob],(file.name||"photo").replace(/\.\w+$/,"")+".jpg",{type:"image/jpeg"});
+ }catch(_){return file;}
 }
 function ListingCard({x,onOpen}){
  const unit=useUnit();
@@ -724,13 +755,15 @@ function ListingForm({onCancel,onCreated,account,initial}){
   if(!files.length)return;
   setUploading(true);
   Promise.all(files.map(async f=>{
-   try{const fd=new FormData();fd.append("file",f);
+   const cf=await compressImage(f);            // 장변 1280px·JPEG(원본 수MB 업로드 방지)
+   try{const fd=new FormData();fd.append("file",cf,cf.name);
     const r=await fetch(`${API}/listings/upload`,{method:"POST",body:fd});
     if(r.ok){const j=await r.json();if(j&&j.url)return j.url;}
    }catch(_){}
-   // 폴백(오프라인/스토리지 미구성): 데이터URL로 미리보기·등록
-   return await new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.readAsDataURL(f);});
-  })).then(urls=>{setPhotos(p=>[...p,...urls].slice(0,12));setUploading(false);}).catch(()=>setUploading(false));
+   return null;   // 서버가 데이터URL 저장을 거부(OOM 방어) → 실패 사진은 제외+안내
+  })).then(urls=>{const ok=urls.filter(Boolean);
+   if(ok.length<urls.length)toast(`사진 ${urls.length-ok.length}장 업로드 실패 — 네트워크 확인 후 다시 시도해 주세요.`);
+   setPhotos(p=>[...p,...ok].slice(0,12));setUploading(false);}).catch(()=>setUploading(false));
  };
  const submit=async()=>{
   const e=[];
@@ -739,7 +772,11 @@ function ListingForm({onCancel,onCreated,account,initial}){
   if(deal==="wolse"&&(!dep||!rent))e.push("보증금/월세");
   if(!phone.trim())e.push("연락처");
   if(role==="agent"){if(!office.trim())e.push("중개사무소명");if(!aname.trim())e.push("중개사 성명");if(!areg.trim())e.push("등록번호");if(!aaddr.trim())e.push("사무소 소재지");}
-  if(e.length){setErr(e.join(", ")+" 항목을 확인하세요.");return;}
+  if(e.length){setErr(e.join(", ")+" 항목을 확인하세요.");
+   // 긴 폼(20+필드)에서 에러가 하단에만 떠서 안 보이던 것(감사 M3) → 에러로 스크롤+토스트
+   toast("입력 확인: "+e.join(", "));
+   setTimeout(()=>{const el=document.getElementById("lf-err");if(el)el.scrollIntoView({behavior:"smooth",block:"center"});},60);
+   return;}
   setErr("");setBusy(true);
   const body={device_id:deviceId(),poster_role:role,title:title.trim(),deal_type:deal,property_type:prop,lawd_cd:gu,
    dong_name:dong||null,complex_name:cpx||null,address_detail:addr||null,
@@ -829,7 +866,7 @@ function ListingForm({onCancel,onCreated,account,initial}){
    </React.Fragment>}
    <LField label="연락처(전화)" req><input style={INP} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="010-0000-0000"/></LField>
 
-   {err&&<div style={{color:UP,fontWeight:700,fontSize:13,margin:"6px 0 0"}}>{err}</div>}
+   {err&&<div id="lf-err" role="alert" style={{color:UP,fontWeight:700,fontSize:13,margin:"6px 0 0"}}>{err}</div>}
    <button onClick={submit} disabled={busy} className="btn-outline" style={{marginTop:14,width:"100%",fontSize:15,padding:"13px"}}>{busy?(isEdit?"저장 중…":"등록 중…"):(isEdit?"수정 저장":"매물 등록하기")}</button>
    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.6}}>등록 시 표시·광고 명시사항과 허위매물 금지에 동의하는 것으로 간주합니다. 연락처는 매물 상세에 공개됩니다. 입력 정보는 매물 게시 목적에만 사용됩니다.</div>
   </div>
@@ -869,7 +906,7 @@ function InquiryBox({listing}){
   </div>);
  return (<div className="card" style={{padding:14,marginTop:4}}>
   {!open
-   ? <button onClick={()=>setOpen(true)} style={{width:"100%",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:15,padding:"12px",borderRadius:12,cursor:"pointer"}}>온라인 문의 남기기</button>
+   ? <button onClick={()=>setOpen(true)} className="btn-primary" style={{width:"100%",fontSize:15,padding:"12px"}}>온라인 문의 남기기</button>
    : <div>
       <div style={{fontWeight:800,fontSize:14.5,marginBottom:8}}>문의 남기기</div>
       <input className="inp" aria-label="이름(선택)" placeholder="이름 (선택)" value={name} onChange={e=>setName(e.target.value)} style={{marginBottom:8}}/>
@@ -1162,7 +1199,7 @@ function SearchOverlay({onClose,onComplex,onGu,onListing,board,recents}){
 /* ====================== 커뮤니티(게시판) ====================== */
 const CAT_LABEL={free:"자유",qa:"질문답변",info:"정보공유",deal:"매물상담",local:"지역소식"};
 const CAT_ORDER=["free","qa","info","deal","local"];
-const CAT_COLOR={free:"#0F766E",qa:"#1E5FC4",info:"#7A5AF8",deal:"#C8322A",local:"#0E7490"};
+const CAT_KEYS=["free","qa","info","deal","local"];   // 카테고리 칩 색은 CSS 클래스(.cat-*, 테마 대응)
 function timeAgo(iso){if(!iso)return"";const z=/(Z|[+-]\d\d:?\d\d)$/.test(iso)?iso:iso+"Z";const t=new Date(z).getTime();
  if(isNaN(t))return iso.slice(0,10);const s=(Date.now()-t)/1000;
  if(s<60)return"방금";if(s<3600)return Math.floor(s/60)+"분 전";if(s<86400)return Math.floor(s/3600)+"시간 전";
@@ -1177,7 +1214,7 @@ function demoPosts(cat,q,sort){let a=DEMO_POSTS.slice();
  if(q)a=a.filter(p=>p.title.includes(q)||(p.body||"").includes(q));
  a.sort((x,y)=>sort==="popular"?((y.like_count+y.comment_count)-(x.like_count+x.comment_count)):y.created_at.localeCompare(x.created_at));
  return a;}
-function CatPill({cat}){return <span className="pill" style={{background:(CAT_COLOR[cat]||TEAL)+"1A",color:CAT_COLOR[cat]||TEAL,fontWeight:800}}>{CAT_LABEL[cat]||cat}</span>;}
+function CatPill({cat}){return <span className={"pill cat-"+(CAT_KEYS.includes(cat)?cat:"free")} style={{fontWeight:800}}>{CAT_LABEL[cat]||cat}</span>;}
 function PostCard({p,onOpen,onAuthor}){
  const clickA=onAuthor&&p.account_id?(e)=>{e.stopPropagation();onAuthor(p.account_id);}:undefined;
  return (<div className="feedrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>onOpen(p))} style={{padding:"14px 4px",cursor:"pointer"}} onClick={()=>onOpen(p)}>
@@ -1211,8 +1248,10 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
   const id=setTimeout(()=>{fetch(`${API}/search?q=${encodeURIComponent(t)}`).then(r=>r.json()).then(j=>setCxRes((j.complexes||[]).slice(0,6))).catch(()=>setCxRes(demoSearch(t).complexes.slice(0,6)));},220);
   return ()=>clearTimeout(id);},[cxq,cx]);
  const onImgs=e=>{const files=[...e.target.files].slice(0,8);e.target.value="";if(!files.length)return;setUploading(true);
-  Promise.all(files.map(async f=>{try{const fd=new FormData();fd.append("file",f);const r=await fetch(`${API}/listings/upload`,{method:"POST",body:fd});if(r.ok){const j=await r.json();if(j&&j.url)return j.url;}}catch(_){}
-   return await new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.readAsDataURL(f);});}))
+  Promise.all(files.map(async f=>{const cf=await compressImage(f);   // 리사이즈 후 업로드(원본 수MB 방지)
+   try{const fd=new FormData();fd.append("file",cf,cf.name);const r=await fetch(`${API}/listings/upload`,{method:"POST",body:fd});if(r.ok){const j=await r.json();if(j&&j.url)return j.url;}}catch(_){}
+   // 게시글은 데이터URL 폴백 유지(오프라인 데모) — 압축본이라 용량 안전
+   return await new Promise(res=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.readAsDataURL(cf);});}))
    .then(urls=>{setImages(p=>[...p,...urls].slice(0,8));setUploading(false);}).catch(()=>setUploading(false));};
  const submit=async()=>{
   if(title.trim().length<2)return setErr("제목을 2자 이상 입력하세요.");
@@ -1248,8 +1287,8 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
      </div>))}
     </div>}
    </div>)}
-  <input style={{...INP,marginTop:8}} value={title} onChange={e=>setTitle(e.target.value)} placeholder="제목"/>
-  <textarea style={{...INP,marginTop:8,minHeight:150,resize:"vertical"}} value={body} onChange={e=>setBody(e.target.value)} placeholder="내용을 입력하세요. (실거래·공식정보가 아닌 의견은 사실과 다를 수 있어요)"/>
+  <input style={{...INP,marginTop:8}} value={title} onChange={e=>setTitle(e.target.value)} placeholder="제목" aria-label="글 제목"/>
+  <textarea style={{...INP,marginTop:8,minHeight:150,resize:"vertical"}} aria-label="글 내용" value={body} onChange={e=>setBody(e.target.value)} placeholder="내용을 입력하세요. (실거래·공식정보가 아닌 의견은 사실과 다를 수 있어요)"/>
   <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10,flexWrap:"wrap"}}>
    <label style={{display:"inline-flex",alignItems:"center",gap:6,border:"1px dashed "+TEAL,color:TEAL,fontWeight:700,fontSize:13,padding:"9px 13px",borderRadius:10,cursor:"pointer"}}>
     <Icon name="camera" active size={16}/> 사진 추가 (최대 8장)
@@ -1282,8 +1321,9 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   return ()=>{on=false;};},[id]);
  if(!d)return <div style={{marginTop:10}}><div style={{height:10}}/><SkeletonCard lines={4}/><SkeletonCard/></div>;
  const p=d.post,mine=account&&p.account_id===account.id;
- const lk={border:"none",background:"none",color:MUTED,fontSize:11.5,cursor:"pointer",padding:0,fontWeight:700};
- const sb={border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"0 14px",borderRadius:9,cursor:"pointer",flex:"none"};
+ // 터치 타겟(감사 M1): padding 0 → 세로 8px·가로 6px 확보(시각 크기 유지, 히트영역만 확대)
+ const lk={border:"none",background:"none",color:MUTED,fontSize:11.5,cursor:"pointer",padding:"8px 6px",margin:"-8px -2px",fontWeight:700};
+ const sb={background:"var(--teal)",border:"none",color:"#fff",fontWeight:800,fontSize:13,padding:"0 14px",borderRadius:9,cursor:"pointer",flex:"none"};   // var(--teal)=테마 대응(다크에서 밝은 teal)
  const toggleLike=async()=>{
   try{const r=await fetch(`${API}/community/posts/${id}/like`,{method:"POST",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({device_id:deviceId()})});
    if(r.ok){const j=await r.json();setLiked(j.liked);setLikeN(j.like_count);return;}}catch(_){}
@@ -1300,14 +1340,14 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   setBusy(true);
   try{const r=await fetch(`${API}/community/posts/${id}/comments`,{method:"POST",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({device_id:deviceId(),body:t,parent_id:parentId||null})});
    if(r.ok){const j=await r.json();setD(s=>({...s,comments:[...s.comments,j.comment]}));setBusy(false);cb&&cb();onChanged&&onChanged();return;}
-   const e=await r.json().catch(()=>({}));alert(e.detail||"댓글 등록 실패");setBusy(false);return;
+   const e=await r.json().catch(()=>({}));toast(e.detail||"댓글 등록 실패");setBusy(false);return;
   }catch(_){}
   setD(s=>({...s,comments:[...s.comments,{id:Date.now(),parent_id:parentId||null,nickname:account?.nickname||"나",account_id:account?.id,body:t,created_at:new Date().toISOString()}]}));setBusy(false);cb&&cb();
  };
  const saveEdit=async(cid)=>{const t=etext.trim();if(t.length<1)return;
   try{const r=await fetch(`${API}/community/comments/${cid}`,{method:"PUT",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({body:t})});
    if(r.ok){setD(s=>({...s,comments:s.comments.map(c=>c.id===cid?{...c,body:t}:c)}));setEditingC(null);return;}
-   const e=await r.json().catch(()=>({}));alert(e.detail||"수정 실패");return;
+   const e=await r.json().catch(()=>({}));toast(e.detail||"수정 실패");return;
   }catch(_){}
   setD(s=>({...s,comments:s.comments.map(c=>c.id===cid?{...c,body:t}:c)}));setEditingC(null);
  };
@@ -1317,7 +1357,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
  };
  const report=async(type,tid)=>{ if(!window.confirm("신고할까요? 누적 시 자동 숨김됩니다."))return;
   try{await fetch(`${API}/community/${type==="post"?"posts":"comments"}/${tid}/report`,{method:"POST",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({device_id:deviceId()})});}catch(_){}
-  alert("신고가 접수되었습니다.");
+  toast("신고가 접수되었습니다.");
  };
  const delPost=async()=>{ if(!window.confirm("글을 삭제할까요?"))return;
   try{await fetch(`${API}/community/posts/${id}`,{method:"DELETE",headers:authHeader()});}catch(_){}
@@ -1362,7 +1402,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   {p.resident&&<div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(15,118,110,.10)",color:TEAL,fontWeight:800,fontSize:12,borderRadius:9,padding:"5px 11px",margin:"8px 0 0"}}>🏠 단지 주민의 글 <span style={{fontWeight:600,color:MUTED}}>· 작성 당시 '우리집' 등록 기준</span></div>}
   <div style={{fontSize:15,lineHeight:1.7,color:INK,margin:"14px 2px",whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.body}</div>
   {(p.images&&p.images.length>0)&&<div style={{display:"flex",gap:8,overflowX:"auto",margin:"4px 0 12px"}}>
-   {p.images.map((u,i)=>(<div key={i} style={{width:230,height:165,flex:"none",borderRadius:12,background:`#EEF1F1 url(${u}) center/cover`}}/>))}
+   {p.images.map((u,i)=>(<div key={i} style={{width:230,height:165,flex:"none",borderRadius:12,background:`var(--surface-2) url(${u}) center/cover`}}/>))}
   </div>}
   {p.complex_name&&p.lawd_cd&&<button onClick={()=>onOpenComplex&&onOpenComplex({complex_name:p.complex_name,lawd_cd:p.lawd_cd,property_type:p.property_type||"apartment"})}
     style={{display:"flex",alignItems:"center",gap:8,width:"100%",border:"1px solid rgba(15,118,110,.3)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:800,fontSize:14,padding:"12px 14px",borderRadius:12,cursor:"pointer",margin:"2px 0 12px"}}>
@@ -1383,7 +1423,7 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   {tops.length===0&&<div style={{color:MUTED,fontSize:13,padding:"6px 2px 12px"}}>첫 댓글을 남겨보세요.</div>}
   {tops.map(c=>(<React.Fragment key={c.id}>{renderCmt(c,false)}{repliesOf(c.id).map(r=>renderCmt(r,true))}</React.Fragment>))}
   {account?(<div style={{display:"flex",gap:8,marginTop:8}}>
-    <input style={{...INP,flex:1}} value={ctext} onChange={e=>setCtext(e.target.value)} placeholder="댓글을 입력하세요" onKeyDown={e=>{if(e.key==="Enter")postComment(ctext,null,()=>setCtext(""));}}/>
+    <input style={{...INP,flex:1}} value={ctext} onChange={e=>setCtext(e.target.value)} placeholder="댓글을 입력하세요" aria-label="댓글 입력" onKeyDown={e=>{if(e.key==="Enter")postComment(ctext,null,()=>setCtext(""));}}/>
     <button onClick={()=>postComment(ctext,null,()=>setCtext(""))} disabled={busy} className="btn-primary" style={{padding:"0 18px",flex:"none"}}>등록</button>
    </div>)
    :(<button onClick={onNeedLogin} style={{width:"100%",border:"1px dashed "+TEAL,background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:13.5,padding:"12px",borderRadius:11,cursor:"pointer",marginTop:8}}>로그인하고 댓글 남기기</button>)}
@@ -1459,7 +1499,7 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
    <div style={{display:"flex",gap:8,alignItems:"center",margin:"10px 0 0"}}>
     <div style={{flex:1,display:"flex",alignItems:"center",gap:7,background:"var(--surface-solid)",border:"1px solid rgba(99,120,128,.16)",borderRadius:10,padding:"8px 11px"}}>
      <Icon name="search" active size={16}/>
-     <input value={qIn} onChange={e=>setQIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")setQ(qIn.trim());}} placeholder="게시판 검색" style={{flex:1,border:"none",outline:"none",fontSize:13.5,background:"none",minWidth:0}}/>
+     <input value={qIn} onChange={e=>setQIn(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")setQ(qIn.trim());}} placeholder="게시판 검색" aria-label="게시판 검색" style={{flex:1,border:"none",outline:"none",fontSize:13.5,background:"none",minWidth:0}}/>
      {qIn&&<button onClick={()=>{setQIn("");setQ("");}} style={{border:"none",background:"none",color:MUTED,cursor:"pointer",fontSize:13}}>✕</button>}
     </div>
     <Dropdown value={sort} set={setSort} style={{flex:"none",width:96}} opts={[["recent","최신순"],["popular","인기순"]]}/>
@@ -1523,7 +1563,7 @@ function NotificationsOverlay({onClose,onOpenPost,onOpenComplex,onAllRead}){
    </div>
    <PushToggle/>
    {items===null?<div style={{marginTop:10}}><SkeletonCard/><SkeletonCard/></div>
-    :items.length?<div className="card" style={{padding:"0 4px",marginTop:8}}>{items.map(n=>(<div key={n.id} onClick={()=>open(n)} className="feedrow" style={{padding:"12px 9px",cursor:"pointer",borderLeft:n.is_read?"3px solid transparent":"3px solid "+TEAL,borderRadius:n.is_read?0:"0 8px 8px 0"}}>
+    :items.length?<div className="card" style={{padding:"0 4px",marginTop:8}}>{items.map(n=>(<div key={n.id} onClick={()=>open(n)} onKeyDown={onEnter(()=>open(n))} role="button" tabIndex={0} className="feedrow" style={{padding:"12px 9px",cursor:"pointer",borderLeft:n.is_read?"3px solid transparent":"3px solid "+TEAL,borderRadius:n.is_read?0:"0 8px 8px 0"}}>
        <div style={{fontSize:14,color:INK}}>{n.type==="new_high"?"📈 ":n.type==="transaction"?"🏷️ ":""}{n.message||(n.type==="reply"?"답글이 달렸어요":"댓글이 달렸어요")}</div>
        <div style={{fontSize:12,color:MUTED,marginTop:4}}>{timeAgo(n.created_at)}</div>
       </div>))}</div>
@@ -1623,7 +1663,7 @@ class ErrorBoundary extends React.Component{
           <div style={{fontSize:30,marginBottom:8}}>⚠️</div>
           <div style={{fontWeight:800,fontSize:16,color:INK,marginBottom:6}}>일시적인 오류가 발생했어요</div>
           <div style={{fontSize:13,color:MUTED,lineHeight:1.6,marginBottom:16}}>화면을 그리는 중 문제가 생겼어요. 새로고침하면 대부분 해결됩니다. 계속되면 잠시 후 다시 시도해 주세요.</div>
-          <button onClick={()=>{try{location.reload();}catch(e){this.setState({err:null});}}} style={{border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,padding:"11px 18px",borderRadius:12,cursor:"pointer"}}>새로고침</button>
+          <button onClick={()=>{try{location.reload();}catch(e){this.setState({err:null});}}} className="btn-primary" style={{padding:"11px 18px"}}>새로고침</button>
         </div>
       </div>;
     }
@@ -1801,7 +1841,7 @@ function App(){
  const inCompare=useCallback((it)=>compare.some(c=>favId(c)===favId(it)),[compare]);
  const toggleCompare=useCallback((it)=>{setCompare(cur=>{const k=favId(it);
    if(cur.some(c=>favId(c)===k))return cur.filter(c=>favId(c)!==k);
-   if(cur.length>=4){alert("비교는 최대 4개까지 가능합니다.");return cur;}
+   if(cur.length>=4){toast("비교는 최대 4개까지 가능합니다.");return cur;}
    return [...cur,{name:it.complex_name||it.name,lawd_cd:it.lawd_cd,property_type:it.property_type,gu:it.gu,dong:it.dong}];});},[]);
  useEffect(()=>{try{document.documentElement.dataset.theme=theme;}catch(e){}safeStore.set("cj_theme",theme);},[theme]);
  useEffect(()=>{fetch(`${API}/status/data`).then(r=>r.ok?r.json():null).then(j=>{if(j)setFresh(j);}).catch(()=>{});},[]);
@@ -1815,7 +1855,7 @@ function App(){
   fetch(`${API}/auth/config`).then(r=>r.json()).then(setAuthCfg).catch(()=>setAuthCfg({providers:{},dev_login:true,enabled:true,offline:true}));
   if(getToken())fetch(`${API}/auth/me`,{headers:authHeader()}).then(r=>r.ok?r.json():null).then(j=>{if(j&&j.account)setAccount(j.account);}).catch(()=>{});
  },[]);
- const doSocial=async(p)=>{try{const j=await fetch(`${API}/auth/login/${p}?device_id=${DEV}`).then(r=>r.json());if(j&&j.url){window.location.href=j.url;}else{alert(j&&j.detail?j.detail:"로그인 설정이 필요합니다.");}}catch(_){alert("로그인 준비 중 오류가 발생했습니다.");}};
+ const doSocial=async(p)=>{try{const j=await fetch(`${API}/auth/login/${p}?device_id=${DEV}`).then(r=>r.json());if(j&&j.url){window.location.href=j.url;}else{toast(j&&j.detail?j.detail:"로그인 설정이 필요합니다.");}}catch(_){toast("로그인 준비 중 오류가 발생했습니다.");}};
  const doDev=async(role)=>{const body={device_id:DEV,nickname:"테스트 사용자",role};
   try{const r=await fetch(`${API}/auth/dev-login`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
    if(r.ok){const j=await r.json();setToken(j.token);setAccount(j.account);setLoginOpen(false);return;}}catch(_){}
@@ -1828,9 +1868,9 @@ function App(){
    const r=await fetch(`${API}/auth/account`,{method:"DELETE",headers:{...authHeader(),"Content-Type":"application/json"},body:JSON.stringify({confirm:true})});
    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.detail||"탈퇴 처리에 실패했어요.");}
    setToken("");setAccount(null);setAcctMenu(false);
-   alert("탈퇴가 완료되었어요. 그동안 이용해 주셔서 감사합니다.");
+   toast("탈퇴가 완료되었어요. 그동안 이용해 주셔서 감사합니다.");
    window.location.reload();
-  }catch(e){alert(e.message||"탈퇴 처리 중 오류가 발생했어요.");}
+  }catch(e){toast(e.message||"탈퇴 처리 중 오류가 발생했어요.");}
  };
  const changeRole=async(role)=>{setAcctMenu(false);
   try{const r=await fetch(`${API}/auth/role`,{method:"POST",headers:{"Content-Type":"application/json",...authHeader()},body:JSON.stringify({role})});
@@ -1929,22 +1969,22 @@ function App(){
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
    <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:INK,color:"#fff",boxShadow:"0 -4px 16px rgba(0,0,0,.25)"}}>
     <span style={{fontSize:13.5,fontWeight:700,flex:1}}>새 버전이 준비됐어요</span>
-    <button onClick={()=>location.reload()} style={{border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"8px 14px",borderRadius:9,cursor:"pointer"}}>새로고침</button>
+    <button onClick={()=>location.reload()} className="btn-primary" style={{fontSize:13,padding:"8px 14px"}}>새로고침</button>
     <button onClick={()=>setSwUpdate(false)} aria-label="닫기" style={{border:"none",background:"transparent",color:"#fff",fontSize:20,lineHeight:1,cursor:"pointer",padding:"0 4px"}}>×</button>
    </div>
   </div>}
   <div style={{background:"var(--bg1)",color:INK}}>
    <div className="wrap" style={{paddingBottom:0,display:"flex",alignItems:"center",gap:10,padding:"12px 16px"}}>
     <span style={{fontWeight:800,fontSize:18,letterSpacing:"-0.02em",flex:"none",color:INK}}>청집사</span>
-    <div onClick={()=>setSearchOpen(true)} style={{flex:"0 1 200px",marginLeft:"auto",minWidth:90,display:"flex",alignItems:"center",gap:6,background:"var(--surface-2)",borderRadius:10,padding:"8px 11px",cursor:"text",border:"1px solid var(--line)"}}>
+    <div onClick={()=>setSearchOpen(true)} role="button" tabIndex={0} aria-label="단지·지역 검색 열기" onKeyDown={onEnter(()=>setSearchOpen(true))} style={{flex:"0 1 200px",marginLeft:"auto",minWidth:90,display:"flex",alignItems:"center",gap:6,background:"var(--surface-2)",borderRadius:10,padding:"8px 11px",cursor:"text",border:"1px solid var(--line)"}}>
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
     </div>
-    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="bell" size={20} color={INK}/>
+    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"11px 11px",minWidth:44,minHeight:44,justifyContent:"center",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="bell" size={20} color={INK}/>
      {unread>0&&<span style={{position:"absolute",top:-5,right:-5,minWidth:17,height:17,borderRadius:9,background:"#C8322A",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{unread>99?"99+":unread}</span>}
     </button>}
     <div style={{position:"relative",flex:"none"}}>
-     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{lineHeight:1,padding:"7px 9px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="more" size={21} color={INK}/></button>
+     <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{lineHeight:1,padding:"11px 11px",minWidth:44,minHeight:44,justifyContent:"center",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="more" size={21} color={INK}/></button>
      {acctMenu&&<div onClick={()=>setAcctMenu(false)} style={{position:"fixed",inset:0,zIndex:80}}/>}
      {acctMenu&&<div style={{position:"absolute",right:0,top:"112%",zIndex:90,background:"var(--surface-solid)",borderRadius:12,boxShadow:"0 10px 28px rgba(30,64,90,.22)",padding:6,minWidth:208,color:INK}}>
       <div style={{fontSize:11,color:MUTED,padding:"6px 10px 3px",fontWeight:700}}>설정</div>
@@ -2043,7 +2083,7 @@ function App(){
 function Banner({status,data}){
  let bg,fg,text;
  if(status==="loading"){bg="#E7EDED";fg=MUTED;text="데이터를 불러오는 중…";}
- else if(status==="live"){const s=data&&data.contains_sample_data;bg=s?"var(--callout-bg)":"#E4F2E8";fg=s?"var(--callout-fg)":"#1d6b3a";
+ else if(status==="live"){const s=data&&data.contains_sample_data;bg=s?"var(--callout-bg)":"var(--ok-bg)";fg=s?"var(--callout-fg)":"var(--ok-fg)";
   text=s?"백엔드 연결됨 · 실거래에 모의데이터 포함(is_sample)":"백엔드 연결됨 · 실거래 데이터 표시 중";}
  else{bg="#FFF1E8";fg="#9a4a1f";text="백엔드 미응답 — 내장 예시(모의)데이터 표시 중. 'python run.py' 후 새로고침.";}
  return <div style={{background:bg,color:fg,borderRadius:10,padding:"9px 13px",margin:"12px 0 8px",fontSize:12.5,fontWeight:600}}>
@@ -2123,7 +2163,7 @@ function FavList({favs,onOpen,onToggleFav,onGu,onToggleRegion}){
     {complexes.map((f,i)=>{const m=f.meta||{};const it={complex_name:f.name||m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type,gu:m.gu,dong:m.dong};
      return <div key={i} className="listrow">
       <div style={{minWidth:0,flex:1,cursor:"pointer"}} onClick={()=>onOpen&&onOpen(it)}>
-       <span style={{fontWeight:600}}>{f.name}</span>
+       <span style={{fontWeight:600,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
        <span style={{color:MUTED,fontSize:12,marginLeft:6}}>{m.gu?guOf(m.gu):""}{m.dong?` · ${m.dong}`:""}{m.property_type?` · ${TYPE_LABEL[m.property_type]||""}`:""}</span>
       </div>
       {(()=>{const q=quotes[`${it.complex_name}|${it.lawd_cd}|${it.property_type||"apartment"}`];return q&&q.latest_amount!=null?(
@@ -2174,7 +2214,7 @@ function TodayInfo({feed,go}){
  const arr=subs||[];
  const pick=[...arr].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9))
    .find(s=>s.status==="접수중"||s.status==="접수예정")||arr[0]||null;
- const sc=st=>st==="접수중"?{bg:"#E4F2E8",fg:"#1d6b3a"}:st==="접수예정"?{bg:"#E7EEF6",fg:"#1E5FC4"}:{bg:"#EEF1F1",fg:MUTED};
+ const sc=st=>st==="접수중"?{bg:"var(--ok-bg)",fg:"var(--ok-fg)"}:st==="접수예정"?{bg:"var(--info-bg)",fg:"var(--info-fg)"}:{bg:"var(--neutral-bg)",fg:MUTED};
  const news=f.news||[], policies=f.policies||[];
  return (<React.Fragment>
   <Collapsible icon="news" defaultOpen={true} title="오늘의 정보">
@@ -2260,7 +2300,33 @@ function LandmarkCarousel({items,onOpen,ptype}){
   </div>
  </div>);
 }
+/* 시트 닫기 접근성/모바일(감사 H1): ①Escape로 닫기 ②안드로이드·브라우저 '뒤로가기'로
+   시트만 닫기(기존엔 back이 앱을 통째로 이탈). 시트 open 시 history entry 1개 push,
+   popstate 시 '최상단 시트만' 닫음(스택). 수동 닫기(×·스와이프·backdrop)면 entry 소비(back). */
+const _sheetStack=[];
+let _sheetPopBound=false;
+function _bindSheetPop(){
+ if(_sheetPopBound)return;_sheetPopBound=true;
+ window.addEventListener("popstate",()=>{const top=_sheetStack[_sheetStack.length-1];if(top){top.popped=true;top.close();}});
+}
+function useSheetDismiss(onClose){
+ const closeRef=useRef(onClose);closeRef.current=onClose;
+ useEffect(()=>{
+  _bindSheetPop();
+  const r={close:()=>closeRef.current&&closeRef.current(),popped:false,pushed:false};
+  _sheetStack.push(r);
+  try{history.pushState({cjSheet:true},"");r.pushed=true;}catch(_){}
+  const onKey=e=>{if(e.key==="Escape"&&_sheetStack[_sheetStack.length-1]===r){e.stopPropagation();r.close();}};
+  document.addEventListener("keydown",onKey);
+  return ()=>{
+   document.removeEventListener("keydown",onKey);
+   const i=_sheetStack.indexOf(r);if(i>=0)_sheetStack.splice(i,1);
+   if(r.pushed&&!r.popped){try{history.back();}catch(_){}}   // 수동 닫기 → 우리가 만든 entry 제거
+  };
+ },[]);
+}
 function Sheet({title,info,onClose,children,fill}){
+ useSheetDismiss(onClose);
  useEffect(()=>{const o=document.body.style.overflow;document.body.style.overflow="hidden";return ()=>{document.body.style.overflow=o;};},[]);
  const scRef=React.useRef(null);
  const start=React.useRef(null);
@@ -2282,6 +2348,7 @@ function Sheet({title,info,onClose,children,fill}){
   </div>, document.body);
 }
 function SheetShell({onClose,zIndex=120,header,scrollKey,children}){
+ useSheetDismiss(onClose);
  useEffect(()=>{const o=document.body.style.overflow;document.body.style.overflow="hidden";return ()=>{document.body.style.overflow=o;};},[]);
  const scRef=React.useRef(null);
  const start=React.useRef(null);
@@ -2359,7 +2426,7 @@ function ComplexQuickSheet({item,onClose,onDetail}){
     {d.price_min!=null&&d.price_max!=null&&<div style={{fontSize:12,color:MUTED,padding:"0 4px 12px"}}>실거래 범위 {eok(d.price_min)} ~ {eok(d.price_max)}{d.reliability?` · 신뢰도 ${d.reliability}`:""}</div>}
     {d.vs_region&&<div style={{margin:"0 4px 12px",fontSize:12.5,color:MUTED}}>📍 {d.vs_region.gu} 평균 대비 <b className="num" style={{color:d.vs_region.pct>0?UP:d.vs_region.pct<0?DOWN:INK,fontSize:13.5}}>{d.vs_region.pct>0?"+":""}{d.vs_region.pct}%</b> <span style={{fontSize:11}}>(평단가 기준)</span></div>}
    </div>}
-  <button onClick={()=>onDetail&&onDetail(item)} style={{width:"100%",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,borderRadius:11,padding:"13px",cursor:"pointer"}}>전체 상세 페이지 보기 →</button>
+  <button onClick={()=>onDetail&&onDetail(item)} className="btn-primary" style={{width:"100%",padding:"13px"}}>전체 상세 페이지 보기 →</button>
   <div style={{height:8}}/>
  </Sheet>);
 }
@@ -2588,7 +2655,7 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
      <div style={{display:"flex",alignItems:"center",marginBottom:6}}>
       <span style={{fontWeight:800,fontSize:14}}>받은 문의(리드)</span>
       <span style={{marginLeft:8,fontSize:12,color:MUTED}}>{leads.length}건{newLeads?` · 신규 ${newLeads}`:""}</span>
-      {leadsLocked&&<button onClick={doUpgrade} disabled={upBusy} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:12,padding:"7px 12px",borderRadius:9,cursor:upBusy?"default":"pointer"}}>{upBusy?"처리 중…":"Pro 업그레이드"}</button>}
+      {leadsLocked&&<button onClick={doUpgrade} disabled={upBusy} className="btn-primary" style={{marginLeft:"auto",fontSize:12,padding:"7px 12px"}}>{upBusy?"처리 중…":"Pro 업그레이드"}</button>}
      </div>
      {upMsg&&<div style={{fontSize:11.5,color:UP,marginBottom:6}}>{upMsg}</div>}
      {leadsLocked&&<div style={{fontSize:11.5,color:MUTED,marginBottom:6,lineHeight:1.5}}>Pro 플랜에서 문의자 연락처를 확인할 수 있어요.</div>}
@@ -2616,7 +2683,7 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
         <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
          <span className="pill" style={{background:"rgba(15,118,110,.12)",color:DEAL_COLOR[x.deal_type]||TEAL,fontWeight:800}}>{LP_DEAL[x.deal_type]}</span>
          <span className="num" style={{fontWeight:800,fontSize:14}}>{listingPrice(x)}</span>
-         {x.status!=="active"&&<span className="pill" style={{background:"#EEF1F1",color:MUTED}}>{x.status==="traded"?"거래완료":"숨김"}</span>}
+         {x.status!=="active"&&<span className="pill" style={{background:"var(--neutral-bg)",color:MUTED}}>{x.status==="traded"?"거래완료":"숨김"}</span>}
          {FEATURES.ads&&x.is_sponsored&&<span className="pill" style={{background:"rgba(178,106,0,.14)",color:"#9A6B00",fontWeight:800}}>광고</span>}
         </div>
         <div style={{fontWeight:700,marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.title}</div>
@@ -2639,9 +2706,9 @@ function JeonseGuard(){
  const ratio=(P>0&&D>0)?Math.round((D+L)/P*1000)/10:null;
  let band=null;
  if(ratio!=null){
-  if(ratio>=80)band={c:"#C8322A",t:"위험 신호",m:"집이 경매로 넘어가면 보증금을 다 돌려받지 못할 수 있는 구간이에요. 보증보험(HUG) 가입 가능 여부를 꼭 확인하고, 계약을 다시 생각해보세요."};
-  else if(ratio>=70)band={c:"#C77A1A",t:"주의",m:"여유가 크지 않아요. 근저당 말소 특약, 보증보험 가입을 권해요."};
-  else band={c:"#0F766E",t:"상대적 여유",m:"통상적 기준으로는 여유가 있는 편이에요. 그래도 계약 당일 등기부를 다시 확인하세요."};
+  if(ratio>=80)band={c:"var(--up)",t:"위험 신호",m:"집이 경매로 넘어가면 보증금을 다 돌려받지 못할 수 있는 구간이에요. 보증보험(HUG) 가입 가능 여부를 꼭 확인하고, 계약을 다시 생각해보세요."};
+  else if(ratio>=70)band={c:"var(--warn-fg)",t:"주의",m:"여유가 크지 않아요. 근저당 말소 특약, 보증보험 가입을 권해요."};
+  else band={c:"var(--teal)",t:"상대적 여유",m:"통상적 기준으로는 여유가 있는 편이에요. 그래도 계약 당일 등기부를 다시 확인하세요."};
  }
  const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 12px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK};
  const CHECK=[
@@ -2738,7 +2805,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
    ):(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
      <div style={{fontSize:12.5,color:MUTED,flex:1}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 볼 수 있어요.</div>
-     <button onClick={onRegisterHome} style={{flex:"none",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"9px 15px",borderRadius:10,cursor:"pointer"}}>등록</button>
+     <button onClick={onRegisterHome} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>등록</button>
     </div>
    )}
   </div>
@@ -2763,7 +2830,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
   <OfficialLinks/>
   <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.\n${location.origin}`;
     if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
-    else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>alert("소개 문구를 복사했어요!")).catch(()=>{});}}}
+    else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast("소개 문구를 복사했어요!")).catch(()=>{});}}}
    className="card" style={{width:"100%",padding:"14px 15px",marginTop:12,border:"1px dashed rgba(15,118,110,.4)",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
    <span style={{flex:"none",lineHeight:0}}><Icon name="megaphone" active color={TEAL} size={24}/></span>
    <span style={{minWidth:0,flex:1}}>
@@ -2846,7 +2913,8 @@ function WorkAccess({items}){
  const CAT_LABEL={job:"직장·산단",transit:"교통",public:"공공",education:"교육",medical:"의료"};
  const jobs=items.filter(h=>h.category==="job");
  const rest=items.filter(h=>h.category!=="job");
- const Row=({h})=>(<div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
+ // §10 트랩#1: 렌더 안 컴포넌트 정의 금지 → 'JSX 반환 렌더 함수'로(리마운트 없음)
+ const renderRow=(h,i)=>(<div key={h.key||i} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:"1px solid rgba(99,120,128,.08)"}}>
   <span style={{flex:"none",lineHeight:0}}><Icon name={CAT_ICON[h.category]||"locate"} active color={TEAL} size={16}/></span>
   <span style={{fontWeight:600,fontSize:13.5,minWidth:0,flex:1,overflowWrap:"anywhere"}}>{h.name}</span>
   <span className="num" style={{fontWeight:800,fontSize:13.5,flex:"none"}}>{h.distance_km}km</span>
@@ -2855,11 +2923,11 @@ function WorkAccess({items}){
   <div style={{padding:"4px 14px 12px"}}>
    {jobs.length>0&&<React.Fragment>
     <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"4px 0 2px"}}>주요 직장 · 산업단지</div>
-    {jobs.map((h,i)=><Row key={h.key||i} h={h}/>)}
+    {jobs.map(renderRow)}
    </React.Fragment>}
    {rest.length>0&&<React.Fragment>
     <div style={{fontSize:11.5,color:MUTED,fontWeight:700,margin:"10px 0 2px"}}>교통 · 공공 · 교육</div>
-    {rest.map((h,i)=><Row key={h.key||i} h={h}/>)}
+    {rest.map(renderRow)}
    </React.Fragment>}
    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.5}}>단지에서 각 거점까지 <b>직선거리</b>예요(도로 거리·통근시간과 다를 수 있음). 통근시간 기준 탐색은 더보기 → 통근권으로 집 찾기에서.</div>
   </div>
@@ -2899,7 +2967,7 @@ function MyHomeCard({home,onOpen,onRegister}){
     <div style={{fontWeight:800,fontSize:14.5}}>우리집 등록하기</div>
     <div style={{fontSize:12,color:MUTED,marginTop:2}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 봐요</div>
    </div>
-   <button onClick={onRegister} style={{flex:"none",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:13,padding:"9px 15px",borderRadius:10,cursor:"pointer"}}>등록</button>
+   <button onClick={onRegister} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>등록</button>
   </div>);
  let mom=null;
  if(d&&d.timeseries&&d.timeseries.length>=2){const ts=d.timeseries,a=ts[ts.length-2].avg,b=ts[ts.length-1].avg;if(a&&b)mom=Math.round((b-a)/a*1000)/10;}
@@ -3063,12 +3131,12 @@ function subDday(s){const t=new Date();t.setHours(0,0,0,0);
  if(s.status==="접수중"){const e=_parseYmd(s.end);if(e){const n=Math.round((e-t)/86400000);if(n>=0)return{txt:n===0?"오늘 마감":`마감 D-${n}`,urgent:true};}}
  return null;}
 function SubCard({s,onOpen}){
- const c=s.status==="접수중"?{bg:"#E4F2E8",fg:"#1d6b3a",g1:"#1d6b3a",g2:"#2f9e5c"}:s.status==="접수예정"?{bg:"#E7EEF6",fg:"#1E5FC4",g1:"#1E5FC4",g2:"#4f86e0"}:{bg:"#EEF1F1",fg:MUTED,g1:"#6b7780",g2:"#8a949c"};
+ const c=s.status==="접수중"?{bg:"var(--ok-bg)",fg:"var(--ok-fg)",g1:"#1d6b3a",g2:"#2f9e5c"}:s.status==="접수예정"?{bg:"var(--info-bg)",fg:"var(--info-fg)",g1:"#1E5FC4",g2:"#4f86e0"}:{bg:"var(--neutral-bg)",fg:MUTED,g1:"#6b7780",g2:"#8a949c"};
  const cr=s.competition_range;
  const compTxt=cr?(cr[0]===cr[1]?`${cr[0]}:1`:`${cr[0]}~${cr[1]}:1`):null;
  const ht=s.house_types||[];
  const dd=subDday(s);
- return (<div className="card" style={{padding:0,overflow:"hidden",marginBottom:8,cursor:onOpen?"pointer":"default"}} onClick={onOpen?()=>onOpen(s):undefined}>
+ return (<div className="card" style={{padding:0,overflow:"hidden",marginBottom:8,cursor:onOpen?"pointer":"default"}} onClick={onOpen?()=>onOpen(s):undefined} {...(onOpen?{role:"button",tabIndex:0,onKeyDown:onEnter(()=>onOpen(s))}:{})}>
   <div style={{position:"relative",padding:"14px 14px 13px",background:`linear-gradient(120deg,${c.g1},${c.g2})`,color:"#fff",overflow:"hidden"}}>
    <div style={{position:"absolute",right:-8,bottom:-18,fontSize:78,opacity:.16,lineHeight:1}}>🏢</div>
    <div style={{display:"flex",alignItems:"center",gap:8,position:"relative"}}>
@@ -3098,13 +3166,13 @@ function SubCard({s,onOpen}){
  </div>);
 }
 function SubDetail({s,onClose}){
- const c=s.status==="접수중"?{bg:"#E4F2E8",fg:"#1d6b3a"}:s.status==="접수예정"?{bg:"#E7EEF6",fg:"#1E5FC4"}:{bg:"#EEF1F1",fg:MUTED};
+ const c=s.status==="접수중"?{bg:"var(--ok-bg)",fg:"var(--ok-fg)"}:s.status==="접수예정"?{bg:"var(--info-bg)",fg:"var(--info-fg)"}:{bg:"var(--neutral-bg)",fg:MUTED};
  const cr=s.competition_range;
  const compTxt=cr?(cr[0]===cr[1]?`${cr[0]}:1`:`${cr[0]}~${cr[1]}:1`):null;
  const ht=s.house_types||[];
  const closed=s.status==="마감";
  const url=s.url||"https://www.applyhome.co.kr";
- const Row=({k,v})=>v?(<div style={{display:"flex",gap:10,padding:"6px 0",borderBottom:"1px solid rgba(99,120,128,.10)"}}><span style={{fontSize:12.5,color:MUTED,width:72,flex:"none"}}>{k}</span><span style={{fontSize:13.5,fontWeight:600}}>{v}</span></div>):null;
+ const renderKV=(k,v)=>v?(<div style={{display:"flex",gap:10,padding:"6px 0",borderBottom:"1px solid rgba(99,120,128,.10)"}}><span style={{fontSize:12.5,color:MUTED,width:72,flex:"none"}}>{k}</span><span style={{fontSize:13.5,fontWeight:600}}>{v}</span></div>):null;   // §10: 렌더 함수(컴포넌트 아님)
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <div style={{fontWeight:800,fontSize:18,minWidth:0,overflow:"hidden",textOverflow:"ellipsis"}}>{s.name} {s.is_sample&&<ExBadge/>}</div>
@@ -3112,14 +3180,14 @@ function SubDetail({s,onClose}){
   </div>
   {closed&&<div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:600,lineHeight:1.6,marginTop:10}}>ⓘ 이미 마감된 공고예요. 아래는 경쟁률·가점 등 결과·기록 참고용입니다.</div>}
   <div className="card" style={{padding:"10px 14px",marginTop:12}}>
-   <Row k="지역" v={s.location}/>
-   <Row k="청약기간" v={s.period}/>
-   <Row k="총 공급" v={s.units?`${s.units}세대`:null}/>
-   <Row k="분양가" v={s.price}/>
-   <Row k="시행사" v={s.builder}/>
-   <Row k="모집공고일" v={s.notice_date}/>
-   <Row k="경쟁률" v={compTxt||(s.status==="접수예정"?"집계 전":null)}/>
-   <Row k="최저가점" v={s.min_score!=null?String(s.min_score):null}/>
+   {renderKV("지역",s.location)}
+   {renderKV("청약기간",s.period)}
+   {renderKV("총 공급",s.units?`${s.units}세대`:null)}
+   {renderKV("분양가",s.price)}
+   {renderKV("시행사",s.builder)}
+   {renderKV("모집공고일",s.notice_date)}
+   {renderKV("경쟁률",compTxt||(s.status==="접수예정"?"집계 전":null))}
+   {renderKV("최저가점",s.min_score!=null?String(s.min_score):null)}
   </div>
   {ht.length>0&&<div className="card" style={{padding:"12px 14px",marginTop:10}}>
    <div style={{fontWeight:800,fontSize:14,marginBottom:8}}>주택형별</div>
@@ -3430,13 +3498,13 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [showJr,setShowJr]=useState(false);   // 🏠 전세가율 위험(역전세 유의) 핀
  const mapRef=useRef(null);                  // 현위치 이동용 지도 인스턴스
  const [locBusy,setLocBusy]=useState(false);
- const goMyLoc=()=>{ if(!navigator.geolocation||!mapRef.current||!window.naver){alert("현재 위치를 사용할 수 없어요. 위치 권한을 확인해주세요.");return;}
+ const goMyLoc=()=>{ if(!navigator.geolocation||!mapRef.current||!window.naver){toast("현재 위치를 사용할 수 없어요. 위치 권한을 확인해주세요.");return;}
   setLocBusy(true);
   navigator.geolocation.getCurrentPosition(pos=>{ setLocBusy(false);
    try{const ll=new window.naver.maps.LatLng(pos.coords.latitude,pos.coords.longitude);
     mapRef.current.setCenter(ll); mapRef.current.setZoom(15);
    }catch(e){}
-  },()=>{setLocBusy(false);alert("위치를 가져오지 못했어요. 브라우저 위치 권한을 허용해주세요.");},{timeout:8000});
+  },()=>{setLocBusy(false);toast("위치를 가져오지 못했어요. 브라우저 위치 권한을 허용해주세요.");},{timeout:8000});
  };
  const [data,setData]=useState(null);
  const [loading,setLoading]=useState(true);
@@ -3485,7 +3553,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
     <span style={{fontWeight:800,fontSize:14.5}}>{vc}곳</span>
     <span style={{marginLeft:"auto",fontSize:12,color:MUTED}}>{deal==="trade"?"평단가":"보증금"} 중앙값</span>
     <span style={{fontWeight:800,fontSize:14.5,color:TEAL}}>{fmtV(vm)}</span>
-    <button onClick={()=>setListOpen(true)} style={{flex:"none",marginLeft:4,border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:12,padding:"7px 13px",borderRadius:9,cursor:"pointer"}}>목록</button>
+    <button onClick={()=>setListOpen(true)} className="btn-primary" style={{flex:"none",marginLeft:4,fontSize:12,padding:"7px 13px"}}>목록</button>
    </div>
   </div>
   {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:markers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
@@ -3553,7 +3621,7 @@ function HeatMap({data,mapCfg,onOpen,onGu,level}){
     </div>
     <div style={{display:"flex",alignItems:"center",gap:10,marginTop:9}}>
      <div className="num" style={{fontWeight:800,fontSize:16}}>{sel.median_pyeong!=null?sel.median_pyeong.toLocaleString("ko-KR"):"—"} <span style={{fontSize:11,color:MUTED,fontWeight:600}}>만원/평</span></div>
-     <button onClick={()=>onOpen&&onOpen(sel)} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:700,fontSize:12.5,borderRadius:9,padding:"8px 15px",cursor:"pointer"}}>단지 상세 보기 →</button>
+     <button onClick={()=>onOpen&&onOpen(sel)} className="btn-primary" style={{marginLeft:"auto",fontSize:12.5,padding:"8px 15px"}}>단지 상세 보기 →</button>
     </div>
    </div>}
   </div>
@@ -3647,7 +3715,7 @@ function DetailLine({months,values}){
  const X=i=>L+(W-L-R)*(months.length<=1?0.5:i/(months.length-1)),Y=v=>T+(H-T-B)*(1-(v-min)/span);
  const pts=values.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
  return (<svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:180}}>
-  {[min,min+span/2,max].map((t,i)=>(<g key={i}><line x1={L} x2={W-R} y1={Y(t)} y2={Y(t)} stroke="#EEF1F1"/>
+  {[min,min+span/2,max].map((t,i)=>(<g key={i}><line x1={L} x2={W-R} y1={Y(t)} y2={Y(t)} stroke="var(--line)"/>
     <text x="0" y={Y(t)+3} fontSize="10" fill={MUTED}>{(t/10000).toFixed(2)}억</text></g>))}
   {months.map((m,i)=>(<text key={i} x={X(i)} y={H-6} fontSize="10" fill={MUTED} textAnchor="middle">{m}</text>))}
   <polyline fill="none" stroke={TEAL} strokeWidth="2.4" points={pts.map(p=>p.join(",")).join(" ")}/>
@@ -3665,7 +3733,7 @@ function MultiLine({months,series}){
  const X=i=>L+(W-L-R)*(n<=1?0.5:i/(n-1)),Y=v=>T+(H-T-B)*(1-(v-min)/span);
  return (<div>
   <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:200}}>
-   {[min,min+span/2,max].map((t,i)=>(<g key={i}><line x1={L} x2={W-R} y1={Y(t)} y2={Y(t)} stroke="#EEF1F1"/>
+   {[min,min+span/2,max].map((t,i)=>(<g key={i}><line x1={L} x2={W-R} y1={Y(t)} y2={Y(t)} stroke="var(--line)"/>
      <text x="0" y={Y(t)+3} fontSize="10" fill={MUTED}>{(t/10000).toFixed(2)}억</text></g>))}
    {months.map((m,i)=>((n<=6||i%2===0)?<text key={i} x={X(i)} y={H-6} fontSize="9.5" fill={MUTED} textAnchor="middle">{m.slice(2)}</text>:null))}
    {series.map((s,si)=>{const col=guColor(s.name);
@@ -3921,7 +3989,7 @@ function CommuteMap({dest,rows,mapCfg,onOpen}){
    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:9}}>
     <span className="num" style={{fontWeight:800,fontSize:16,color:TEAL}}>{sel.minutes}분</span>
     {sel.price!=null&&<span className="num" style={{fontWeight:800,fontSize:15}}>{eok(sel.price)}</span>}
-    <button onClick={()=>onOpen&&onOpen({complex_name:sel.name,lawd_cd:sel.lawd_cd,property_type:sel.property_type})} style={{marginLeft:"auto",border:"none",background:TEAL,color:"#fff",fontWeight:700,fontSize:12.5,borderRadius:9,padding:"8px 14px",cursor:"pointer"}}>단지 상세 →</button>
+    <button onClick={()=>onOpen&&onOpen({complex_name:sel.name,lawd_cd:sel.lawd_cd,property_type:sel.property_type})} className="btn-primary" style={{marginLeft:"auto",fontSize:12.5,padding:"8px 14px"}}>단지 상세 →</button>
    </div>
   </div>}
  </div>);
@@ -3971,7 +4039,7 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
    </div>
    <div style={{display:"flex",alignItems:"center",gap:9,marginTop:12}}>
     <span style={{fontSize:12,color:MUTED,fontWeight:700,flex:"none"}}>{maxMin}분 이내</span>
-    <input type="range" aria-label="통근 시간(분)" min="10" max="60" step="5" value={maxMin} onChange={e=>setMaxMin(+e.target.value)} style={{flex:1,accentColor:"#0F766E"}}/>
+    <input type="range" aria-label="통근 시간(분)" min="10" max="60" step="5" value={maxMin} onChange={e=>setMaxMin(+e.target.value)} style={{flex:1,accentColor:"var(--teal)"}}/>
    </div>
   </div>
   <div style={{display:"flex",alignItems:"center",gap:7,margin:"12px 2px 8px"}}>
@@ -4010,7 +4078,7 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
     <div><div style={{fontSize:11,color:MUTED}}>시세(중앙)</div><div className="num" style={{fontSize:20,fontWeight:800}}>{quick.price!=null?eok(quick.price):"—"}</div></div>
    </div>
    <div style={{fontSize:12.5,color:MUTED,padding:"2px 4px 12px"}}>{[quick.gu,TYPE_LABEL[quick.property_type],quick.method==="haversine"?"통근 추정":"통근 실측"].filter(Boolean).join(" · ")}</div>
-   <button onClick={()=>{onOpen&&onOpen({complex_name:quick.name,lawd_cd:quick.lawd_cd,property_type:quick.property_type});setQuick(null);}} style={{width:"100%",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:14,borderRadius:11,padding:"13px",cursor:"pointer"}}>단지 상세 보기 →</button>
+   <button onClick={()=>{onOpen&&onOpen({complex_name:quick.name,lawd_cd:quick.lawd_cd,property_type:quick.property_type});setQuick(null);}} className="btn-primary" style={{width:"100%",padding:"13px"}}>단지 상세 보기 →</button>
    <div style={{height:8}}/>
   </Sheet>}
  </div>);
@@ -4626,7 +4694,7 @@ function PriceHub({view,setView,tx,onOpen,initialGu,d,mapCfg,onGu,favs,demo}){
    </div>
    <div style={{display:"flex",alignItems:"center",gap:7,background:"var(--chip)",borderRadius:10,padding:"9px 12px",marginTop:10}}>
     <span style={{color:MUTED,fontSize:14}}>🔎</span>
-    <input value={q} onChange={e=>setQ(e.target.value)} placeholder={guLabel+" 단지·동 검색"} style={{flex:1,border:"none",background:"transparent",outline:"none",fontSize:13.5,color:"var(--ink)",minWidth:0}}/>
+    <input value={q} onChange={e=>setQ(e.target.value)} placeholder={guLabel+" 단지·동 검색"} aria-label="단지·동 검색" style={{flex:1,border:"none",background:"transparent",outline:"none",fontSize:13.5,color:"var(--ink)",minWidth:0}}/>
     {q&&<span aria-label="검색어 지우기" role="button" tabIndex={0} onKeyDown={onEnter(()=>setQ(""))} style={{cursor:"pointer",color:MUTED,fontWeight:700,fontSize:15}} onClick={()=>setQ("")}>×</span>}
    </div>
    <div style={{display:"flex",alignItems:"center",marginTop:10,marginBottom:2}}>
@@ -4920,7 +4988,7 @@ function Loan({initialPrice,onOpen}){
     <div style={{display:"flex",justifyContent:"space-between",fontSize:12.5,color:MUTED,fontWeight:600,marginTop:8}}><span>상환 기간</span><span className="num">{years}년</span></div>
     <input type="range" aria-label="대출 기간(년)" min="10" max="40" step="5" value={years} onChange={e=>setYears(+e.target.value)} style={{width:"100%",accentColor:TEAL}}/>
    </div>
-   <button onClick={calc} style={{marginTop:16,width:"100%",border:"none",background:TEAL,color:"#fff",fontWeight:800,fontSize:15,padding:"13px",borderRadius:12,cursor:"pointer"}}>한도 계산하기</button>
+   <button onClick={calc} className="btn-primary" style={{marginTop:16,width:"100%",fontSize:15,padding:"13px"}}>한도 계산하기</button>
    <label style={{display:"flex",alignItems:"center",gap:7,marginTop:10,fontSize:12.5,color:MUTED,cursor:"pointer"}}>
     <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{accentColor:TEAL,width:16,height:16}}/>
     이 기기에 내 정보 저장(다음에 자동 입력)
@@ -4976,12 +5044,12 @@ function LoanResult({res}){
    </div>
   </Collapsible>
   <Collapsible icon="doc" defaultOpen={true} title={<React.Fragment>상품 비교 {res.rates_live
-    ? <span className="pill" style={{background:"#E4F2E8",color:"#1d6b3a"}}>은행 실시간 공시</span>
+    ? <span className="pill" style={{background:"var(--ok-bg)",color:"var(--ok-fg)"}}>은행 실시간 공시</span>
     : <span className="pill ex">예시</span>}</React.Fragment>}>
    <div style={{padding:"4px 14px"}}>
    {res.products.map((p,i)=>(<div key={i} className="listrow" style={{opacity:p.eligible?1:0.5}}>
     <div style={{minWidth:0}}>
-     <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis"}}>{p.name} <span className="pill" style={{background:p.kind==="정책"?"#E7EEF6":"#EEF1F1",color:p.kind==="정책"?"#1E5FC4":MUTED}}>{p.kind}</span> {p.is_sample&&<ExBadge/>}</div>
+     <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis"}}>{p.name} <span className="pill" style={{background:p.kind==="정책"?"var(--info-bg)":"var(--neutral-bg)",color:p.kind==="정책"?"var(--info-fg)":MUTED}}>{p.kind}</span> {p.is_sample&&<ExBadge/>}</div>
      <div style={{fontSize:12,color:MUTED}}>{p.req}{p.eligible?"":" · 자격 미해당"}{p.as_of?` · 공시 ${p.as_of}`:""}</div>
     </div>
     <span style={{marginLeft:"auto",textAlign:"right"}}><span className="num" style={{fontWeight:700}}>{p.rate_min}~{p.rate_max}%</span>

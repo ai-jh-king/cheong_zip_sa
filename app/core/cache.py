@@ -20,10 +20,15 @@ from app.core.config import get_settings
 
 
 class TTLCache:
+    # 부하 감사 H5: 만료 엔트리를 청소하지 않아 (stat×data_version×파라미터)마다 영구 축적
+    # → 512MB에서 상주 메모리 우상향. set 마다 카운트, 주기적으로 만료분 일괄 제거.
+    _SWEEP_EVERY = 200          # set 횟수 기준 sweep 주기
+
     def __init__(self) -> None:
         self._store: dict = {}          # key -> (value, expires_at)
         self._locks: dict = {}          # key -> Lock (single-flight)
         self._guard = threading.Lock()
+        self._sets = 0
 
     def _lock_for(self, key):
         with self._guard:
@@ -32,6 +37,13 @@ class TTLCache:
                 lock = threading.Lock()
                 self._locks[key] = lock
             return lock
+
+    def _sweep(self, now: float) -> None:
+        """만료 엔트리·해당 락 제거(guard 안에서 호출)."""
+        dead = [k for k, (_, exp) in self._store.items() if exp <= now]
+        for k in dead:
+            self._store.pop(k, None)
+            self._locks.pop(k, None)
 
     def get_or_set(self, key, loader, ttl: int, neg_ttl: int = 60):
         now = time.time()
@@ -48,11 +60,16 @@ class TTLCache:
             value = loader()
             exp = now + (ttl if value is not None else neg_ttl)
             self._store[key] = (value, exp)
+            with self._guard:
+                self._sets += 1
+                if self._sets % self._SWEEP_EVERY == 0:
+                    self._sweep(now)
             return value
 
     def clear(self) -> None:
         with self._guard:
             self._store.clear()
+            self._locks.clear()
 
     def stats(self) -> dict:
         now = time.time()

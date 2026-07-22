@@ -2,9 +2,13 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<!-- 접근성(WCAG 1.4.4): 저시력 확대 허용 — maximum-scale/user-scalable 금지 제거 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>청집사 — 청주 부동산</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<!-- 폰트: 렌더 블로킹 제거(preconnect + 비동기 스왑, 폴백 system-ui 선페인트) -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" /></noscript>
 <!-- PWA (Phase B) -->
 <link rel="manifest" href="/manifest.webmanifest" />
 <meta name="theme-color" content="#0F766E" />
@@ -18,11 +22,21 @@
   :root{--up:#DB342B;--down:#2563D8;--ink:#16212C;--muted:#69737D;--teal:#0E7C71;--line:rgba(20,32,43,.09);
     --bg1:#F4F6F9;--bg2:#F4F6F9;--bg3:#F4F6F9;
     --surface:#ffffff;--surface-solid:#ffffff;--surface-2:#F0F3F6;--card-border:rgba(20,32,43,.08);
-    --row:rgba(20,32,43,.025);--hd:rgba(20,32,43,.025);--chip:#EDF1F4;--callout-bg:#FFF6DC;--callout-fg:#7a5b00;}
+    --row:rgba(20,32,43,.025);--hd:rgba(20,32,43,.025);--chip:#EDF1F4;--callout-bg:#FFF6DC;--callout-fg:#7a5b00;
+    /* 상태 시맨틱 토큰(감사 H4: 밝은 하드코딩 배경이 다크에서 붕 뜨던 것) */
+    --ok-bg:#E4F2E8;--ok-fg:#1d6b3a;--info-bg:#E7EEF6;--info-fg:#1E5FC4;--warn-fg:#9A6B00;--neutral-bg:#EEF1F1;}
   [data-theme=dark]{--up:#FF6F62;--down:#76ABFF;--ink:#E7EDF2;--muted:#9DAAB4;--teal:#37B9A8;--line:rgba(150,170,185,.16);
     --bg1:#0F1419;--bg2:#0F1419;--bg3:#0F1419;
     --surface:#171F27;--surface-solid:#171F27;--surface-2:#1E2730;--card-border:rgba(255,255,255,.07);
-    --row:rgba(255,255,255,.04);--hd:rgba(255,255,255,.03);--chip:rgba(255,255,255,.06);--callout-bg:rgba(255,205,90,.12);--callout-fg:#E8C766;}
+    --row:rgba(255,255,255,.04);--hd:rgba(255,255,255,.03);--chip:rgba(255,255,255,.06);--callout-bg:rgba(255,205,90,.12);--callout-fg:#E8C766;
+    --ok-bg:rgba(72,180,110,.16);--ok-fg:#6FCF97;--info-bg:rgba(96,150,240,.16);--info-fg:#76ABFF;--warn-fg:#E0A94E;--neutral-bg:rgba(255,255,255,.08);}
+  /* 게시판 카테고리 칩 — hex+알파 인라인이던 것을 테마 클래스로(다크 저대비 해소) */
+  .cat-free{background:rgba(15,118,110,.12);color:#0F766E}.cat-qa{background:rgba(30,95,196,.12);color:#1E5FC4}
+  .cat-info{background:rgba(122,90,248,.12);color:#7A5AF8}.cat-deal{background:rgba(200,50,42,.12);color:#C8322A}
+  .cat-local{background:rgba(14,116,144,.12);color:#0E7490}
+  [data-theme=dark] .cat-free{color:#37B9A8}[data-theme=dark] .cat-qa{color:#76ABFF}
+  [data-theme=dark] .cat-info{color:#A78BFA}[data-theme=dark] .cat-deal{color:#FF6F62}
+  [data-theme=dark] .cat-local{color:#4FC3DD}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;} html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
   html,body{overscroll-behavior:none;}  /* 당겨서 새로고침·바운스 제거(앱 느낌) */
   body{margin:0;color:var(--ink);font-family:Pretendard,system-ui,-apple-system,sans-serif;min-height:100vh;background:var(--bg1);}
@@ -111,6 +125,13 @@
   .tiptext-fx{background:var(--ink);color:var(--surface-solid);font-size:11.5px;font-weight:500;line-height:1.5;
     padding:8px 11px;border-radius:8px;white-space:normal;z-index:3000;box-shadow:0 6px 20px rgba(0,0,0,.24);
     pointer-events:none;animation:tipfade .12s ease;}
+  /* 토스트 — alert() 대체(모바일 UX·테마 대응). JS toast()가 생성/제거. */
+  .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);
+    background:var(--ink);color:var(--surface-solid);font-size:13px;font-weight:600;line-height:1.5;
+    padding:11px 16px;border-radius:12px;z-index:4000;box-shadow:0 8px 24px rgba(0,0,0,.28);
+    max-width:min(92vw,420px);text-align:center;pointer-events:none;animation:toastin .18s ease;}
+  @keyframes toastin{from{opacity:0;transform:translate(-50%,8px);}to{opacity:1;transform:translate(-50%,0);}}
+  .toast.out{opacity:0;transition:opacity .25s ease;}
   @keyframes tipfade{from{opacity:0;}to{opacity:1;}}
   .txrow{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid var(--line);cursor:pointer;}
   .txrow:last-child{border-bottom:none;} .txrow:hover{background:var(--row);}

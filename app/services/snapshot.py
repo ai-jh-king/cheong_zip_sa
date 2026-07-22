@@ -13,6 +13,7 @@ import json
 import logging
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.cache import get_data_version
@@ -38,16 +39,25 @@ def get_fresh(db: Session, key: str):
 
 
 def put(db: Session, key: str, payload: dict) -> None:
-    """페이로드를 현재 data_version 도장을 찍어 upsert."""
+    """페이로드를 현재 data_version 도장을 찍어 upsert.
+    동시 bake(웹 워밍업 스레드 vs cron) 레이스 대비: INSERT 유니크 충돌 시 롤백 후 UPDATE 재시도."""
     dv = get_data_version()
     js = json.dumps(payload, ensure_ascii=False, default=str)
+    now = datetime.utcnow()
     row = db.get(AggSnapshot, key)
     if row:
-        row.payload, row.data_version, row.baked_at = js, dv, datetime.utcnow()
-    else:
-        db.add(AggSnapshot(key=key, payload=js, data_version=dv,
-                           baked_at=datetime.utcnow()))
-    db.commit()
+        row.payload, row.data_version, row.baked_at = js, dv, now
+        db.commit()
+        return
+    try:
+        db.add(AggSnapshot(key=key, payload=js, data_version=dv, baked_at=now))
+        db.commit()
+    except IntegrityError:                     # 다른 프로세스가 먼저 INSERT(레이스 패자)
+        db.rollback()
+        row = db.get(AggSnapshot, key)
+        if row:
+            row.payload, row.data_version, row.baked_at = js, dv, now
+            db.commit()
 
 
 def bake(db: Session) -> dict:

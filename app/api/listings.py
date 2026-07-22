@@ -92,12 +92,18 @@ def _validate(b: ListingIn):
                        ("agent_reg_no", "등록번호"), ("agent_address", "사무소 소재지")]:
             if not getattr(b, f):
                 errs.append(f"중개업자 등록 시 '{lab}'은(는) 필수입니다.")
-    # 사진 제한
+    # 사진 제한 — 부하 감사 H3: base64 데이터URL을 DB에 저장하면 목록 1회 조회가 수백MB
+    # (50건×3.5MB) → 512MB OOM 벡터. 업로드(/listings/upload)가 URL을 돌려주므로 URL만 허용.
     if b.photos:
         if len(b.photos) > MAX_PHOTOS:
             errs.append(f"사진은 최대 {MAX_PHOTOS}장까지 가능합니다.")
         if any(len(p or "") > MAX_PHOTO_LEN for p in b.photos):
             errs.append("사진 1장 용량이 너무 큽니다(약 2.5MB 이하 권장).")
+        for p in b.photos:
+            u = (p or "").strip()
+            if not (u.startswith("http://") or u.startswith("https://") or u.startswith("/uploads/")):
+                errs.append("사진은 '사진 추가' 업로드를 통해서만 등록할 수 있습니다(외부 데이터 불가).")
+                break
     if errs:
         raise HTTPException(status_code=422, detail=errs)
 

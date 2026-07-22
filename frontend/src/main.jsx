@@ -548,6 +548,7 @@ function Icon({name,active,size=24,color}){
  if(name==="rank")return <svg {...p}><path d="M5.5 21V11"/><path d="M12 21V4.5"/><path d="M18.5 21v-6.5"/></svg>;
  if(name==="search")return <svg {...p}><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-3.4-3.4"/></svg>;
  if(name==="price")return <svg {...p}><path d="M4 15l4.5-4.5 3 3L20 6"/><path d="M20 10.5V6h-4.5"/></svg>;
+ if(name==="filter")return <svg {...p}><path d="M4 5h16l-6.3 7.4V19l-3.4 1.6v-8.2z"/></svg>;
  if(name==="build")return <svg {...p}><path d="M4 21V7l7-3v17"/><path d="M11 21V10l7 3v8"/><path d="M7.5 8.5v0M7.5 12v0M7.5 15.5v0"/></svg>;
  if(name==="news")return <svg {...p}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>;
  if(name==="doc")return <svg {...p}><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 13h5M10 17h5"/></svg>;
@@ -3380,18 +3381,22 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     const vs=arr.map(m=>m.value).sort((a,b)=>a-b);
     const as=arr.map(m=>m.median_amount).filter(x=>x!=null).sort((a,b)=>a-b);
     return {t:"c",lat:la,lng:ln,count:arr.length,value:vs[Math.floor(vs.length/2)],amt:as.length?as[Math.floor(as.length/2)]:null};});}
-  markerObjs.current.forEach(mk=>mk.setMap(null)); markerObjs.current=[];
-  items.forEach(it=>{
-   const html=it.t==="c"
-    ?`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;height:46px;background:rgba(15,118,110,.96);color:#fff;border-radius:50%;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.32);text-align:center"><div style="font-weight:800;font-size:13.5px;line-height:1">${it.count}</div><div style="font-size:8.5px;opacity:.92;line-height:1.25;font-weight:700">${mlabel(it)}</div></div>`
-    :`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
-   const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)}});
-   n.maps.Event.addListener(mk,"click",()=>{
-    if(it.t==="c"){map.setZoom(Math.min(map.getZoom()+2,16));map.panTo(new n.maps.LatLng(it.lat,it.lng));}
-    else onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
+  // 지도 인증 실패(키 미등록 도메인) 상태면 Marker.setMap 이 내부 null 참조로 throw →
+  // 앱 전체 크래시(ErrorBoundary). try 로 감싸 마커만 건너뛰고 앱은 유지.
+  try{
+   markerObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); markerObjs.current=[];
+   items.forEach(it=>{
+    const html=it.t==="c"
+     ?`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;height:46px;background:rgba(15,118,110,.96);color:#fff;border-radius:50%;border:2.5px solid #fff;box-shadow:0 3px 9px rgba(0,0,0,.32);text-align:center"><div style="font-weight:800;font-size:13.5px;line-height:1">${it.count}</div><div style="font-size:8.5px;opacity:.92;line-height:1.25;font-weight:700">${mlabel(it)}</div></div>`
+     :`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)}});
+    n.maps.Event.addListener(mk,"click",()=>{
+     if(it.t==="c"){map.setZoom(Math.min(map.getZoom()+2,16));map.panTo(new n.maps.LatLng(it.lat,it.lng));}
+     else onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
+    });
+    markerObjs.current.push(mk);
    });
-   markerObjs.current.push(mk);
-  });
+  }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
  },[ready,tick,markers,fitKey]);
  // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
  // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
@@ -3494,9 +3499,19 @@ function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompa
   <div style={{fontSize:11,color:MUTED,marginTop:10,lineHeight:1.6}}>{deal==="trade"?"평단가(만원/평)":"보증금"} 중앙값 기준 · 비교 최대 4개 · 신고 지연·정정·해제로 값이 바뀔 수 있는 참고용.</div>
  </Sheet>);
 }
+// 필터 시트용 선택 칩(토스식). single=현재값 재선택 시 해제(=전체). multi=배열 토글.
+function FilterChips({opts,value,onPick,multi}){
+ const on=v=>multi?(value||[]).includes(v):value===v;
+ return (<div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:7}}>
+  {opts.map(([v,l,ic])=><button type="button" key={v} onClick={()=>onPick(v)} className={"tog "+(on(v)?"on":"")}
+    style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}>
+   {ic&&<Icon name={ic} active={on(v)} size={15}/>}{l}</button>)}
+ </div>);
+}
 function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [deal,setDeal]=useState("trade");
  const [prop,setProp]=useState("apartment");
+ const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
  const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
@@ -3528,7 +3543,9 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const DEALS=[["trade","매매"],["jeonse","전세"],["wolse","월세"]];
  const PROPS=[["apartment","아파트"],["officetel","오피스텔"],["rowhouse","빌라"]];
  const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:active?800:600,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?INK:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.14)":"none"});
- const markers=(data&&data.markers)||[];
+ // useMemo로 참조 안정화 — data 없을 때 매 렌더 새 [] 를 만들면 하위 effect(setViewport)가
+ // 무한 리렌더 루프를 유발(실사고). data 바뀔 때만 새 배열.
+ const markers=useMemo(()=>(data&&data.markers)||[],[data]);
  // 조건 필터 적용(클라이언트 — 마커는 이미 전체 로드됨). 값 없는 단지는 해당 필터에서 제외(왜곡 없음).
  const fMarkers=useMemo(()=>{
   let ms=markers;
@@ -3540,6 +3557,12 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   return ms;
  },[markers,fPrice,fYear,fBand,deal]);
  const filterOn=!!(fPrice||fYear||fBand);
+ // 시트에 모은 상세 조건의 활성 개수(필터 버튼 배지) + 일괄 초기화
+ const activeCount=(fPrice?1:0)+(fYear?1:0)+(fBand?1:0)+poiCats.length+(showLm?1:0)+(showBg?1:0)+(showJr?1:0)+(prop!=="apartment"?1:0);
+ const resetAll=()=>{setFPrice("");setFYear("");setFBand("");setPoiCats([]);setShowLm(false);setShowBg(false);setShowJr(false);setProp("apartment");};
+ const PRICE_OPTS=[["0-10000","1억 미만"],["10000-20000","1~2억"],["20000-30000","2~3억"],["30000-50000","3~5억"],["50000-","5억 이상"]];
+ const YEAR_OPTS=[["5","5년 이내"],["10","10년 이내"],["15","15년 이내"],["old","15년 초과"]];
+ const BAND_OPTS=[["small","소형 ~60㎡"],["medium","중형 60~85㎡"],["large","대형 85㎡~"]];
  const bands=(data&&data.bands)||[];
  const gsum=(data&&data.summary)||null;
  const fmtV=(v)=>v==null?"—":(deal==="trade"?`${Number(v).toLocaleString()}만원/평`:eok(v));
@@ -3547,36 +3570,41 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
   <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}/>
-  {/* 상단 오버레이: 필터(가로 스크롤) */}
-  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",flexDirection:"column",gap:6,padding:"0 10px",pointerEvents:"none"}}>
-   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
-    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
-     {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
-     <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
-     {PROPS.map(([k,l])=><button key={k} onClick={()=>setProp(k)} style={chip(prop===k)}>{l}</button>)}
-    </div>
+  {/* 상단: 거래유형 + [필터] 버튼만(상세 조건은 시트로 모아 지도 위 깔끔). */}
+  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",gap:6,padding:"0 10px",pointerEvents:"none",alignItems:"flex-start"}}>
+   <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",pointerEvents:"auto",flex:"none"}}>
+    {DEALS.map(([k,l])=><button key={k} onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
    </div>
-   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
-    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
-     {[["education","학원","academy"],["sports","체육","sports"],["living","생활","store"]].map(([k,l,ic])=><button key={k} onClick={()=>togglePoi(k)} style={{...chip(poiCats.includes(k)),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}}><Icon name={ic} active={poiCats.includes(k)} size={14}/>{l}</button>)}
-     <span style={{width:1,height:16,background:"var(--line)",margin:"0 2px",flex:"none"}}/>
-     <button onClick={()=>setShowLm(v=>!v)} style={{...chip(showLm),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="개발 호재(참고·출처 표기)"><Icon name="build" active={showLm} size={14}/>호재</button>
-     <button onClick={()=>setShowBg(v=>!v)} style={{...chip(showBg),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="같은 평형 중앙값 대비 크게 낮게 신고된 실거래(사유 있을 수 있음)"><Icon name="bargain" active={showBg} size={14}/>급매</button>
-     <button onClick={()=>setShowJr(v=>!v)} style={{...chip(showJr),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="전세보증금 중앙값÷매매가 중앙값이 높은 단지(역전세 유의·단정 아님)"><Icon name="alerthome" active={showJr} size={14}/>전세위험</button>
-    </div>
-   </div>
-   {/* 조건 필터: 가격대·연식·평형 — 실수요자 핵심 검색 조건 */}
-   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
-    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
-     <Dropdown value={fPrice} set={setFPrice} style={{width:104,flex:"none"}} opts={[["",deal==="trade"?"가격 전체":"보증금 전체"],["0-10000","1억 미만"],["10000-20000","1~2억"],["20000-30000","2~3억"],["30000-50000","3~5억"],["50000-","5억 이상"]]}/>
-     <Dropdown value={fYear} set={setFYear} style={{width:100,flex:"none"}} opts={[["","연식 전체"],["5","5년 이내"],["10","10년 이내"],["15","15년 이내"],["old","15년 초과"]]}/>
-     <Dropdown value={fBand} set={setFBand} style={{width:118,flex:"none"}} opts={[["","평형 전체"],["small","소형 ~60㎡"],["medium","중형 60~85㎡"],["large","대형 85㎡~"]]}/>
-     {filterOn&&<button onClick={()=>{setFPrice("");setFYear("");setFBand("");}} style={{...chip(false),fontSize:12,flex:"none",color:TEAL,fontWeight:800}}>초기화</button>}
-    </div>
-   </div>
-   {filterOn&&<div style={{pointerEvents:"none",alignSelf:"flex-start",background:"rgba(15,118,110,.92)",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:11.5,fontWeight:700}}>
-    조건 맞는 단지 {fMarkers.length}곳{fYear?" · 연식정보 없는 단지는 제외":""}</div>}
+   <button onClick={()=>setFilterOpen(true)} style={{pointerEvents:"auto",flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"10px 13px",fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
+    <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
+   </button>
+   {activeCount>0&&<button onClick={resetAll} style={{pointerEvents:"auto",flex:"none",background:"var(--surface-solid)",color:MUTED,border:"none",borderRadius:11,padding:"10px 12px",fontWeight:700,fontSize:12,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>초기화</button>}
   </div>
+  {filterOpen&&<Sheet title="지도 필터" onClose={()=>setFilterOpen(false)}>
+   <div style={{padding:"2px 2px 4px"}}>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:4}}>매물 종류</div>
+    <FilterChips opts={PROPS} value={prop} onPick={setProp}/>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:16}}>{deal==="trade"?"가격대(매매 중앙값)":"보증금"}</div>
+    <FilterChips opts={PRICE_OPTS} value={fPrice} onPick={v=>setFPrice(fPrice===v?"":v)}/>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:16}}>연식(건축년도)</div>
+    <FilterChips opts={YEAR_OPTS} value={fYear} onPick={v=>setFYear(fYear===v?"":v)}/>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:16}}>평형</div>
+    <FilterChips opts={BAND_OPTS} value={fBand} onPick={v=>setFBand(fBand===v?"":v)}/>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>주변 시설 <span style={{fontWeight:500,fontSize:11}}>· 확대 시 표시</span></div>
+    <FilterChips multi opts={[["education","학원","academy"],["sports","체육","sports"],["living","생활","store"]]} value={poiCats} onPick={togglePoi}/>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>지도 신호 <span style={{fontWeight:500,fontSize:11}}>· 참고·근거 표기, 판정 아님</span></div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:7}}>
+     <button type="button" onClick={()=>setShowLm(v=>!v)} className={"tog "+(showLm?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="build" active={showLm} size={15}/>🏗 개발 호재</button>
+     <button type="button" onClick={()=>setShowBg(v=>!v)} className={"tog "+(showBg?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="bargain" active={showBg} size={15}/>📉 급매</button>
+     <button type="button" onClick={()=>setShowJr(v=>!v)} className={"tog "+(showJr?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="alerthome" active={showJr} size={15}/>⚠️ 전세위험</button>
+    </div>
+    {fYear&&<div style={{fontSize:11,color:MUTED,marginTop:14,lineHeight:1.5}}>※ 연식 정보가 없는 단지는 결과에서 제외됩니다(왜곡 방지).</div>}
+    <div style={{display:"flex",gap:8,marginTop:20}}>
+     <button onClick={resetAll} className="btn-ghost" style={{flex:1,padding:"13px"}}>초기화</button>
+     <button onClick={()=>setFilterOpen(false)} className="btn-primary" style={{flex:2,padding:"13px"}}>이 조건 {fMarkers.length}곳 보기</button>
+    </div>
+   </div>
+  </Sheet>}
   <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 오버레이: 이 지역 요약 */}
   <div style={{position:"absolute",left:10,right:10,bottom:20,zIndex:6}}>

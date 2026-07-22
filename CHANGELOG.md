@@ -3,6 +3,11 @@
 > 버전 표기: `vMAJOR_MINOR` (파일명) / `MAJOR.MINOR` (VERSION). 배포(전달)할 때마다 한 칸 올립니다.
 > 규칙: 큰 기능/구조 변경=MAJOR, 기능 추가·개선=MINOR. 각 항목은 사용자 관점으로 간결히.
 
+## v1.205 (2026-07-22) — 지도 필터 정리(시트로 통합) + 지도 크래시 2건 수정
+- **지도 위 정리**: 기존 3~4줄 오버레이(종류·시설·호재/급매/전세위험·가격/연식/평형 드롭다운·배지)가 지도를 뒤덮던 것 → **거래유형 + [필터 N] 버튼**만 남김(호갱노노·네이버 패턴).
+- **필터 바텀시트**: 매물 종류·가격대·연식·평형·주변 시설·지도 신호(호재/급매/전세위험)를 토스식 칩으로 그룹화. 필터 버튼에 활성 개수 배지, 지도 바 초기화, "이 조건 N곳 보기". 조건은 즉시 반영.
+- **크래시 수정 2건**(필터 테스트 중 발견): ①`markers=(data&&data.markers)||[]`가 데이터 없을 때 매 렌더 새 []→하위 effect(setViewport) 무한 리렌더 → `useMemo`로 안정화. ②지도 인증 실패(도메인 미등록) 시 `Marker.setMap` throw로 앱 크래시 → try 가드(마커만 생략, 앱 유지).
+- 검증: verify_all PASS · vite build · 실브라우저(바 간결화·시트 6그룹·칩 선택·배지·크래시 없음).
 ## v1.204 (2026-07-22) — 운영 버그: 백업 기록 크래시 + pg_dump 버전
 - **app_meta 기록 크래시 수정**: 백업 실패(pg_dump) 상태를 `app_meta.value`(String 200)에 JSON 기록 시 긴 에러로 **StringDataRightTruncation → 배치 사이클 오염**(cron 로그 실측). `appmeta.set`에 컬럼 한도 방어캡 + `record_job` 에러를 100자로 축소(유효 JSON·200 이내). 회귀 테스트 2건.
 - **pg_dump 버전 불일치 수정**: Render 관리형 PG 18.4 인데 이미지 pg_dump 17.10 → "server version mismatch"로 백업 항상 실패. Dockerfile을 PGDG 저장소 `postgresql-client-18` 설치로 교체. (컨테이너 재빌드 시 반영)

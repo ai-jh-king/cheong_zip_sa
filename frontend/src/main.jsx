@@ -3360,8 +3360,11 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    const b=new n.maps.LatLngBounds(); markers.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
    try{map.fitBounds(b);}catch(e){} fitDone.current=fitKey;
   }
-  const z=map.getZoom(); const bounds=map.getBounds();
-  const inB=m=>{try{return bounds.hasLatLng(new n.maps.LatLng(m.lat,m.lng));}catch(e){return true;}};
+  // 지도 인증 실패(키 미등록 도메인 등)로 반초기화 상태면 getBounds가 내부 null 참조로 throw
+  // → 앱 전체 크래시(ErrorBoundary). 가드하고 bounds 없으면 전체 표시로 폴백.
+  let z=13,bounds=null;
+  try{z=map.getZoom();bounds=map.getBounds();}catch(e){}
+  const inB=m=>{if(!bounds)return true;try{return bounds.hasLatLng(new n.maps.LatLng(m.lat,m.lng));}catch(e){return true;}};
   const vis=markers.filter(inB);
   if(onViewport){const vs=vis.map(m=>m.value).sort((a,b)=>a-b);
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
@@ -3499,6 +3502,10 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
  const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
  const [showJr,setShowJr]=useState(false);   // 🏠 전세가율 위험(역전세 유의) 핀
+ // 조건 필터(가격대·연식·평형) — 실사용자 핵심 검색 조건을 지도에 직접
+ const [fPrice,setFPrice]=useState("");      // "lo-hi"(만원) 또는 ""
+ const [fYear,setFYear]=useState("");        // "5"|"10"|"15"|"old"|""
+ const [fBand,setFBand]=useState("");        // "small"|"medium"|"large"|""
  const mapRef=useRef(null);                  // 현위치 이동용 지도 인스턴스
  const [locBusy,setLocBusy]=useState(false);
  const goMyLoc=()=>{ if(!navigator.geolocation||!mapRef.current||!window.naver){toast("현재 위치를 사용할 수 없어요. 위치 권한을 확인해주세요.");return;}
@@ -3522,13 +3529,24 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const PROPS=[["apartment","아파트"],["officetel","오피스텔"],["rowhouse","빌라"]];
  const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:active?800:600,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?INK:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.14)":"none"});
  const markers=(data&&data.markers)||[];
+ // 조건 필터 적용(클라이언트 — 마커는 이미 전체 로드됨). 값 없는 단지는 해당 필터에서 제외(왜곡 없음).
+ const fMarkers=useMemo(()=>{
+  let ms=markers;
+  if(fPrice){const [lo,hi]=fPrice.split("-");const l=+lo||0,h=hi?+hi:Infinity;
+   ms=ms.filter(m=>{const v=deal==="trade"?m.median_amount:m.median_deposit;return v!=null&&v>=l&&v<h;});}
+  if(fYear){const cy=new Date().getFullYear();
+   ms=ms.filter(m=>m.build_year!=null&&(fYear==="old"?cy-m.build_year>15:cy-m.build_year<=+fYear));}
+  if(fBand)ms=ms.filter(m=>(m.area_bands||[]).includes(fBand));
+  return ms;
+ },[markers,fPrice,fYear,fBand,deal]);
+ const filterOn=!!(fPrice||fYear||fBand);
  const bands=(data&&data.bands)||[];
  const gsum=(data&&data.summary)||null;
  const fmtV=(v)=>v==null?"—":(deal==="trade"?`${Number(v).toLocaleString()}만원/평`:eok(v));
- const vc=viewport?viewport.count:(gsum?gsum.count:markers.length);
- const vm=viewport?viewport.median:(gsum?gsum.median:null);
+ const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
+ const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={markers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}/>
+  <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}/>
   {/* 상단 오버레이: 필터(가로 스크롤) */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,display:"flex",flexDirection:"column",gap:6,padding:"0 10px",pointerEvents:"none"}}>
    <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
@@ -3547,6 +3565,17 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
      <button onClick={()=>setShowJr(v=>!v)} style={{...chip(showJr),fontSize:12,display:"inline-flex",alignItems:"center",gap:4}} title="전세보증금 중앙값÷매매가 중앙값이 높은 단지(역전세 유의·단정 아님)"><Icon name="alerthome" active={showJr} size={14}/>전세위험</button>
     </div>
    </div>
+   {/* 조건 필터: 가격대·연식·평형 — 실수요자 핵심 검색 조건 */}
+   <div style={{display:"flex",overflowX:"auto",pointerEvents:"auto"}}>
+    <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface-solid)",borderRadius:11,padding:5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",flex:"none"}}>
+     <Dropdown value={fPrice} set={setFPrice} style={{width:104,flex:"none"}} opts={[["",deal==="trade"?"가격 전체":"보증금 전체"],["0-10000","1억 미만"],["10000-20000","1~2억"],["20000-30000","2~3억"],["30000-50000","3~5억"],["50000-","5억 이상"]]}/>
+     <Dropdown value={fYear} set={setFYear} style={{width:100,flex:"none"}} opts={[["","연식 전체"],["5","5년 이내"],["10","10년 이내"],["15","15년 이내"],["old","15년 초과"]]}/>
+     <Dropdown value={fBand} set={setFBand} style={{width:118,flex:"none"}} opts={[["","평형 전체"],["small","소형 ~60㎡"],["medium","중형 60~85㎡"],["large","대형 85㎡~"]]}/>
+     {filterOn&&<button onClick={()=>{setFPrice("");setFYear("");setFBand("");}} style={{...chip(false),fontSize:12,flex:"none",color:TEAL,fontWeight:800}}>초기화</button>}
+    </div>
+   </div>
+   {filterOn&&<div style={{pointerEvents:"none",alignSelf:"flex-start",background:"rgba(15,118,110,.92)",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:11.5,fontWeight:700}}>
+    조건 맞는 단지 {fMarkers.length}곳{fYear?" · 연식정보 없는 단지는 제외":""}</div>}
   </div>
   <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 오버레이: 이 지역 요약 */}
@@ -3559,7 +3588,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
     <button onClick={()=>setListOpen(true)} className="btn-primary" style={{flex:"none",marginLeft:4,fontSize:12,padding:"7px 13px"}}>목록</button>
    </div>
   </div>
-  {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:markers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
+  {listOpen&&<AreaListSheet items={viewport&&viewport.items?viewport.items:fMarkers} deal={deal} onClose={()=>setListOpen(false)} onOpenComplex={(m)=>{setListOpen(false);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
  </div>);
 }
 function RankMap({items,mapCfg}){

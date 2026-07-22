@@ -787,9 +787,13 @@ def map_markers(db: Session, deal_type: str = "trade", property_type: str = "apa
         c = cmap.get((name, lawd))
         if not c:
             continue
+        # 지도 필터용 부가 속성(왜곡 없음 — 실거래 행에서 도출, 없으면 None/빈 목록)
+        bys = [x.build_year for x in rs if x.build_year]
         m = {"complex_name": name, "lawd_cd": lawd, "gu": _gu_name(lawd),
              "dong": rs[0].dong_name, "property_type": property_type,
              "deal_type": dt, "lat": c[0], "lng": c[1], "count": len(rs),
+             "build_year": max(set(bys), key=bys.count) if bys else None,   # 최빈 건축년도
+             "area_bands": sorted({b for b in (_bucket(x.exclusive_area) for x in rs) if b}),
              "is_sample": any(getattr(x, "is_sample", False) for x in rs)}
         if dt == "trade":
             pys = [_pyeong_unit(x.deal_amount, x.exclusive_area)

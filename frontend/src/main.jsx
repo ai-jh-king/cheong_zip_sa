@@ -3588,7 +3588,13 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:60});
      markerObjs.current.push(mk);
      const drill=()=>{
-      try{map.panTo(new n.maps.LatLng(la,ln));map.setZoom(13);}catch(e){}
+      // 초점: 단지 평균이 아니라 '구 경계 전체'에 맞춤(fitBounds) — 단지가 한쪽에 몰려도 구 중심 유지
+      try{
+       const b=new n.maps.LatLngBounds();
+       paths.flat().forEach(p=>b.extend(p));
+       map.fitBounds(b);
+       if(map.getZoom()<12)map.setZoom(12);   // 구 뷰(z<12)로 남으면 매물이 안 보임 → 최소 12 보장
+      }catch(e){}
       onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
      n.maps.Event.addListener(mk,"click",drill);

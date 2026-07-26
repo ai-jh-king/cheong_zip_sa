@@ -35,6 +35,7 @@ from app.api.compare import router as compare_router
 from app.api.subscription import router as subscription_router
 from app.api.push import router as push_router
 from app.api.landing import router as landing_router
+from app.api.guides import router as guides_router, admin_router as guides_admin_router
 from app.api.loan import router as loan_router
 from app.api.favorites import router as favorites_router
 from app.api.personal import router as personal_router
@@ -100,6 +101,8 @@ app.include_router(compare_router)
 app.include_router(subscription_router)
 app.include_router(push_router)
 app.include_router(landing_router)
+app.include_router(guides_router)
+app.include_router(guides_admin_router)
 
 
 def _rl_rule(method: str, path: str, s):

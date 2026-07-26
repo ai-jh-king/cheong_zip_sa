@@ -121,6 +121,26 @@ def main():
     r = c.get("/onboarding/options")
     check("GET /onboarding/options 200", r.status_code == 200)
 
+    print("\n[9] 집사 도감(콘텐츠)")
+    from app.models import GuideSeries as _GS, Guide as _G
+    with SessionLocal() as db:
+        if not db.get(_GS, "cheongju"):
+            db.add(_GS(key="cheongju", name="집사가 알려주는 청주", cover_emoji="🏘"))
+        if not db.query(_G).filter(_G.series_key == "cheongju").first():
+            db.add(_G(series_key="cheongju", title="스모크 편", body_md="# 제목\n\n스모크 본문입니다."))
+        db.commit()
+    r = c.get("/guides/series")
+    check("GET /guides/series 200(+cheongju)", r.status_code == 200 and
+          any(s["key"] == "cheongju" for s in r.json().get("series", [])))
+    r = c.get("/guides/series/cheongju")
+    ok = r.status_code == 200 and len(r.json().get("guides", [])) >= 1
+    check("GET /guides/series/cheongju 편 목록", ok)
+    if ok:
+        gid = r.json()["guides"][0]["id"]
+        r2 = c.get(f"/guides/{gid}")
+        check("GET /guides/{id} 본문+고지", r2.status_code == 200 and
+              "body_md" in r2.json().get("guide", {}) and "권유하지 않습니다" in r2.json().get("notice", ""))
+
     print("\n" + "=" * 52)
     print(f"결과: {len(PASS)} PASS · {len(FAIL)} FAIL")
     if FAIL:

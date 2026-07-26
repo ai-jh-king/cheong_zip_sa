@@ -1829,6 +1829,7 @@ function App(){
  const [homePick,setHomePick]=useState(false);   // 검색 오버레이가 '우리집 등록' 모드인지
  const saveMyHome=useCallback((h)=>{setMyHome(h);try{safeStore.set("cj_myhome",h?JSON.stringify(h):"");}catch(e){}},[]);
  const [onbOpen,setOnbOpen]=useState(false);
+ const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
  useEffect(()=>{ let seen; try{seen=safeStore.get("cj_onb_seen");}catch(e){} if(seen||onb)return;
@@ -2021,7 +2022,7 @@ function App(){
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)}/>:
     null}
    {tab!=="map"&&<footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
@@ -2036,6 +2037,7 @@ function App(){
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
+  {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {onbOpen&&<OnboardingWizard
     onClose={()=>{setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}}}
     onDone={(o)=>{saveOnb(o);setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}setTab("home");window.scrollTo(0,0);}}
@@ -2784,7 +2786,7 @@ function OfficialLinks(){
   <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard}){
+function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -2814,6 +2816,12 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
      <button onClick={onRegisterHome} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>등록</button>
     </div>
    )}
+  </div>
+  {/* 집사 도감 — 콘텐츠 시스템 진입(우리집 카드 다음) */}
+  <div onClick={onGuide} role="button" tabIndex={0} onKeyDown={onEnter(onGuide)} className="card" style={{padding:"14px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+   <span style={{fontSize:24,flex:"none"}}>📚</span>
+   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:14.5}}>집사 도감</div><div style={{fontSize:12,color:MUTED,marginTop:2}}>청주에서 잘 살고 싶은 사람을 위한 청집사의 실사용 안내서</div></div>
+   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
   </div>
   <div onClick={onOnboard} role="button" tabIndex={0} onKeyDown={onEnter(onOnboard)} className="card" style={{padding:"14px 15px",marginTop:10,cursor:"pointer",background:"linear-gradient(100deg, rgba(15,118,110,.13), rgba(15,118,110,.03))",display:"flex",alignItems:"center",gap:12}}>
    <span style={{fontSize:24,flex:"none"}}>🧭</span>
@@ -2958,6 +2966,121 @@ function KidsEnv({places}){
    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.5}}>반경 약 1.2km 내 공공데이터 기준 개수예요. 실제 대기·정원·학군은 해당 기관·교육청에 확인하세요.</div>
   </div>
  </Collapsible>);
+}
+/* ---------------- 집사 도감 (콘텐츠 시스템) ---------------- */
+// 초경량 마크다운 렌더러 — React 요소로 변환(dangerouslySetInnerHTML 미사용 = XSS 안전).
+// 지원: #~### 제목 · 표 · 목록 · 굵게/기울임 · 링크 · 구분선. 도감 본문 용도로 충분.
+function mdInline(s,key){
+ const parts=[];let rest=s,i=0;
+ const RE=/(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(\[([^\x5D]+)\]\(([^\x29]+)\))/;
+ while(rest){
+  const m=rest.match(RE);
+  if(!m){parts.push(rest);break;}
+  if(m.index>0)parts.push(rest.slice(0,m.index));
+  if(m[1])parts.push(<b key={key+"b"+i}>{m[2]}</b>);
+  else if(m[3])parts.push(<em key={key+"i"+i}>{m[4]}</em>);
+  else if(m[5])parts.push(<a key={key+"a"+i} href={m[7]} target="_blank" rel="noopener noreferrer" style={{color:TEAL,fontWeight:700}}>{m[6]}</a>);
+  rest=rest.slice(m.index+m[0].length);i++;
+ }
+ return parts;
+}
+function renderMd(md){
+ const lines=(md||"").split(/\r?\n/); const out=[]; let k=0,i=0;
+ while(i<lines.length){
+  const L=lines[i];
+  if(/^\s*$/.test(L)){i++;continue;}
+  if(/^---+\s*$/.test(L)){out.push(<hr key={k++} style={{border:"none",borderTop:"1px solid var(--line)",margin:"18px 0"}}/>);i++;continue;}
+  const h=L.match(/^(#{1,3})\s+(.*)/);
+  if(h){const lv=h[1].length;
+   out.push(<div key={k++} style={{fontWeight:800,fontSize:lv===1?20:lv===2?16.5:14.5,margin:lv===1?"6px 0 4px":"20px 0 6px",lineHeight:1.35}}>{mdInline(h[2],"h"+k)}</div>);i++;continue;}
+  if(/^\|/.test(L)){ // 표: 헤더|구분|행들
+   const rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i]);i++;}
+   const cells=r=>r.split("|").slice(1,-1).map(c=>c.trim());
+   const head=cells(rows[0]); const body=rows.slice(2).map(cells);
+   out.push(<div key={k++} style={{overflowX:"auto",margin:"10px 0"}}><table style={{minWidth:"100%",borderCollapse:"collapse",fontSize:13}}>
+    <thead><tr>{head.map((c,j)=><th key={j} style={{textAlign:"left",padding:"7px 9px",borderBottom:"2px solid var(--line)",fontSize:12,color:MUTED,whiteSpace:"nowrap"}}>{mdInline(c,"th"+j)}</th>)}</tr></thead>
+    <tbody>{body.map((r,ri)=><tr key={ri}>{r.map((c,j)=><td key={j} className={/^[0-9.]/.test(c)?"num":""} style={{padding:"8px 9px",borderBottom:"1px solid var(--line)",whiteSpace:"nowrap"}}>{mdInline(c,"td"+ri+j)}</td>)}</tr>)}</tbody>
+   </table></div>);continue;}
+  if(/^[-*]\s+/.test(L)){ // 목록
+   const items=[];while(i<lines.length&&/^[-*]\s+/.test(lines[i])){items.push(lines[i].replace(/^[-*]\s+/,""));i++;}
+   out.push(<ul key={k++} style={{margin:"8px 0",paddingLeft:20,lineHeight:1.75,fontSize:14.5}}>{items.map((t,j)=><li key={j} style={{marginBottom:4}}>{mdInline(t,"li"+j)}</li>)}</ul>);continue;}
+  // 문단(연속 줄 합침)
+  const para=[];while(i<lines.length&&lines[i].trim()&&!/^(#|\||[-*]\s|---)/.test(lines[i])){para.push(lines[i]);i++;}
+  out.push(<p key={k++} style={{margin:"10px 0",lineHeight:1.8,fontSize:14.5}}>{mdInline(para.join(" "),"p"+k)}</p>);
+ }
+ return out;
+}
+// 도감 전체화면 오버레이 — 시리즈 목록 → 편 목록 → 편 상세(3단). 읽기 경험 위해 풀스크린.
+function GuideBook({onClose,onOnboard}){
+ const [series,setSeries]=useState(null);      // 시리즈 목록
+ const [sKey,setSKey]=useState(null),[sData,setSData]=useState(null);   // 선택 시리즈+편 목록
+ const [gid,setGid]=useState(null),[gData,setGData]=useState(null);     // 선택 편 상세
+ useSheetDismiss(()=>{ if(gid){setGid(null);setGData(null);} else if(sKey){setSKey(null);setSData(null);} else onClose(); });
+ useEffect(()=>{let on=true;fetch(`${API}/guides/series`).then(r=>r.json()).then(j=>{if(on)setSeries(j.series||[]);}).catch(()=>{if(on)setSeries([]);});return ()=>{on=false;};},[]);
+ useEffect(()=>{if(!sKey){setSData(null);return;}let on=true;setSData(null);
+  fetch(`${API}/guides/series/${sKey}`).then(r=>r.json()).then(j=>{if(on)setSData(j);}).catch(()=>{if(on)setSData({guides:[]});});
+  return ()=>{on=false;};},[sKey]);
+ useEffect(()=>{if(!gid){setGData(null);return;}let on=true;setGData(null);
+  fetch(`${API}/guides/${gid}`).then(r=>r.json()).then(j=>{if(on){setGData(j);window.scrollTo(0,0);}}).catch(()=>{if(on)setGData(null);});
+  fetch(`${API}/guides/${gid}/view`,{method:"POST"}).catch(()=>{});
+  return ()=>{on=false;};},[gid]);
+ const back=()=>{if(gid){setGid(null);setGData(null);}else if(sKey){setSKey(null);setSData(null);}else onClose();};
+ const share=()=>{const g=gData&&gData.guide;if(!g)return;
+  const t=`📚 ${g.title} — 청집사 집사 도감\n${location.origin}`;
+  if(navigator.share){navigator.share({title:g.title,text:t}).catch(()=>{});}
+  else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast("링크를 복사했어요.")).catch(()=>{});}};
+ const fmtDate=iso=>iso?iso.slice(0,10):"";
+ return ReactDOM.createPortal(
+  <div style={{position:"fixed",inset:0,zIndex:130,background:"var(--bg1)",overflowY:"auto"}}>
+   <div style={{position:"sticky",top:0,zIndex:5,display:"flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderBottom:"1px solid var(--line)",padding:"12px 14px"}}>
+    <button onClick={back} aria-label="뒤로" style={{border:"none",background:"none",cursor:"pointer",fontSize:21,lineHeight:1,color:INK,padding:"2px 6px"}}>‹</button>
+    <span style={{fontWeight:800,fontSize:16,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+     {gid?(gData&&gData.guide?gData.guide.title:"불러오는 중…"):sKey?(sData&&sData.series?sData.series.name:"…"):"📚 집사 도감"}</span>
+    <button onClick={onClose} aria-label="닫기" style={{marginLeft:"auto",border:"none",background:"none",cursor:"pointer",fontSize:20,color:MUTED,padding:"2px 6px"}}>×</button>
+   </div>
+   <div style={{maxWidth:640,margin:"0 auto",padding:"14px 16px 40px"}}>
+    {!sKey&&!gid&&(series===null?<SkeletonCard lines={3}/>:
+     series.length===0?<Empty>아직 준비된 시리즈가 없어요. 곧 찾아뵐게요!</Empty>:
+     <React.Fragment>
+      <div style={{fontSize:13,color:MUTED,margin:"2px 2px 12px",lineHeight:1.6}}>청주에서 잘 살고 싶은 사람을 위한 청집사의 실사용 안내서. 사실과 근거만 담아요.</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
+       {series.map(s=>(<div key={s.key} onClick={()=>setSKey(s.key)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setSKey(s.key))} className="card" style={{padding:"18px 15px",cursor:"pointer"}}>
+        <div style={{fontSize:30,lineHeight:1}}>{s.cover_emoji||"📖"}</div>
+        <div style={{fontWeight:800,fontSize:14.5,marginTop:10,lineHeight:1.35}}>{s.name}</div>
+        <div style={{fontSize:12,color:MUTED,marginTop:4}}>{s.guide_count||0}편</div>
+       </div>))}
+      </div>
+     </React.Fragment>)}
+    {sKey&&!gid&&(sData===null?<SkeletonCard lines={3}/>:
+     <React.Fragment>
+      {sData.series&&<div style={{fontSize:13,color:MUTED,margin:"2px 2px 12px",lineHeight:1.6}}>{sData.series.description}</div>}
+      {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
+       (sData.guides||[]).map(g=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} className="card" style={{padding:"14px 15px",marginBottom:9,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+        <span style={{fontSize:22,flex:"none"}}>{g.cover_emoji||"📄"}</span>
+        <div style={{minWidth:0,flex:1}}>
+         <div style={{fontWeight:800,fontSize:14.5,lineHeight:1.4}}>{g.title}</div>
+         <div className="num" style={{fontSize:11.5,color:MUTED,marginTop:3}}>{fmtDate(g.published_at)} · 조회 {g.view_count||0}</div>
+        </div>
+        <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
+       </div>))}
+     </React.Fragment>)}
+    {gid&&(gData===null?<SkeletonCard lines={6}/>:!gData.guide?<Empty>글을 불러오지 못했어요.</Empty>:
+     <React.Fragment>
+      <div className="card" style={{padding:"18px 18px 20px"}}>
+       <div className="num" style={{fontSize:11.5,color:MUTED,marginBottom:10}}>{fmtDate(gData.guide.published_at)} · 조회 {gData.guide.view_count||0}</div>
+       {renderMd(gData.guide.body_md)}
+       {onOnboard&&/청주가 처음|전입|출퇴근|통근/.test(gData.guide.body_md||"")&&
+        <button onClick={()=>{onClose();onOnboard();}} className="btn-primary" style={{width:"100%",marginTop:16,padding:"13px"}}>🧭 내 조건으로 다시 계산해보기 (3분)</button>}
+       <div style={{background:"var(--surface-2)",borderRadius:11,padding:"11px 13px",fontSize:11.5,color:MUTED,lineHeight:1.6,marginTop:16}}>{gData.notice||"청집사는 중개·광고 수익이 없어 특정 매물을 권유하지 않습니다."}</div>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:12}}>
+       {gData.prev&&<button onClick={()=>setGid(gData.prev.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>‹ {gData.prev.title}</button>}
+       {gData.next&&<button onClick={()=>setGid(gData.next.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{gData.next.title} ›</button>}
+      </div>
+      <button onClick={share} style={{width:"100%",marginTop:10,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"12px 0",cursor:"pointer"}}>📤 이 글 공유하기</button>
+     </React.Fragment>)}
+   </div>
+  </div>, document.body);
 }
 function MyHomeCard({home,onOpen,onRegister}){
  const [d,setD]=useState(null);

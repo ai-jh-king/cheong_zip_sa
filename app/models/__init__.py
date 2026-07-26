@@ -582,3 +582,33 @@ class Landmark(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class GuideSeries(Base):
+    """집사 도감 — 시리즈(카테고리). 예: '집사가 알려주는 청주'.
+    콘텐츠는 관리자 큐레이션(주 1편 페이스). 왜곡 없음: 편 본문은 사실+근거만."""
+    __tablename__ = "guide_series"
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)   # 'cheongju' 등
+    name: Mapped[str] = mapped_column(String(80))
+    description: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    cover_emoji: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+
+class Guide(Base):
+    """집사 도감 — 편(글). 본문은 마크다운.
+    발행 워크플로: admin 작성(is_published=False 초안 가능) → 검수 → 발행."""
+    __tablename__ = "guides"
+    __table_args__ = (Index("ix_guides_series_pub", "series_key", "is_published"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    series_key: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    body_md: Mapped[str] = mapped_column(Text)                        # 마크다운 원문
+    cover_emoji: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_published: Mapped[bool] = mapped_column(Boolean, default=True)
+    view_count: Mapped[int] = mapped_column(Integer, default=0)
+    published_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow,
+                                                 onupdate=datetime.utcnow)

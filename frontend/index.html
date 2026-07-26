@@ -2,8 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<!-- 접근성(WCAG 1.4.4): 저시력 확대 허용 — maximum-scale/user-scalable 금지 제거 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<!-- 뷰포트 고정(사용자 결정 2026-07-26): 웹식 핀치줌으로 전체 화면이 커지며 초점이 밀리는 현상 제보
+     → 네이티브 앱처럼 크기 고정. (WCAG 1.4.4 확대와의 트레이드오프는 인지하고 앱형 UX 우선 선택) -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>청집사 — 청주 부동산</title>
 <!-- 폰트: 렌더 블로킹 제거(preconnect + 비동기 스왑, 폴백 system-ui 선페인트) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />

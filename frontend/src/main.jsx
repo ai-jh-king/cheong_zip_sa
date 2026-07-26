@@ -1285,7 +1285,7 @@ function PostForm({account,edit,onCancel,onCreated,onUpdated}){
     <input style={INP} value={cxq} onChange={e=>setCxq(e.target.value)} placeholder="단지 연결(선택) — 단지명 검색"/>
     {cxRes.length>0&&<div className="card" style={{padding:"2px 12px",marginTop:6}}>
      {cxRes.map((c,i)=>(<div key={i} className="listrow" style={{cursor:"pointer"}} tabIndex={0} role="button" onKeyDown={onEnter(()=>{setCx(c);setCxRes([]);})} onClick={()=>{setCx(c);setCxRes([]);}}>
-      <div style={{minWidth:0}}><div style={{fontWeight:700}}>{c.complex_name}</div><div style={{fontSize:12,color:MUTED}}>{c.gu}{c.dong?` ${c.dong}`:""}</div></div>
+      <div style={{minWidth:0}}><div style={{fontWeight:700}}>{c.complex_name}</div><div style={{fontSize:12,color:MUTED}}>{c.gu}{c.dong?` ${c.dong}`:""} · {TYPE_LABEL[c.property_type]||""}</div></div>
       <span style={{marginLeft:"auto",color:MUTED}}>연결</span>
      </div>))}
     </div>}
@@ -2341,11 +2341,24 @@ function LandmarkCarousel({items,onOpen,ptype}){
 /* 시트 닫기 접근성/모바일(감사 H1): ①Escape로 닫기 ②안드로이드·브라우저 '뒤로가기'로
    시트만 닫기(기존엔 back이 앱을 통째로 이탈). 시트 open 시 history entry 1개 push,
    popstate 시 '최상단 시트만' 닫음(스택). 수동 닫기(×·스와이프·backdrop)면 entry 소비(back). */
+/* 시트 뒤로가기(스와이프 back) — '단일 가드 entry' 설계(v1.220 재작업):
+   · 시트가 1개 이상 열려 있는 동안 history entry 를 정확히 1개만 유지(가드).
+   · back/스와이프 → 가드가 pop → 최상단 시트만 닫고, 아직 시트가 남으면 가드 재푸시.
+   · 수동 닫기(×·스와이프다운)로 스택이 비면 50ms 뒤 가드를 back()으로 소비 —
+     같은 커밋의 시트 '전환'(A닫힘+B열림)은 스택이 0이 되지 않아 레이스 원천 차단
+     (v1.201 '상세 즉시 닫힘'·v1.202 '잔존 entry가 스와이프 삼킴' 둘 다 해소). */
 const _sheetStack=[];
-let _sheetPopBound=false;
+let _sheetPopBound=false,_guardOn=false,_ignorePops=0;
 function _bindSheetPop(){
  if(_sheetPopBound)return;_sheetPopBound=true;
- window.addEventListener("popstate",()=>{const top=_sheetStack[_sheetStack.length-1];if(top){top.close();}});
+ window.addEventListener("popstate",()=>{
+  if(_ignorePops>0){_ignorePops--;return;}          // 우리가 요청한 정리용 back — 무시
+  const top=_sheetStack[_sheetStack.length-1];
+  if(!top){_guardOn=false;return;}                  // 시트 없음 → 실제 내비게이션
+  top.close();                                       // 최상단 시트 닫기
+  if(_sheetStack.length>1){try{history.pushState({cjSheet:true},"");}catch(_){}}   // 남으면 가드 재장전
+  else _guardOn=false;                               // 마지막 시트였음 — 가드 소비 완료
+ });
 }
 function useSheetDismiss(onClose,enabled=true){
  const closeRef=useRef(onClose);closeRef.current=onClose;
@@ -2354,16 +2367,16 @@ function useSheetDismiss(onClose,enabled=true){
   _bindSheetPop();
   const r={close:()=>closeRef.current&&closeRef.current()};
   _sheetStack.push(r);
-  try{history.pushState({cjSheet:true},"");}catch(_){}
+  if(!_guardOn){try{history.pushState({cjSheet:true},"");_guardOn=true;}catch(_){}}
   const onKey=e=>{if(e.key==="Escape"&&_sheetStack[_sheetStack.length-1]===r){e.stopPropagation();r.close();}};
   document.addEventListener("keydown",onKey);
   return ()=>{
    document.removeEventListener("keydown",onKey);
    const i=_sheetStack.indexOf(r);if(i>=0)_sheetStack.splice(i,1);
-   // ⚠️ cleanup에서 history.back()으로 entry를 '정리'하지 말 것 — back()은 비동기라
-   // 목록시트→상세시트 '전환' 때 popstate가 뒤늦게 도착해 방금 연 시트를 닫아버림(실사고:
-   // v1.201 단지상세 안 열림). 잔존 entry는 같은 URL의 pushState라 무해(뒤로가기 1회가
-   // 조용히 소비될 뿐). 안전(시트 오작동 0) > 히스토리 청결.
+   // 지연 정리: 같은 커밋에서 다른 시트가 곧바로 열리면(전환) 스택이 다시 1이 되어 아무 것도 안 함.
+   setTimeout(()=>{
+    if(_sheetStack.length===0&&_guardOn){_ignorePops++;_guardOn=false;try{history.back();}catch(_){_ignorePops--;}}
+   },50);
   };
  },[]);
 }
@@ -4530,11 +4543,12 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   {/* 입지(인근 인프라·직장 거점)를 '이 단지 한눈에' 바로 아래로 — 동네·입지를 한 흐름에 묶음 */}
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
-    {Object.entries(d.poi).filter(([label])=>!label.startsWith("_")).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
-     <span style={{fontWeight:700,minWidth:48,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><PoiIcon label={label} size={14}/>{label}</span>
-     <div style={{minWidth:0}}>
-      {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))
-       :<span style={{color:MUTED,fontSize:12.5}}>반경 내 없음</span>}
+    {/* 시설이 '있는' 카테고리만 표시(요청 — 청주엔 지하철이 없어 '반경 내 없음' 행이 무의미).
+        라벨 폭 고정(72px)으로 내용 시작점 세로 정렬. */}
+    {Object.entries(d.poi).filter(([label,items])=>!label.startsWith("_")&&(items||[]).length>0).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
+     <span style={{fontWeight:700,width:72,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><PoiIcon label={label} size={14}/>{label}</span>
+     <div style={{minWidth:0,flex:1}}>
+      {items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))}
      </div>
     </div>))}
     {d.poi&&d.poi["중개업소"]&&<div style={{fontSize:11,color:MUTED,padding:"6px 2px 8px"}}>※ 중개업소는 단지 인근 참고 정보이며, 위 실거래를 중개한 업소가 아닙니다.</div>}

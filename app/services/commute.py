@@ -124,8 +124,11 @@ def search_by_commute(db: Session, dest_id: int, mode: str, max_minutes: int,
         if hit and hit.minutes is not None:
             minutes, method = hit.minutes, hit.method
         else:
-            est = compute_one(cx.lat, cx.lng, dest.lat, dest.lng, mode)  # 즉석 추정(보통 haversine)
-            minutes, method = est["minutes"], est["method"]
+            # 즉석 계산은 '추정(haversine)만' — compute_one(실측 API)을 쓰면 캐시가 빈 상태에서
+            # 단지 수백 개 × 카카오 경로 호출로 요청이 60초+ 타임아웃(실사고: 통근 리스트 미표시).
+            # 실측(api)은 배치(scripts.compute_commute) 전용.
+            minutes, _dist = estimate_haversine(cx.lat, cx.lng, dest.lat, dest.lng, mode)
+            method = "haversine"
         if minutes is not None and minutes <= max_minutes:
             out.append({
                 "complex_id": cx.id, "name": cx.name, "lawd_cd": cx.lawd_cd, "gu": _gu(cx.lawd_cd),

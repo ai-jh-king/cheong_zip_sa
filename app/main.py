@@ -257,6 +257,19 @@ def _startup():
     init_db()
     if s.auto_seed_commute:
         _auto_seed_commute(log)
+    # 집사 도감 자동 시드(멱등) — 시리즈 0건이면 첫 시리즈+첫 편 시드.
+    # (v1.208 배포 후 프로덕션에서 수동 seed_guides 미실행 → 도감이 빈 화면이던 실사고 방지)
+    if s.auto_seed_guides:
+        try:
+            from app.models import GuideSeries
+            from sqlalchemy import select as _sel, func as _f2
+            from app.db.session import SessionLocal as _SL
+            with _SL() as _db:
+                if not (_db.scalar(_sel(_f2.count()).select_from(GuideSeries)) or 0):
+                    from scripts.seed_guides import run as _seed_guides
+                    log.info("집사 도감 자동 시드: %s", _seed_guides())
+        except Exception as e:  # noqa: BLE001
+            log.warning("집사 도감 자동 시드 스킵(무시): %s", e)
     # 에러 모니터링(Sentry) — DSN 설정 시에만. 패키지 없으면 조용히 건너뜀.
     dsn = (get_settings().sentry_dsn or "").strip()
     if dsn:

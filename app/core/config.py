@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     session_days: int = 14                 # 세션 유효기간(일)
     auth_dev_login: bool = True            # 개발용 로그인 허용(운영 배포 시 False 권장)
     auto_seed_commute: bool = True         # 부팅 시 통근 거점 0건이면 자동 시드(전입자 온보딩=전략 창끝 활성화). 테스트는 false
+    auto_seed_guides: bool = True          # 부팅 시 도감 시리즈 0건이면 자동 시드(콘텐츠 빈화면 방지). 테스트는 false
     auto_geocode: bool = True              # 수집 후 단지 좌표 자동 지오코딩(키 있을 때만)
     geocode_use_naver: bool = False        # 지오코딩 제공자: 기본 카카오 단독. true 면 네이버 우선+카카오 폴백
     geocode_seed_limit: int = 0            # 0=제한없음(전체). 쿼터 보호용 상한

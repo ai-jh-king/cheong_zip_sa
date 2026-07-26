@@ -5,8 +5,10 @@ ADMIN = {"X-Admin-Token": "test-admin-token"}
 
 
 def _seed(db, n=2):
-    db.add(GuideSeries(key="cheongju", name="집사가 알려주는 청주",
-                       description="실사용 안내서", cover_emoji="🏘", sort_order=1))
+    # 멱등: 앱 startup 자동 시드(집사 도감)가 이미 시리즈를 넣었을 수 있음
+    if not db.get(GuideSeries, "cheongju"):
+        db.add(GuideSeries(key="cheongju", name="집사가 알려주는 청주",
+                           description="실사용 안내서", cover_emoji="🏘", sort_order=1))
     for i in range(n):
         db.add(Guide(series_key="cheongju", title=f"{i+1}편 제목", body_md=f"# 제목 {i+1}\n\n본문입니다.",
                      sort_order=i + 1, is_published=True))

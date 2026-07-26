@@ -141,11 +141,21 @@
 </style>
 </head>
 <body>
-<!-- 프리스플래시: JS 번들 다운로드/파싱 동안 흰 화면 대신 즉시 브랜드 페인트(React 마운트 시 교체됨) -->
+<!-- 프리스플래시: JS 번들 다운로드/파싱 동안 흰 화면 대신 즉시 브랜드 페인트(React 마운트 시 교체됨).
+     모티브 = 집 + 직지 활자판(앱 아이콘과 동일, 청주 상징 퓨전) -->
 <div id="root"><div style="position:fixed;inset:0;background:linear-gradient(160deg,#1FA594 0%,#0E7C71 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
-<div style="font-size:44px;line-height:1">🏠</div>
+<svg width="64" height="64" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+ <path d="M14 46 50 18 86 46" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+ <rect x="24" y="50" width="52" height="34" rx="5" stroke="#fff" stroke-width="6"/>
+ <rect x="31" y="57" width="10" height="9" rx="2" fill="#fff"/>
+ <rect x="45" y="57" width="10" height="9" rx="2" fill="#FFD678"/>
+ <rect x="59" y="57" width="10" height="9" rx="2" fill="#fff"/>
+ <rect x="31" y="70" width="10" height="9" rx="2" fill="#fff"/>
+ <rect x="45" y="70" width="10" height="9" rx="2" fill="#fff"/>
+ <rect x="59" y="70" width="10" height="9" rx="2" fill="#fff"/>
+</svg>
 <div style="color:#fff;font-weight:800;font-size:22px;letter-spacing:-.5px">청집사</div>
-<div style="color:rgba(255,255,255,.75);font-size:12.5px">청주 실거래 데이터 로딩 중…</div>
+<div style="color:rgba(255,255,255,.75);font-size:12.5px">직지의 도시 청주, 집을 기록하다</div>
 </div></div>
 <script type="module" src="/src/main.jsx"></script>
 <script>

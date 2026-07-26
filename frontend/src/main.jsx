@@ -1713,17 +1713,21 @@ function Splash({ready}){
  if(gone)return null;
  return ReactDOM.createPortal(
   <div onClick={()=>setGone(true)} style={{position:"fixed",inset:0,zIndex:9999,background:"linear-gradient(160deg,#1FA594 0%,#0E7C71 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,opacity:fade?0:1,transition:"opacity .38s ease",cursor:"pointer"}}>
+   {/* 집 + 직지 활자판 모티브(앱 아이콘과 동일 — 청주 상징 퓨전) */}
    <div style={{width:104,height:104,borderRadius:26,background:"rgba(255,255,255,.14)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 30px rgba(0,0,0,.18)"}}>
-    <svg width="60" height="60" viewBox="0 0 100 100" aria-hidden="true">
-     <polygon points="50,18 84,48 16,48" fill="#fff"/>
-     <rect x="27" y="46" width="46" height="34" rx="4" fill="#fff"/>
-     <rect x="43" y="60" width="14" height="20" rx="2" fill="#0E7C71"/>
-     <rect x="33" y="53" width="9" height="9" rx="1.5" fill="#0E7C71"/>
-     <rect x="58" y="53" width="9" height="9" rx="1.5" fill="#0E7C71"/>
+    <svg width="64" height="64" viewBox="0 0 100 100" fill="none" aria-hidden="true">
+     <path d="M14 46 50 18 86 46" stroke="#fff" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+     <rect x="24" y="50" width="52" height="34" rx="5" stroke="#fff" strokeWidth="6"/>
+     <rect x="31" y="57" width="10" height="9" rx="2" fill="#fff"/>
+     <rect x="45" y="57" width="10" height="9" rx="2" fill="#FFD678"/>
+     <rect x="59" y="57" width="10" height="9" rx="2" fill="#fff"/>
+     <rect x="31" y="70" width="10" height="9" rx="2" fill="#fff"/>
+     <rect x="45" y="70" width="10" height="9" rx="2" fill="#fff"/>
+     <rect x="59" y="70" width="10" height="9" rx="2" fill="#fff"/>
     </svg>
    </div>
    <div style={{color:"#fff",fontWeight:800,fontSize:30,letterSpacing:"-0.02em",marginTop:4}}>청집사</div>
-   <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>청주 부동산, 한눈에</div>
+   <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>직지의 도시 청주, 집을 기록하다</div>
   </div>, document.body);
 }
 function OnbDots({n,i}){

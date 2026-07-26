@@ -1,15 +1,21 @@
-"""집사 도감 — 첫 시리즈 시드(멱등). 편은 admin API 로 발행(주 1편 큐레이션).
+"""집사 도감 — 첫 시리즈 + 초기 편 시드(멱등). 이후 편은 admin API 로 발행(주 1편 큐레이션).
 
 사용:
   python -m scripts.seed_guides
+
+편 본문은 app/data/guides/*.md (레포에 보존 — 검수 이력·재배포 재현성).
+멱등: 같은 제목의 편이 이미 있으면 건너뜀(운영에서 수정한 본문을 덮어쓰지 않음).
 """
 import logging
+from pathlib import Path
 
 from app.db.session import init_db, SessionLocal
-from app.models import GuideSeries
+from app.models import Guide, GuideSeries
 
 logging.basicConfig(level="INFO", format="%(levelname)s: %(message)s")
 log = logging.getLogger("seed_guides")
+
+GUIDES_DIR = Path(__file__).resolve().parents[1] / "app" / "data" / "guides"
 
 SERIES = [
     dict(key="cheongju", name="집사가 알려주는 청주",
@@ -18,18 +24,35 @@ SERIES = [
     # 후속 시리즈(계약/대출/안전/이사/청약)는 콘텐츠가 준비될 때 추가.
 ]
 
+# (시리즈, 제목, md파일, 이모지, 순서) — 본문 수치는 발행 시점 실데이터 조회 기반(왜곡 없음)
+EPISODES = [
+    ("cheongju", "SK하이닉스 청주캠퍼스로 출퇴근한다면 — 데이터로 본 근처 단지들",
+     "cheongju_ep1_sk_hynix.md", "🏭", 1),
+]
+
 
 def run() -> dict:
     init_db()
-    created = 0
+    s_created = g_created = 0
     with SessionLocal() as db:
         for s in SERIES:
-            if db.get(GuideSeries, s["key"]):
+            if not db.get(GuideSeries, s["key"]):
+                db.add(GuideSeries(**s))
+                s_created += 1
+        for series_key, title, fname, emoji, order in EPISODES:
+            if db.query(Guide).filter(Guide.series_key == series_key,
+                                      Guide.title == title).first():
                 continue
-            db.add(GuideSeries(**s))
-            created += 1
+            path = GUIDES_DIR / fname
+            if not path.exists():
+                log.warning("본문 파일 없음: %s — 건너뜀", fname)
+                continue
+            db.add(Guide(series_key=series_key, title=title,
+                         body_md=path.read_text(encoding="utf-8"),
+                         cover_emoji=emoji, sort_order=order, is_published=True))
+            g_created += 1
         db.commit()
-    return {"created": created, "total": len(SERIES)}
+    return {"series_created": s_created, "guides_created": g_created}
 
 
 if __name__ == "__main__":

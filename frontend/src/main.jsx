@@ -2048,7 +2048,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)} onTips={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -3219,7 +3219,7 @@ function CityIssues(){
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone,onTips}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3248,6 +3248,12 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
     <button onClick={()=>onBudget&&onBudget()} className="tog" style={{fontSize:12.5}}>💰 예산으로</button>
     <button onClick={()=>onLoan&&onLoan()} className="tog" style={{fontSize:12.5}}>🏦 대출 한도</button>
    </div>
+   {/* 처음 온 일반 사용자 유입 훅 — 거래 상식 콘텐츠(도감)로 연결 */}
+   {onTips&&<div onClick={onTips} role="button" tabIndex={0} onKeyDown={onEnter(()=>onTips())} style={{marginTop:10,display:"flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderRadius:10,padding:"9px 12px",cursor:"pointer"}}>
+    <span style={{fontSize:16,flex:"none"}}>📝</span>
+    <span style={{fontSize:12.5,fontWeight:700,minWidth:0,flex:1}}>부동산 거래가 처음이라면 — 계약 전 확인 10가지</span>
+    <span style={{color:TEAL,fontSize:15,flex:"none"}}>›</span>
+   </div>}
   </div>}
   {/* 청주 시세 요약(히어로) — 숨김(홈에서 제외, 부활 시 false 제거) */}
   {false&&<div className="card" style={{padding:"14px 15px",marginBottom:8}}>

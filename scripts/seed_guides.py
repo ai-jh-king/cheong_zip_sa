@@ -36,6 +36,8 @@ EPISODES = [
      "cheongju_ep4_age_price.md", "🧱", 4),
     ("cheongju", "청주 개발 이슈 총정리 — 사실과 출처만",
      "cheongju_ep5_landmarks.md", "🏗", 5),
+    ("cheongju", "부동산 거래가 처음이라면 — 계약 전 확인 10가지",
+     "cheongju_ep6_first_deal.md", "📝", 6),
 ]
 
 

@@ -422,6 +422,59 @@ def newcomer_guide(request: Request, db: Session = Depends(get_db)):
                  desc=desc, url=url, body=body, jsonld=[bc_ld, faq_ld])
 
 
+_TIPS = [
+    ("등기부등본은 내가 직접 뗀다",
+     "인터넷등기소에서 700원. 계약 직전과 잔금 직전 두 번 확인하세요. 갑구(소유자)·을구(근저당)를 보고, 상대가 보여주는 서류가 아니라 내가 뗀 최신본을 기준으로 합니다."),
+    ("소유자와 계약 상대가 같은지 확인",
+     "등기부의 소유자와 신분증을 대조하고, 대리인 계약이면 위임장과 인감증명서를 확인합니다."),
+    ("건축물대장 확인(정부24, 무료)",
+     "위반건축물 여부와 실제 용도(주거용인지)를 확인합니다. 근린생활시설을 주택처럼 판매하는 사례가 있습니다."),
+    ("호가가 아니라 실거래 신고가 기준",
+     "부르는 값과 실제 거래가는 다릅니다. 국토부 실거래 공개시스템이나 청집사에서 단지별 실거래 중앙값을 확인하세요."),
+    ("전세라면 전세가율 확인",
+     "보증금÷매매시세. 청주 단지별로 60~80%대까지 제각각이며, 높을수록 시세 하락 시 보증금 회수 여력이 줄어듭니다."),
+    ("보증금+선순위 채권을 시세와 비교",
+     "근저당 있는 집이라면 (보증금+채권최고액)÷시세를 계산해 보세요. 청집사 '전세 안전 진단'이 공개 계산식으로 도와드립니다."),
+    ("계약금은 등기부상 소유자 계좌로만",
+     "다른 사람 계좌로 입금을 요구하면 진행을 멈추세요."),
+    ("특약을 아까워하지 않기",
+     "'잔금일까지 권리변동 없을 것', '보증보험 가입 불가 시 계약 해제' 등 구두 약속은 특약란에 적어야 분명해집니다."),
+    ("전입신고+확정일자는 잔금 당일에",
+     "전월세 보증금 보호(대항력·우선변제권)의 기본입니다. 주민센터 또는 정부24에서 바로 처리하세요."),
+    ("관리비·세금까지 월 부담으로 계산",
+     "관리비·재산세·대출이자를 합쳐 월 기준으로 보면 부담을 과소평가하지 않습니다."),
+]
+
+
+@router.get("/tips", response_class=HTMLResponse)
+def tips_page(request: Request):
+    """부동산 거래 주의점 10가지 — 일반 유입용 에버그린 랜딩(검색·공유).
+    제도 사실만(왜곡 없음), FAQ 리치결과(JSON-LD), 앱·도감 CTA."""
+    base = _base(request)
+    url = base + "/tips"
+    bc_html, bc_ld = _breadcrumb(base, [("청주 실거래가", "/"), ("거래 전 확인 10가지", None)])
+    items = "".join(
+        f'<div style="padding:11px 0;border-top:1px solid var(--line)"><b>{i+1}. {html.escape(t)}</b>'
+        f'<div class="lbl" style="margin-top:4px;line-height:1.65">{html.escape(a)}</div></div>'
+        for i, (t, a) in enumerate(_TIPS))
+    faq_ld = {"@context": "https://schema.org", "@type": "FAQPage",
+              "mainEntity": [{"@type": "Question", "name": t,
+                              "acceptedAnswer": {"@type": "Answer", "text": a}} for t, a in _TIPS]}
+    body = (bc_html
+            + '<h1>부동산 거래가 처음이라면 — 계약 전 확인 10가지</h1>'
+            '<div class="sub">매매·전월세 공통. 전부 제도적으로 확인 가능한 사실만 모았습니다.</div>'
+            f'<div class="card">{items}</div>'
+            '<div class="card" style="background:rgba(15,118,110,.06);border-color:rgba(15,118,110,.2)">'
+            '💡 청집사는 <b>중개·광고 수익이 없어</b> 계약을 부추길 이유도, 말릴 이유도 없습니다. '
+            '그래서 이런 목록을 그대로 드릴 수 있어요. 앱에는 전세 안전 진단 계산기와 공식 사이트 링크 모음이 있습니다.</div>'
+            '<a class="cta" href="/">청집사 앱에서 실거래·안전 진단 보기 →</a>'
+            '<a class="item" href="/guide" style="border:none;margin-top:6px"><span>📖 청주 전입 가이드</span>'
+            '<span style="color:var(--teal);font-weight:800">›</span></a>')
+    desc = "부동산 계약 전 확인 10가지 — 등기부·건축물대장·전세가율·특약·확정일자. 매매·전월세 공통, 제도 사실만. 중개·광고 없는 청집사."
+    return _page(title="부동산 계약 전 확인 10가지 (매매·전월세 공통) | " + SITE,
+                 desc=desc, url=url, body=body, jsonld=[bc_ld, faq_ld])
+
+
 @router.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
 def robots(request: Request):
     return f"User-agent: *\nAllow: /\nSitemap: {_base(request)}/sitemap.xml\n"
@@ -437,7 +490,7 @@ def sitemap(request: Request, db: Session = Depends(get_db)):
     except Exception:  # noqa
         at = ""
     lastmod = at if len(at) == 10 else ""
-    urls = [f"{base}/", f"{base}/start", f"{base}/guide"]
+    urls = [f"{base}/", f"{base}/start", f"{base}/guide", f"{base}/tips"]
     for code in _CODES:
         urls.append(f"{base}/r/{code}")
         try:

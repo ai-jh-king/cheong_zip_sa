@@ -114,3 +114,15 @@ def test_onboarding_landing_picker(client, db):
     assert "중개·광고 수익이 없" in html          # 정체성(말릴 수 있는 앱) 문구
     # 잘못된 dest → 픽커로 폴백
     assert "어디로 출근하세요" in client.get("/start?dest=없는거점").text
+
+
+def test_tips_page_faq(client, db):
+    h = client.get("/tips").text
+    assert "계약 전 확인 10가지" in h
+    assert "FAQPage" in h                     # 리치결과 구조화
+    assert "등기부등본" in h and "확정일자" in h
+    assert "중개·광고 수익이 없" in h           # 정체성
+
+
+def test_sitemap_includes_tips(client, db):
+    assert "/tips" in client.get("/sitemap.xml").text

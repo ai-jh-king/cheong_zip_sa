@@ -30,6 +30,12 @@ EPISODES = [
      "cheongju_ep1_sk_hynix.md", "🏭", 1),
     ("cheongju", "청주 4개 구, 숫자로 비교해 봤습니다",
      "cheongju_ep2_gu_compare.md", "🗺", 2),
+    ("cheongju", "전세 계약 전, 이것만은 확인하세요 — 집사의 체크리스트",
+     "cheongju_ep3_jeonse_check.md", "🛡", 3),
+    ("cheongju", "신축 vs 구축, 청주에서 가격 차이는 얼마나 날까",
+     "cheongju_ep4_age_price.md", "🧱", 4),
+    ("cheongju", "청주 개발 이슈 총정리 — 사실과 출처만",
+     "cheongju_ep5_landmarks.md", "🏗", 5),
 ]
 
 

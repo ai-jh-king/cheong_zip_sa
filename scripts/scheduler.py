@@ -45,6 +45,14 @@ def _cycle() -> None:
             log.info("지오코딩 결과: %s", record_job(db, "geocode", _geo))
         except Exception as e:  # noqa
             log.warning("지오코딩 실패: %s", e)
+        # 관심단지 주간 다이제스트(월요일·주 1회 멱등 — 서비스 내부 가드)
+        try:
+            from app.services import weekly_digest
+            res = weekly_digest.run(db)
+            if not res.get("skipped"):
+                log.info("주간 다이제스트 결과: %s", record_job(db, "weekly_digest", lambda: res))
+        except Exception as e:  # noqa
+            log.warning("주간 다이제스트 실패: %s", e)
         # 집계 스냅샷 굽기 — 수집/지오코딩으로 데이터가 갱신된 뒤 board/ranking 을 미리 계산해
         # 저장(웹은 요청 시 읽기 1회). 데이터가 하루 1회만 바뀌므로 매 요청 계산 낭비 제거.
         try:

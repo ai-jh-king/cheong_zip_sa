@@ -28,6 +28,8 @@ SERIES = [
 EPISODES = [
     ("cheongju", "SK하이닉스 청주캠퍼스로 출퇴근한다면 — 데이터로 본 근처 단지들",
      "cheongju_ep1_sk_hynix.md", "🏭", 1),
+    ("cheongju", "청주 4개 구, 숫자로 비교해 봤습니다",
+     "cheongju_ep2_gu_compare.md", "🗺", 2),
 ]
 
 

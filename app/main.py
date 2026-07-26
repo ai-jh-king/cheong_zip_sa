@@ -261,13 +261,12 @@ def _startup():
     # (v1.208 배포 후 프로덕션에서 수동 seed_guides 미실행 → 도감이 빈 화면이던 실사고 방지)
     if s.auto_seed_guides:
         try:
-            from app.models import GuideSeries
-            from sqlalchemy import select as _sel, func as _f2
-            from app.db.session import SessionLocal as _SL
-            with _SL() as _db:
-                if not (_db.scalar(_sel(_f2.count()).select_from(GuideSeries)) or 0):
-                    from scripts.seed_guides import run as _seed_guides
-                    log.info("집사 도감 자동 시드: %s", _seed_guides())
+            # run() 자체가 멱등(시리즈 key·편 제목 존재 시 skip, 운영 수정본 보호)이라 매 부팅 호출.
+            # ('시리즈 0건일 때만' 가드였다면 새로 추가된 편이 프로덕션에 반영되지 않음 — v1.213 교정)
+            from scripts.seed_guides import run as _seed_guides
+            _res = _seed_guides()
+            if _res.get("series_created") or _res.get("guides_created"):
+                log.info("집사 도감 자동 시드: %s", _res)
         except Exception as e:  # noqa: BLE001
             log.warning("집사 도감 자동 시드 스킵(무시): %s", e)
     # 에러 모니터링(Sentry) — DSN 설정 시에만. 패키지 없으면 조용히 건너뜀.

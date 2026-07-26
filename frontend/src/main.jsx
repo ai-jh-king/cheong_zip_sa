@@ -3577,12 +3577,17 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
     avg:vs.length?Math.round(vs.reduce((s,v)=>s+v,0)/vs.length):null,
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
-  // 구(區) 레벨(z<12): 실제 행정경계 폴리곤(공식 행정동 경계 병합)으로 구 영역 표시 — 클릭=구 선택.
-  // 그보다 확대되면(구 선택 포함) 클러스터·영역 없이 '개별 매물 마커만'(요청).
+  // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~13) → 개별 단지 마커(z≥14).
+  // 어느 줌에서도 화면의 마커 수를 계단으로 제한해 과밀·겹침을 방지(호갱노노·네이버부동산 방식).
   const guView=z<12;
-  const items=guView?[]:vis.map(m=>({t:"s",...m}));
+  const dongView=!guView&&z<14;
+  const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
   const guGroups={};
   if(guView)vis.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
+  // 동(洞) 그룹 — dong 없는 단지는 구 이름으로 묶음(제외하지 않음·왜곡 방지)
+  const dongGroups={};
+  if(dongView)vis.forEach(m=>{const k=m.lawd_cd+"|"+(m.dong||m.gu||"");
+   (dongGroups[k]||(dongGroups[k]={name:m.dong||m.gu||"기타",arr:[]})).arr.push(m);});
   // 지도 인증 실패(키 미등록 도메인) 상태면 Marker.setMap 이 내부 null 참조로 throw →
   // 앱 전체 크래시(ErrorBoundary). try 로 감싸 마커만 건너뛰고 앱은 유지.
   try{
@@ -3612,7 +3617,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
        const b=new n.maps.LatLngBounds();
        paths.flat().forEach(p=>b.extend(p));
        map.fitBounds(b);
-       if(map.getZoom()<12)map.setZoom(12);   // 구 뷰(z<12)로 남으면 매물이 안 보임 → 최소 12 보장
+       if(map.getZoom()<12)map.setZoom(12);   // 구 선택 후엔 동 요약 단계(z12~13)로 진입 — 계단식
       }catch(e){}
       onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
@@ -3620,8 +3625,25 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      n.maps.Event.addListener(pg,"click",drill);        // 경계 안 아무 데나 눌러도 선택
     });
    }
+   if(dongView){
+    // 동 레벨: 영역(폴리곤) 없이 '동명+중앙값+단지수' 요약 버블만 — 클릭 시 그 동으로 확대.
+    Object.values(dongGroups).forEach(g=>{
+     const arr=g.arr;
+     const la=arr.reduce((s,m)=>s+m.lat,0)/arr.length, ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;
+     const amts=arr.map(m=>deal==="trade"?m.median_amount:m.value).filter(v=>v!=null).sort((a,b)=>a-b);
+     const med=amts.length?amts[Math.floor(amts.length/2)]:null;   // 소속 단지 대표가의 중앙값(참고용)
+     const html=`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;background:#fff;border:1.5px solid rgba(16,24,32,.14);border-radius:14px;padding:6px 12px;box-shadow:0 3px 10px rgba(0,0,0,.22);white-space:nowrap;text-align:center;line-height:1.15"><div style="font-weight:800;font-size:12px;color:#1A2430">${g.name}</div><div style="font-weight:800;font-size:11.5px;color:#0E7C71;margin-top:1px">${med!=null?money(med):"—"}<span style="font-weight:600;color:#8A94A0;margin-left:4px">${arr.length}곳</span></div></div>`;
+     const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:40});
+     n.maps.Event.addListener(mk,"click",()=>{try{
+      const b=new n.maps.LatLngBounds(); arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
+      map.fitBounds(b);
+      if(map.getZoom()<14)map.setZoom(14);   // 단지 레벨(z≥14) 보장 — 동 뷰에 머물면 단지가 안 보임
+     }catch(e){}});
+     markerObjs.current.push(mk);
+    });
+   }
    items.forEach(it=>{
-    // 확대/구 선택 후: 영역·클러스터 없이 개별 매물 마커만(요청)
+    // 단지 레벨(z≥14): 영역·클러스터 없이 개별 단지 가격 마커
     const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{
@@ -3777,7 +3799,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  },[deal,prop]);
  const DEALS=[["trade","매매"],["jeonse","전세"],["wolse","월세"]];
  const PROPS=[["apartment","아파트"],["officetel","오피스텔"],["rowhouse","빌라"]];
- const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:active?800:600,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?"var(--surface-solid)":"transparent",color:active?INK:MUTED,boxShadow:active?"0 1px 3px rgba(30,64,90,.14)":"none"});
+ // 지도 위 세그먼트(매매/전세/월세) — 토스식 은은한 초록 채움(선택만 강조)
+ const chip=(active)=>({border:"none",cursor:"pointer",fontWeight:active?800:600,fontSize:12.5,padding:"7px 13px",borderRadius:9,background:active?"rgba(15,118,110,.12)":"transparent",color:active?"var(--teal)":MUTED});
  // useMemo로 참조 안정화 — data 없을 때 매 렌더 새 [] 를 만들면 하위 effect(setViewport)가
  // 무한 리렌더 루프를 유발(실사고). data 바뀔 때만 새 배열.
  const markers=useMemo(()=>(data&&data.markers)||[],[data]);
@@ -3819,17 +3842,15 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   {pick&&<button onClick={()=>{setPick(null);setRegionSel(null);}} style={{position:"absolute",top:60,left:"50%",transform:"translateX(-50%)",zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"rgba(200,50,42,.95)",color:"#fff",border:"none",borderRadius:20,padding:"8px 14px",fontWeight:800,fontSize:12.5,boxShadow:"0 3px 12px rgba(0,0,0,.25)",cursor:"pointer"}}>
    📍 {pick.name} · {pMarkers.length}곳 <span style={{opacity:.85}}>✕ 해제</span>
   </button>}
-  {/* 상단: [필터] 버튼(최좌측) + 카테고리 셀렉박스 가로 스크롤로 바로 설정. 필터 버튼은 전체 조건(신호·시설 포함) 시트. */}
+  {/* 상단 최소화(사용자 확정): [필터 N] + 매매/전세/월세 세그먼트만. 종류·가격대·연식·평형은 필터 시트로. */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
-   <div style={{display:"flex",gap:6,overflowX:"auto",pointerEvents:"auto",paddingBottom:3,WebkitOverflowScrolling:"touch"}}>
+   <div style={{display:"flex",gap:6,pointerEvents:"auto"}}>
     <button onClick={()=>setFilterOpen(true)} style={{flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"0 14px",height:42,fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
      <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
     </button>
-    <Dropdown value={deal} set={setDeal} opts={DEALS} style={{width:82,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
-    <Dropdown value={prop} set={setProp} opts={PROPS} style={{width:94,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
-    <Dropdown value={fPrice} set={setFPrice} ph={deal==="trade"?"가격대":"보증금"} opts={PRICE_OPTS} style={{width:100,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
-    <Dropdown value={fYear} set={setFYear} ph="연식" opts={YEAR_OPTS} style={{width:96,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
-    <Dropdown value={fBand} set={setFBand} ph="평형" opts={BAND_OPTS} style={{width:110,flex:"none",boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <div style={{display:"inline-flex",alignItems:"center",background:"var(--surface-solid)",borderRadius:11,padding:3,height:42,boxSizing:"border-box",boxShadow:"0 2px 10px rgba(16,24,32,.16)"}}>
+     {DEALS.map(([k,l])=><button key={k} type="button" onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
+    </div>
    </div>
   </div>
   {filterOpen&&<Sheet title="지도 필터" onClose={()=>setFilterOpen(false)}>

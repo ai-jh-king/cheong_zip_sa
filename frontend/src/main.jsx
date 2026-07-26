@@ -3496,8 +3496,17 @@ function useNaver(clientId,enabled){
  },[clientId,enabled]);
  return {ready,err};
 }
+// 청주 4개 구 행정경계(공식 행정동 경계 병합·간소화, 14KB) — 모듈 캐시(1회 로드)
+const _guGeo={data:null,loading:false};
 function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
+ const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
+ useEffect(()=>{
+  if(_guGeo.data||_guGeo.loading)return;
+  _guGeo.loading=true;
+  fetch("/geo/cheongju_gu.json").then(r=>r.json()).then(j=>{_guGeo.data=j;setGeoTick(t=>t+1);})
+   .catch(()=>{_guGeo.loading=false;});   // 실패 시 폴리곤 없이 동작(마커는 정상)
+ },[]);
  const ref=React.useRef(null);
  const mapObj=React.useRef(null);
  const markerObjs=React.useRef([]);
@@ -3549,43 +3558,45 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
     avg:vs.length?Math.round(vs.reduce((s,v)=>s+v,0)/vs.length):null,
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
-  // 축소 시 행정구역(구/동) 클러스터 — 지역 단위로 묶어 이름+곳수 표시, 클릭하면 그 지역 목록.
-  // 확대(z>=14)하면 개별 단지 마커. (기존 그리드 클러스터는 지역 개념이 없어 교체)
-  let items;
-  if(z>=14){items=vis.map(m=>({t:"s",...m}));}
-  else{
-   const byGu=z<12;                       // 많이 축소=구, 중간 축소=동
-   const groups={};
-   vis.forEach(m=>{const key=byGu?(m.gu||m.lawd_cd||"기타"):((m.gu||"")+"·"+(m.dong||m.lawd_cd||"기타"));(groups[key]||(groups[key]=[])).push(m);});
-   items=Object.values(groups).map(arr=>{
-    const la=arr.reduce((s,m)=>s+m.lat,0)/arr.length, ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;
-    const name=byGu?(arr[0].gu||"기타"):(arr[0].dong||arr[0].gu||"기타");
-    const vs=arr.map(m=>m.value).sort((a,b)=>a-b);
-    // 영역 반경(m): 중심→소속 단지 최대 직선거리 + 여유(단지 분포 기반 — 행정경계 아님을 명확히)
-    const rad=Math.max(...arr.map(m=>havM(la,ln,m.lat,m.lng)),0)+(byGu?600:250);
-    return {t:"c",level:byGu?"gu":"dong",lat:la,lng:ln,count:arr.length,region:name,members:arr,
-            value:vs[Math.floor(vs.length/2)],radius:Math.min(rad,byGu?6000:1500)};});}
+  // 구(區) 레벨(z<12): 실제 행정경계 폴리곤(공식 행정동 경계 병합)으로 구 영역 표시 — 클릭=구 선택.
+  // 그보다 확대되면(구 선택 포함) 클러스터·영역 없이 '개별 매물 마커만'(요청).
+  const guView=z<12;
+  const items=guView?[]:vis.map(m=>({t:"s",...m}));
+  const guGroups={};
+  if(guView)vis.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
   // 지도 인증 실패(키 미등록 도메인) 상태면 Marker.setMap 이 내부 null 참조로 throw →
   // 앱 전체 크래시(ErrorBoundary). try 로 감싸 마커만 건너뛰고 앱은 유지.
   try{
    markerObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}}); markerObjs.current=[];
-   items.forEach(it=>{
-    if(it.t==="c"){
-     // 구/동 = '붉은 영역'(반투명 원, 단지 분포 기반) + 지역명 라벨. 클릭 → 그 지역만 표시+줌인(요청).
-     const circle=new n.maps.Circle({map,center:new n.maps.LatLng(it.lat,it.lng),radius:it.radius,
-      fillColor:"#C8322A",fillOpacity:0.14,strokeColor:"#C8322A",strokeOpacity:0.55,strokeWeight:1.5});
-     markerObjs.current.push(circle);
-     const html=`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 13px;background:rgba(200,50,42,.95);color:#fff;border-radius:16px;border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.32);white-space:nowrap;text-align:center"><div style="font-weight:800;font-size:12.5px;line-height:1.1">${(it.region||"").replace("청주시 ","")}</div><div style="font-size:10px;opacity:.95;font-weight:700;margin-top:1px">${it.count}곳</div></div>`;
-     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:60});
+   if(guView){
+    // 구 레벨: 실제 행정경계 폴리곤(붉은 영역) + 중앙 라벨(구명·곳수). 클릭 → 그 구 선택.
+    const geo=_guGeo.data;
+    if(geo)geo.features.forEach(f=>{
+     const code=f.properties.code, name=f.properties.name;
+     const arr=guGroups[code]||[];
+     const rings=(f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates)
+      .map(poly=>poly.map(ring=>ring.map(([lng,lat])=>new n.maps.LatLng(lat,lng))));
+     const paths=rings.map(p=>p[0]);          // 외곽 링만(구멍 없음)
+     const pg=new n.maps.Polygon({map,paths,fillColor:"#C8322A",fillOpacity:0.13,
+      strokeColor:"#C8322A",strokeOpacity:0.8,strokeWeight:2,clickable:true,zIndex:5});
+     markerObjs.current.push(pg);
+     // 라벨 위치: 소속 단지 평균(없으면 폴리곤 bbox 중심)
+     let la,ln;
+     if(arr.length){la=arr.reduce((s,m)=>s+m.lat,0)/arr.length;ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;}
+     else{const pts=paths.flat();la=pts.reduce((s,p)=>s+p.lat(),0)/pts.length;ln=pts.reduce((s,p)=>s+p.lng(),0)/pts.length;}
+     const html=`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 13px;background:rgba(200,50,42,.95);color:#fff;border-radius:16px;border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.32);white-space:nowrap;text-align:center"><div style="font-weight:800;font-size:12.5px;line-height:1.1">${name}</div><div style="font-size:10px;opacity:.95;font-weight:700;margin-top:1px">${arr.length}곳</div></div>`;
+     const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:60});
+     markerObjs.current.push(mk);
      const drill=()=>{
-      try{map.panTo(new n.maps.LatLng(it.lat,it.lng));map.setZoom(it.level==="gu"?13:14);}catch(e){}
-      onRegionOpen&&onRegionOpen(it.members,it.region,it.level);   // 선택 지역만 표시(pick) + 목록 배지
+      try{map.panTo(new n.maps.LatLng(la,ln));map.setZoom(13);}catch(e){}
+      onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
      n.maps.Event.addListener(mk,"click",drill);
-     n.maps.Event.addListener(circle,"click",drill);   // 원 영역 아무 데나 눌러도 선택
-     markerObjs.current.push(mk);
-     return;
-    }
+     n.maps.Event.addListener(pg,"click",drill);        // 경계 안 아무 데나 눌러도 선택
+    });
+   }
+   items.forEach(it=>{
+    // 확대/구 선택 후: 영역·클러스터 없이 개별 매물 마커만(요청)
     const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{
@@ -3594,7 +3605,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     markerObjs.current.push(mk);
    });
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
- },[ready,tick,markers,fitKey]);
+ },[ready,tick,markers,fitKey,geoTick]);
  // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
  // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
  useEffect(()=>{
@@ -3755,10 +3766,10 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   if(fBand)ms=ms.filter(m=>(m.area_bands||[]).includes(fBand));
   return ms;
  },[markers,fPrice,fYear,fBand,deal]);
- // 선택 지역(pick) 필터 — 구/동 영역을 고르면 '그 지역 단지만' 지도·목록에 표시(요청).
+ // 선택 구(pick) 필터 — 경계 폴리곤을 고르면 '그 구 단지만' 지도·목록에 표시(요청).
  const pMarkers=useMemo(()=>{
   if(!pick)return fMarkers;
-  return fMarkers.filter(m=>(!pick.gu||m.gu===pick.gu)&&(!pick.dong||m.dong===pick.dong));
+  return fMarkers.filter(m=>m.lawd_cd===pick.code);
  },[fMarkers,pick]);
  const filterOn=!!(fPrice||fYear||fBand);
  // 시트에 모은 상세 조건의 활성 개수(필터 버튼 배지) + 일괄 초기화
@@ -3774,14 +3785,14 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
   <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}
-   onRegionOpen={(members,region,level)=>{
-    // 구/동 영역 클릭 → 그 지역만 표시(pick) + 목록 배지 갱신
+   onRegionOpen={(members,region,level,code)=>{
+    // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     setRegionSel({title:region,items:members});
-    setPick(p=>level==="gu"?{gu:region}:{gu:(p&&p.gu)||(members[0]&&members[0].gu)||null,dong:region});
+    setPick({code,name:region});
    }}/>
   {/* 선택 지역 해제 칩 */}
   {pick&&<button onClick={()=>{setPick(null);setRegionSel(null);}} style={{position:"absolute",top:60,left:"50%",transform:"translateX(-50%)",zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"rgba(200,50,42,.95)",color:"#fff",border:"none",borderRadius:20,padding:"8px 14px",fontWeight:800,fontSize:12.5,boxShadow:"0 3px 12px rgba(0,0,0,.25)",cursor:"pointer"}}>
-   📍 {(pick.dong||pick.gu||"").replace("청주시 ","")} · {pMarkers.length}곳 <span style={{opacity:.85}}>✕ 해제</span>
+   📍 {pick.name} · {pMarkers.length}곳 <span style={{opacity:.85}}>✕ 해제</span>
   </button>}
   {/* 상단: [필터] 버튼(최좌측) + 카테고리 셀렉박스 가로 스크롤로 바로 설정. 필터 버튼은 전체 조건(신호·시설 포함) 시트. */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
@@ -3824,7 +3835,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 요약바 제거(요청) — 목록은 컴팩트 플로팅 버튼으로 유지(현위치 옆). */}
   <button onClick={()=>setListOpen(true)} style={{position:"absolute",left:12,bottom:20,zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:22,padding:"10px 15px",fontWeight:800,fontSize:13,boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",color:INK}}>
-   <Icon name="rank" active size={16}/>목록{pick?` · ${(pick.dong||pick.gu||"").replace("청주시 ","")} ${pMarkers.length}`:(filterOn?` ${fMarkers.length}`:"")}
+   <Icon name="rank" active size={16}/>목록{pick?` · ${pick.name} ${pMarkers.length}`:(filterOn?` ${fMarkers.length}`:"")}
   </button>
   {listOpen&&<AreaListSheet items={regionSel?regionSel.items:(viewport&&viewport.items?viewport.items:pMarkers)} title={regionSel?regionSel.title:""} deal={deal} onClose={()=>{setListOpen(false);setRegionSel(null);}} onOpenComplex={(m)=>{setListOpen(false);setRegionSel(null);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
  </div>);

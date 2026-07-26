@@ -17,12 +17,16 @@ NEAR = 300            # 이 거리 이내면 만점
 FLOOR_AT_RADIUS = 40  # 반경 끝(1500m)에서의 점수
 
 # (표시 라벨, poi.nearby 의 카테고리 키들, 가중치). 가중치 합 = 1.0
+# ⚠️ '교통(지하철)' 항목 제거(2026-07, 실사고): 청주에는 지하철이 없어 전 단지가 교통 0점
+#    → 종합점수가 일괄 30% 깎이는 모순(도시에 존재하지 않는 시설로 채점 = 왜곡).
+#    0점 처리는 '교통이 나쁘다'는 잘못된 암시라 항목 자체를 제외하고 화면에 사유 고지.
+#    (지하철 있는 도시로 확장 시 지역별 카테고리 구성으로 복원 검토)
 CATEGORIES = [
-    ("교통", ["지하철"], 0.30),
-    ("편의", ["마트"], 0.25),
-    ("학교", ["학교"], 0.25),
-    ("의료", ["병원"], 0.20),
+    ("편의", ["마트"], 0.35),
+    ("학교", ["학교"], 0.35),
+    ("의료", ["병원"], 0.30),
 ]
+EXCLUDED_NOTE = "청주에는 지하철이 없어 '교통(지하철)' 항목은 점수에서 제외했습니다(대중교통 접근성은 노선·정류장 기준이 달라 거리 점수로 담지 않음)."
 
 
 def _sub_score(nearest_m: int | None) -> int:
@@ -54,4 +58,5 @@ def living_score(poi: dict | None) -> dict | None:
     total = round(total)
     grade = ("최상" if total >= 80 else "좋음" if total >= 60
              else "보통" if total >= 40 else "아쉬움")
-    return {"total": total, "grade": grade, "radius": RADIUS, "categories": cats}
+    return {"total": total, "grade": grade, "radius": RADIUS, "categories": cats,
+            "excluded_note": EXCLUDED_NOTE}

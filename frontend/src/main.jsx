@@ -4113,7 +4113,7 @@ function LivingScore({data}){
   <div style={{display:"flex",alignItems:"center",gap:6}}>
    <span style={{fontSize:18}}>🧭</span>
    <span style={{fontWeight:800,fontSize:15}}>생활권 점수</span>
-   <Info text="단지 반경 1.5km 내 교통(지하철)·편의(마트)·학교·의료(병원)까지의 최단 거리로 매긴 참고 점수입니다. 300m 이내 만점, 1.5km 40점, 반경 내 없으면 0점. 실거주 만족도(소음·평판 등)와 다를 수 있어요. 출처: 카카오 장소."/>
+   <Info text="단지 반경 1.5km 내 편의(마트)·학교·의료(병원)까지의 최단 거리로 매긴 참고 점수입니다. 300m 이내 만점, 1.5km 40점, 반경 내 없으면 0점. 청주에는 지하철이 없어 교통(지하철) 항목은 제외했어요. 실거주 만족도(소음·평판 등)와 다를 수 있어요. 출처: 카카오 장소."/>
    <span className="num" style={{marginLeft:"auto",fontWeight:800,fontSize:24,color:gc,lineHeight:1}}>{data.total}<span style={{fontSize:13,color:MUTED,fontWeight:700}}>/100</span></span>
    <span className="pill" style={{background:"rgba(15,118,110,.12)",color:gc,fontWeight:800,marginLeft:6}}>{data.grade}</span>
   </div>
@@ -4125,7 +4125,7 @@ function LivingScore({data}){
     <span className="num" style={{width:66,textAlign:"right",fontSize:11,color:MUTED,flex:"none"}}>{c.nearest_m!=null?"최단 "+distM(c.nearest_m):"없음"}</span>
    </div>))}
   </div>
-  <div style={{fontSize:10.5,color:MUTED,marginTop:11,lineHeight:1.6}}>※ 반경 1.5km 시설까지 거리 기준 참고치예요. 실제 생활 편의는 노선·시간대·개인 상황에 따라 다릅니다. (출처: 카카오 장소)</div>
+  <div style={{fontSize:10.5,color:MUTED,marginTop:11,lineHeight:1.6}}>※ 반경 1.5km 시설까지 거리 기준 참고치예요. 실제 생활 편의는 노선·시간대·개인 상황에 따라 다릅니다. (출처: 카카오 장소){data.excluded_note?` · ${data.excluded_note}`:""}</div>
  </div>);
 }
 function VolumeSignal({volume}){

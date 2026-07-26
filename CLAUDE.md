@@ -60,13 +60,13 @@ frontend/                ★ 웹 정본(+ capacitor.config.json = 스토어 앱 
                          ⚠️ 단일 파일이 커서 블라인드 편집 위험 — 컴포넌트는 반드시 모듈 레벨(아래 10). 향후 파일 분리 권장.
 scripts/                 run_collect / geocode / scheduler / db_upgrade / verify_region_codes / verify_frontend
                          seed_landmarks(호재) / seed_commute(통근거점·직주근접 공유) / collect_places(시설)
-migrations/              Alembic (env.py가 앱 설정 URL 사용) — **head 0022**
+migrations/              Alembic (env.py가 앱 설정 URL 사용) — **head 0023**
 skills/                  ★ 모듈별 상세지침(아래 9)
 ```
 
 ## 5. 데이터 모델
 `Region` · `Complex` · `Transaction`(dedup_key 유니크·raw_payload 보존) · `Favorite` · `UserPref`(data JSON — **우리집 my_home 포함**) · `RecentView` · `SavedSearch` · `Account` · `DeviceLink` · `Listing` · `Post` · `Comment`(parent_id 대댓글) · `PostLike`(uq post+owner) · `ReportLog`(uq target+owner) · `Notification`(account_id 인덱스·type comment/reply/transaction/new_high) · `Bookmark`(uq owner+post) · `CommuteDestination`·`CommuteTime`(통근·**직주근접 hub_access 재사용**) · `PushSubscription`(웹푸시 구독·endpoint 유니크) · `JobRun`(배치 실행 이력) · `Landmark`(개발 호재 — category/status/lat/lng/summary/expected_year/source_*) · `Place`(생활·교육·운동 시설 — category/subcategory/lat/lng/source) · `Consent`(개인정보·약관 동의 이력·버전) · `AggSnapshot`(일일 집계 스냅샷 — board/ranking 프리컴퓨트 payload JSON·data_version·baked_at) · `GuideSeries`·`Guide`(집사 도감 콘텐츠 — 시리즈/편·마크다운 본문·조회수·is_published).
-> **스키마 규칙**: 신규 컬럼은 ①모델에 추가 ②Alembic 마이그레이션 파일 생성(운영 PG) — SQLite 는 `_ensure_columns`(모델 자동 도출)가 시작 시 보강. 'no such column'은 대개 마이그레이션 미적용 or 운영이 SQLite. **마이그레이션 head = 0022**(…0021_perf_indexes → 0022_guides). 스키마 변경은 반드시 Alembic(아래 3).
+> **스키마 규칙**: 신규 컬럼은 ①모델에 추가 ②Alembic 마이그레이션 파일 생성(운영 PG) — SQLite 는 `_ensure_columns`(모델 자동 도출)가 시작 시 보강. 'no such column'은 대개 마이그레이션 미적용 or 운영이 SQLite. **마이그레이션 head = 0023**(…0022_guides → 0023_name_whitespace). 스키마 변경은 반드시 Alembic(아래 3).
 
 ## 6. 수정 후 필수 검증 루틴 (반드시 실행)
 **프런트(`frontend/src/main.jsx`) 수정 시 — 표준 검증**: 괄호 균형(`()`·`{}`·`[]` 모두 0) + `verify_frontend`. **모든 UI 수정은 여기서만**(레거시 `app/web/index.html`은 **동결 — 편집 금지**, 폴백 잔존):
@@ -148,7 +148,7 @@ python -m scripts.verify_frontend   # 괄호·React/ReactDOM import 커버·inde
 - `skills/personalization.md` — 개인화(device_id→로그인 승계 union)
 - `skills/auth-and-roles.md` — 소셜로그인·역할(user/agent)
 - `skills/community.md` — 게시판·댓글/대댓글·좋아요/신고·알림·스크랩·작성자·**원자 카운터·포커스 규칙**
-- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0022, head 0022_guides)·**웹푸시·모니터링·백업·doctor**·레이트리밋
+- `skills/deploy-and-db.md` — SQLite↔PostgreSQL·Alembic(0001~0023, head 0023_name_whitespace)·**웹푸시·모니터링·백업·doctor**·레이트리밋
 - `skills/frontend.md` — UI 컨벤션·**SheetShell 바텀시트/스와이프 통일**·시세 드릴다운·상세 위젯·임장·푸시토글·데모폴백
 - `skills/testing.md` — 테스트·CI(pytest·격리·픽스처)
 - 외부 API 주소는 전부 config(.env 오버라이드, 빈 값이면 코드 기본값). 새 외부호출 추가 시 URL을 config 필드로 두고 `s.<field> or 상수` 패턴 사용.

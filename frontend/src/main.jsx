@@ -1673,7 +1673,9 @@ class ErrorBoundary extends React.Component{
     return this.props.children;
   }
 }
-function Splash(){
+function Splash({ready}){
+ // 첫 진입 체감(실사고): 고정 1.55s 스플래시가 번들 로드 뒤에 '추가로' 붙어 데이터가 있어도 느리게 느껴짐.
+ // → 데이터 준비(ready)되면 즉시 페이드(0.35s), 안 됐어도 최대 1.5s 캡(기존 동작 유지).
  const [gone,setGone]=useState(false);
  const [fade,setFade]=useState(false);
  useEffect(()=>{
@@ -1681,6 +1683,12 @@ function Splash(){
   const t2=setTimeout(()=>setGone(true),1550);
   return ()=>{clearTimeout(t1);clearTimeout(t2);};
  },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  setFade(true);
+  const t=setTimeout(()=>setGone(true),380);
+  return ()=>clearTimeout(t);
+ },[ready]);
  if(gone)return null;
  return ReactDOM.createPortal(
   <div onClick={()=>setGone(true)} style={{position:"fixed",inset:0,zIndex:9999,background:"linear-gradient(160deg,#1FA594 0%,#0E7C71 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,opacity:fade?0:1,transition:"opacity .38s ease",cursor:"pointer"}}>
@@ -1969,7 +1977,7 @@ function App(){
 
  const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","게시판"],["more","더보기"]];
  return (<UnitCtx.Provider value={unit}><div>
-  <Splash/>
+  <Splash ready={status!=="loading"}/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
    <div style={{maxWidth:480,margin:"0 auto",display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:INK,color:"#fff",boxShadow:"0 -4px 16px rgba(0,0,0,.25)"}}>
     <span style={{fontSize:13.5,fontWeight:700,flex:1}}>새 버전이 준비됐어요</span>
@@ -3484,7 +3492,10 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   const n=window.naver, map=mapObj.current;
   if(fitKey&&fitDone.current!==fitKey&&markers.length){
    const b=new n.maps.LatLngBounds(); markers.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
-   try{map.fitBounds(b);}catch(e){} fitDone.current=fitKey;
+   try{map.fitBounds(b);
+    // 첫 진입은 '구 단위' 뷰(요청): fit 결과가 동/단지 레벨로 확대돼 있으면 구 레벨(z=11)로 낮춤.
+    if(map.getZoom()>11)map.setZoom(11);
+   }catch(e){} fitDone.current=fitKey;
   }
   // 지도 인증 실패(키 미등록 도메인 등)로 반초기화 상태면 getBounds가 내부 null 참조로 throw
   // → 앱 전체 크래시(ErrorBoundary). 가드하고 bounds 없으면 전체 표시로 폴백.
@@ -3519,7 +3530,11 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      :`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:it.t==="c"?60:10});
     n.maps.Event.addListener(mk,"click",()=>{
-     if(it.t==="c"){onRegionOpen?onRegionOpen(it.members,it.region):(map.setZoom(Math.min(map.getZoom()+2,16)),map.panTo(new n.maps.LatLng(it.lat,it.lng)));}
+     if(it.t==="c"){
+      // 구/동 영역 클릭 → 그 지역으로 줌인해 매물(단지) 표시(요청: 단계 드릴다운 구→동→단지).
+      try{map.panTo(new n.maps.LatLng(it.lat,it.lng));map.setZoom(map.getZoom()<12?13:14);}catch(e){}
+      onRegionOpen&&onRegionOpen(it.members,it.region);   // 하단 '목록 N' 배지 갱신용(시트는 버튼으로)
+     }
      else onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
     });
     markerObjs.current.push(mk);
@@ -3698,7 +3713,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true} onRegionOpen={(members,region)=>{setRegionSel({title:region,items:members});setListOpen(true);}}/>
+  <PriceMarkerMap markers={fMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true} onRegionOpen={(members,region)=>setRegionSel({title:region,items:members})}/>
   {/* 상단: [필터] 버튼(최좌측) + 카테고리 셀렉박스 가로 스크롤로 바로 설정. 필터 버튼은 전체 조건(신호·시설 포함) 시트. */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
    <div style={{display:"flex",gap:6,overflowX:"auto",pointerEvents:"auto",paddingBottom:3,WebkitOverflowScrolling:"touch"}}>
@@ -3740,12 +3755,31 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 요약바 제거(요청) — 목록은 컴팩트 플로팅 버튼으로 유지(현위치 옆). */}
   <button onClick={()=>setListOpen(true)} style={{position:"absolute",left:12,bottom:20,zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:22,padding:"10px 15px",fontWeight:800,fontSize:13,boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",color:INK}}>
-   <Icon name="rank" active size={16}/>목록{filterOn?` ${fMarkers.length}`:""}
+   <Icon name="rank" active size={16}/>목록{regionSel?` · ${regionSel.title} ${regionSel.items.length}`:(filterOn?` ${fMarkers.length}`:"")}
   </button>
   {listOpen&&<AreaListSheet items={regionSel?regionSel.items:(viewport&&viewport.items?viewport.items:fMarkers)} title={regionSel?regionSel.title:""} deal={deal} onClose={()=>{setListOpen(false);setRegionSel(null);}} onOpenComplex={(m)=>{setListOpen(false);setRegionSel(null);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}
  </div>);
 }
 const POI_MAP_C={"학교":"#1E5FC4","지하철":"#0E7C71","마트":"#9A6B00","병원":"#C8322A","중개업소":"#7A5AF8"};
+// POI 특성 아이콘(인라인 SVG path, 24x24 기준) — 색점 대신 시설별 모양으로 가독성↑(요청).
+const POI_SVG={
+ "학교":'<path d="M3 10 12 5l9 5-9 5z"/><path d="M7 12.5V17c0 1 2.2 2 5 2s5-1 5-2v-4.5"/>',
+ "지하철":'<rect x="6" y="4" width="12" height="12" rx="3"/><path d="M6 12h12M9 19l-1.5 2M15 19l1.5 2"/><circle cx="9.5" cy="14" r=".8"/><circle cx="14.5" cy="14" r=".8"/>',
+ "마트":'<path d="M4 7h16l-1.5 5H5.5z"/><path d="M6 12v7h12v-7"/><path d="M9 7V5.5a3 3 0 0 1 6 0V7"/>',
+ "병원":'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8.5v7M8.5 12h7"/>',
+ "중개업소":'<path d="M4 10.5 12 4l8 6.5"/><path d="M6 9.5V19h12V9.5"/><path d="M10 19v-5h4v5"/>',
+};
+// 지도 마커용: 흰 원 배지 + 시설 SVG(색 스트로크). size=지름(px).
+function poiMarkerHtml(label,size=22){
+ const c=POI_MAP_C[label]||"#69737D", p=POI_SVG[label]||'<circle cx="12" cy="12" r="5"/>';
+ return `<div style="transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:50%;background:#fff;border:1.8px solid ${c};box-shadow:0 1px 4px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center">`+
+        `<svg width="${size-8}" height="${size-8}" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg></div>`;
+}
+// 리스트/범례용 React 아이콘(같은 path 재사용).
+function PoiIcon({label,size=15}){
+ const c=POI_MAP_C[label]||"#69737D", p=POI_SVG[label]||'<circle cx="12" cy="12" r="5"/>';
+ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" aria-hidden dangerouslySetInnerHTML={{__html:p}}/>;
+}
 function RankMap({items,mapCfg,poi}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const ref=React.useRef(null);
@@ -3765,8 +3799,7 @@ function RankMap({items,mapCfg,poi}){
     const iw=new n.maps.InfoWindow({content:`<div style="padding:7px 10px;font-size:12px;white-space:nowrap;font-weight:600">#${it.rank} ${it.complex_name||"단지"}<br/><span style="color:#1A2128">${eok(it.deal_amount)}</span></div>`,borderWidth:0});
     n.maps.Event.addListener(mk,"click",()=>iw.open(map,mk));});
    poiPts.forEach(p=>{const color=POI_MAP_C[p.label]||"#69737D";
-    const html=`<div style="transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>`;
-    const mk=new n.maps.Marker({position:new n.maps.LatLng(p.lat,p.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:20});
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(p.lat,p.lng),map,icon:{content:poiMarkerHtml(p.label),anchor:new n.maps.Point(0,0)},zIndex:20});
     const iw=new n.maps.InfoWindow({content:`<div style="padding:5px 9px;font-size:11.5px;white-space:nowrap;font-weight:600">${p.name} · <span style="color:${color}">${p.label}</span> ${distM(p.distance)}</div>`,borderWidth:0});
     n.maps.Event.addListener(mk,"click",()=>iw.open(map,mk));});
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 생략, 앱 유지 */}
@@ -3777,7 +3810,7 @@ function RankMap({items,mapCfg,poi}){
  return (<div>
   <div ref={ref} style={{width:"100%",height:300,borderRadius:14,overflow:"hidden",background:"var(--chip)"}}/>
   {legend.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:"6px 12px",marginTop:8,fontSize:11.5,color:MUTED}}>
-   {legend.map(l=><span key={l} style={{display:"inline-flex",alignItems:"center",gap:4}}><span style={{width:9,height:9,borderRadius:5,background:POI_MAP_C[l]||"#69737D",flex:"none"}}/>{l}</span>)}
+   {legend.map(l=><span key={l} style={{display:"inline-flex",alignItems:"center",gap:4}}><PoiIcon label={l} size={13}/>{l}</span>)}
   </div>}
   {ready&&!pts.length&&<div style={{marginTop:8}}><Notice>이 단지의 좌표가 아직 없습니다. 서버에서 <b>python -m scripts.geocode</b> 실행 후 새로고침하세요.</Notice></div>}
   {!ready&&!err&&<div style={{padding:10}}><Skeleton h={180} r={12}/></div>}
@@ -4412,7 +4445,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
     {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
-     <span style={{fontWeight:700,minWidth:48,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><span style={{width:9,height:9,borderRadius:5,background:POI_MAP_C[label]||"#69737D",flex:"none"}}/>{label}</span>
+     <span style={{fontWeight:700,minWidth:48,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><PoiIcon label={label} size={14}/>{label}</span>
      <div style={{minWidth:0}}>
       {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))
        :<span style={{color:MUTED,fontSize:12.5}}>반경 내 없음</span>}

@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -145,6 +145,43 @@ def upsert_transactions(db: Session, rows: list[dict]) -> dict:
     return {"inserted": inserted, "corrected": corrected, "canceled": canceled}
 
 
+def merge_name_variants(db: Session) -> int:
+    """같은 단지의 표기 변형('미소랑' vs '미소랑아파트')을 통일 — 왜곡 없음 가드 포함.
+
+    병합 조건(전부 일치해야 함): 같은 구(lawd_cd) + 같은 동(dong_name) + 같은 건축년도 +
+    '아파트/APT' 접미사 제거 후 이름 동일. (동·연식이 다르면 실제 별개 단지 —
+    효성(가경동) vs 효성아파트(비하동) 실증 — 이름만으로는 절대 병합하지 않는다.)
+    표기는 '긴 이름(접미사 포함)' 쪽으로 통일. 공백 변형은 수집단(normalize)에서 이미 제거.
+    """
+    import re as _re
+    from sqlalchemy import select as _sel, func as _f
+    rows = db.execute(
+        _sel(Transaction.complex_name, Transaction.lawd_cd,
+             Transaction.dong_name, Transaction.build_year, _f.count())
+        .where(Transaction.complex_name.isnot(None))
+        .group_by(Transaction.complex_name, Transaction.lawd_cd,
+                  Transaction.dong_name, Transaction.build_year)).all()
+    groups: dict = {}
+    for name, lawd, dong, by, cnt in rows:
+        base = _re.sub(r"(아파트|APT)$", "", name, flags=_re.I)
+        groups.setdefault((base, lawd, dong, by), []).append(name)
+    merged = 0
+    for (_base, lawd, dong, by), names in groups.items():
+        uniq = sorted(set(names), key=len)
+        if len(uniq) < 2 or dong is None or by is None:
+            continue                     # 검증 불가(동/연식 없음)면 건드리지 않음(왜곡 방지)
+        canonical = uniq[-1]             # 접미사 포함 긴 표기로 통일
+        for old in uniq[:-1]:
+            db.execute(update(Transaction)
+                       .where(Transaction.complex_name == old, Transaction.lawd_cd == lawd,
+                              Transaction.dong_name == dong, Transaction.build_year == by)
+                       .values(complex_name=canonical))
+            merged += 1
+    if merged:
+        db.commit()
+    return merged
+
+
 def collect_live(db: Session, months_back: int | None = None) -> dict:
     """실제 국토부 API 로 수집. 키 없으면 명확히 실패."""
     s = get_settings()
@@ -176,6 +213,9 @@ def collect_live(db: Session, months_back: int | None = None) -> dict:
                     total_canceled += res["canceled"]
     logger.info("수집 완료: 신규 %s / 조회 %s / 정정 %s / 해제 %s",
                 total_new, total_seen, total_corrected, total_canceled)
+    merged = merge_name_variants(db)
+    if merged:
+        logger.info("단지명 변형 병합: %s건 통일", merged)
     mapping = report.summary()
     if report.has_issues():
         logger.warning("정규화 매핑 경고: %s행 중 미매핑=%s — molit/normalize.py FIELD_CANDIDATES 보강 필요(원본 키 샘플은 수집 결과 stats 참조)",

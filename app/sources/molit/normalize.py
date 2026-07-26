@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 import logging
+import re
 from datetime import date
 
 logger = logging.getLogger(__name__)
@@ -218,7 +219,9 @@ def normalize_row(
         "lawd_cd": lawd_cd,
         "property_type": property_type,
         "deal_type": deal_type,
-        "complex_name": str(complex_name).strip() if complex_name else None,
+        # 내부 공백 제거: 같은 단지를 매매/전월세·오피스텔 API가 '강서 베리굿'/'강서베리굿'처럼
+        # 다르게 표기해 별개 단지로 쪼개지던 실사고(2026-07, 11개 단지) 방지. 표기 통일=무공백.
+        "complex_name": re.sub(r"\s+", "", str(complex_name)) if complex_name else None,
         "dong_name": (_pick(row, "dong_name") or None),
         "exclusive_area": area,
         "floor": _to_int(_pick(row, "floor")),

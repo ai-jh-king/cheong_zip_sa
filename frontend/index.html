@@ -141,7 +141,12 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<!-- 프리스플래시: JS 번들 다운로드/파싱 동안 흰 화면 대신 즉시 브랜드 페인트(React 마운트 시 교체됨) -->
+<div id="root"><div style="position:fixed;inset:0;background:linear-gradient(160deg,#1FA594 0%,#0E7C71 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+<div style="font-size:44px;line-height:1">🏠</div>
+<div style="color:#fff;font-weight:800;font-size:22px;letter-spacing:-.5px">청집사</div>
+<div style="color:rgba(255,255,255,.75);font-size:12.5px">청주 실거래 데이터 로딩 중…</div>
+</div></div>
 <script type="module" src="/src/main.jsx"></script>
 <script>
   /* 설치형 PWA용 서비스워커 등록(로드 시). 푸시 코드의 register('/sw.js')와 멱등. */

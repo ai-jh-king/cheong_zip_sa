@@ -3786,7 +3786,7 @@ function RankMap({items,mapCfg,poi}){
  const pts=(items||[]).filter(i=>i.lat&&i.lng);
  // 지도에 찍을 POI(좌표 있는 것만) — 데이터는 이미 d.poi 로 로드됨(추가 요청 0).
  const poiPts=[];
- if(poi)Object.entries(poi).forEach(([label,list])=>(list||[]).forEach(p=>{if(p.lat!=null&&p.lng!=null)poiPts.push({...p,label});}));
+ if(poi)Object.entries(poi).filter(([label])=>!label.startsWith("_")).forEach(([label,list])=>(list||[]).forEach(p=>{if(p.lat!=null&&p.lng!=null)poiPts.push({...p,label});}));
  const sig=pts.map(i=>`${i.rank}:${i.lat},${i.lng}`).join("|")+"#"+poiPts.length;
  useEffect(()=>{
   if(!ready||!ref.current||!window.naver)return;
@@ -4113,7 +4113,7 @@ function LivingScore({data}){
   <div style={{display:"flex",alignItems:"center",gap:6}}>
    <span style={{fontSize:18}}>🧭</span>
    <span style={{fontWeight:800,fontSize:15}}>생활권 점수</span>
-   <Info text="단지 반경 1.5km 내 편의(마트)·학교·의료(병원)까지의 최단 거리로 매긴 참고 점수입니다. 300m 이내 만점, 1.5km 40점, 반경 내 없으면 0점. 청주에는 지하철이 없어 교통(지하철) 항목은 제외했어요. 실거주 만족도(소음·평판 등)와 다를 수 있어요. 출처: 카카오 장소."/>
+   <Info text="단지 반경 1.5km 내 편의(마트)·학교·의료(병원)를 ①가장 가까운 시설까지 거리(60%) ②반경 내 개수(40%, 10개 이상 만점)로 매긴 참고 점수입니다. 거리 150m 이내 만점·1.5km 20점·없으면 0점. 청주에는 지하철이 없어 교통(지하철) 항목은 제외했어요. 실거주 만족도와 다를 수 있어요. 출처: 카카오 장소."/>
    <span className="num" style={{marginLeft:"auto",fontWeight:800,fontSize:24,color:gc,lineHeight:1}}>{data.total}<span style={{fontSize:13,color:MUTED,fontWeight:700}}>/100</span></span>
    <span className="pill" style={{background:"rgba(15,118,110,.12)",color:gc,fontWeight:800,marginLeft:6}}>{data.grade}</span>
   </div>
@@ -4444,7 +4444,7 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
   {/* 입지(인근 인프라·직장 거점)를 '이 단지 한눈에' 바로 아래로 — 동네·입지를 한 흐름에 묶음 */}
   {d.poi&&<Collapsible icon="search" defaultOpen={true} title="인근 인프라">
    <div style={{padding:"4px 14px"}}>
-    {Object.entries(d.poi).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
+    {Object.entries(d.poi).filter(([label])=>!label.startsWith("_")).map(([label,items])=>(<div key={label} className="listrow" style={{alignItems:"flex-start"}}>
      <span style={{fontWeight:700,minWidth:48,flex:"none",display:"inline-flex",alignItems:"center",gap:5}}><PoiIcon label={label} size={14}/>{label}</span>
      <div style={{minWidth:0}}>
       {items.length?items.map((it,i)=>(<div key={i} style={{fontSize:13.5,marginBottom:1}}>{it.name} <span style={{color:MUTED,fontSize:12}}>{distM(it.distance)}</span></div>))

@@ -40,7 +40,9 @@ def nearby(lat: float, lng: float, radius: int = 1500, per: int = 4) -> dict | N
                                   "radius": radius, "sort": "distance", "size": per},
                           timeout=3)
             if r.status_code == 200:
-                docs = r.json().get("documents", [])
+                j = r.json()
+                docs = j.get("documents", [])
+                total = (j.get("meta") or {}).get("total_count")   # 반경 내 총 개수(밀도 신호, 같은 응답)
                 def _f(v):
                     try:
                         return float(v)
@@ -51,13 +53,15 @@ def nearby(lat: float, lng: float, radius: int = 1500, per: int = 4) -> dict | N
                     "distance": int(d.get("distance") or 0),
                     "category": d.get("category_name"),
                     "lat": _f(d.get("y")), "lng": _f(d.get("x")),   # 카카오 x=경도,y=위도 → 지도 마커용
-                } for d in docs[:per]], True
+                } for d in docs[:per]], total, True
         except (httpx.HTTPError, ValueError) as e:
             logger.debug("POI %s 실패: %s", label, e)
-        return label, [], False
+        return label, [], None, False
 
     with ThreadPoolExecutor(max_workers=len(CATEGORIES)) as ex:
         results = list(ex.map(_one, CATEGORIES))
-    out = {label: items for label, items, _ in results}
-    any_ok = any(ok for _, _, ok in results)
+    out = {label: items for label, items, _t, _ in results}
+    # 반경 내 총 개수(밀도) — 생활권 점수용. '_' 접두 키는 프런트 리스트 렌더에서 제외됨.
+    out["_counts"] = {label: t for label, _i, t, ok in results if ok and t is not None}
+    any_ok = any(ok for _, _, _t, ok in results)
     return out if any_ok else None

@@ -1866,8 +1866,8 @@ function App(){
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
- useEffect(()=>{ let seen; try{seen=safeStore.get("cj_onb_seen");}catch(e){} if(seen||onb)return;
-  const t=setTimeout(()=>setOnbOpen(true),1700); return ()=>clearTimeout(t); },[]);   // 첫 방문 1회 자동 안내(스플래시 후)
+ // 첫 방문 자동 온보딩 오버레이 제거(v1.225 — 사용자 결정: 처음 진입 안내 전부 제거).
+ // 온보딩은 홈 그리드 '처음이라면'·더보기에서 수동 진입만.
  const openHomePick=useCallback(()=>{setHomePick(true);setSearchOpen(true);},[]);
  const [notifOpen,setNotifOpen]=useState(false),[unread,setUnread]=useState(0),[openPostId,setOpenPostId]=useState(null);
  const [fresh,setFresh]=useState(null);
@@ -2049,7 +2049,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)} onTips={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onGuide={()=>setGuideOpen(true)} onJeonse={()=>setJeonseOpen(true)}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onJeonse={()=>setJeonseOpen(true)}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -3233,13 +3233,59 @@ function HomeGrid({items}){
   </button>))}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone,onTips,onGuide,onJeonse}){
+/* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
+   광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
+function HomeTicker({feed,go}){
+ const [subs,setSubs]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/subscription?limit=50`).then(r=>r.json()).then(j=>{if(on)setSubs(j.items||[]);}).catch(()=>{if(on)setSubs([]);});
+  return ()=>{on=false;};},[]);
+ const order={"접수중":0,"접수예정":1,"공고":2,"마감":3};
+ const pick=[...(subs||[])].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9)).find(s=>s.status==="접수중"||s.status==="접수예정")||null;
+ const news=((feed&&feed.news)||[]).slice(0,3);
+ const slides=[];
+ if(pick)slides.push({type:"sub",it:pick});
+ news.forEach(n=>slides.push({type:"news",it:n}));
+ const ref=useRef(null);
+ const [idx,setIdx]=useState(0);
+ useEffect(()=>{ if(slides.length<2)return;
+  const t=setInterval(()=>{const el=ref.current;if(!el)return;
+   const w=el.clientWidth||1, next=(Math.round(el.scrollLeft/w)+1)%slides.length;
+   try{el.scrollTo({left:next*w,behavior:"smooth"});}catch(e){}},4500);
+  return ()=>clearInterval(t); },[slides.length]);
+ if(!slides.length)return null;
+ const open=(s)=>{ if(s.type==="sub"){go&&go("subscription");}
+  else if(s.it.url&&s.it.url!=="#"){try{window.open(s.it.url,"_blank","noopener");}catch(e){}} };
+ return (<div style={{position:"relative",marginTop:8}}>
+  <div ref={ref} onScroll={e=>{const el=e.target;setIdx(Math.round(el.scrollLeft/(el.clientWidth||1)));}}
+    style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",borderRadius:16,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
+   {slides.map((s,i)=>{
+    const sub=s.type==="sub", it=s.it;
+    const grad=sub?(it.status==="접수중"?"linear-gradient(120deg,#1d6b3a,#2f9e5c)":"linear-gradient(120deg,#1E5FC4,#4f86e0)"):"linear-gradient(120deg,var(--teal),#14a08f)";
+    return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
+      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"13px 15px 15px",boxSizing:"border-box",minHeight:86,position:"relative",overflow:"hidden"}}>
+     <div style={{position:"absolute",right:-6,bottom:-16,fontSize:64,opacity:.15,lineHeight:1}}>{sub?"🏢":"📰"}</div>
+     <div style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
+      <span style={{fontSize:10.5,fontWeight:800,background:"rgba(255,255,255,.24)",borderRadius:6,padding:"2px 8px"}}>{sub?`청약 ${it.status}`:"부동산 뉴스"}</span>
+      {it.is_sample&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
+     </div>
+     <div style={{fontWeight:800,fontSize:14.5,marginTop:6,position:"relative",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sub?it.name:it.title}</div>
+     <div style={{fontSize:11.5,opacity:.92,marginTop:2,position:"relative",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+      {sub?[it.location,it.period].filter(Boolean).join(" · "):[it.source,it.date].filter(Boolean).join(" · ")}
+     </div>
+    </div>);})}
+  </div>
+  {slides.length>1&&<div style={{position:"absolute",right:10,bottom:7,display:"flex",gap:4}}>
+   {slides.map((_,i)=><span key={i} style={{width:5,height:5,borderRadius:3,background:i===idx?"#fff":"rgba(255,255,255,.45)"}}/>)}
+  </div>}
+ </div>);
+}
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
  const GU4=["상당구","서원구","흥덕구","청원구"];
- const [showIntro,setShowIntro]=useState(()=>!safeStore.get("cj_onboard_v1"));
- const dismissIntro=()=>{try{safeStore.set("cj_onboard_v1","1");}catch(e){} setShowIntro(false);};
+ // 첫 방문 환영 카드 제거(v1.225) — 홈은 히어로+그리드+배너로 한 화면 구성(사용자 결정).
  const regionFav=new Set((favs||[]).filter(f=>f.target_type==="region").map(f=>(f.meta&&f.meta.gu)||f.name));
  const favComplexGus=new Set((favs||[]).filter(f=>f.target_type!=="region").map(f=>f.meta&&f.meta.gu).filter(Boolean));
  const recs=[];
@@ -3253,22 +3299,6 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
  recs.sort((a,b)=>a.pri-b.pri);
  const recTop=recs.slice(0,4);
  return (<div style={{marginTop:6}}>
-  {showIntro&&<div className="card" style={{padding:"14px 15px",marginTop:4,marginBottom:8,position:"relative",background:"linear-gradient(120deg,rgba(15,118,110,.12),rgba(15,118,110,.03))"}}>
-   <span onClick={dismissIntro} aria-label="환영 안내 닫기" style={{position:"absolute",top:6,right:12,cursor:"pointer",color:MUTED,fontSize:20,lineHeight:1,fontWeight:600}}>×</span>
-   <div style={{fontWeight:800,fontSize:15}}>청집사에 오신 걸 환영해요 👋</div>
-   <div style={{fontSize:12.5,color:MUTED,margin:"3px 0 10px",lineHeight:1.5}}>집 찾기, 이렇게도 할 수 있어요 — 눌러서 바로 시작하세요.</div>
-   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-    <button onClick={()=>onCommute&&onCommute()} className="tog" style={{fontSize:12.5}}>🚆 통근시간으로</button>
-    <button onClick={()=>onBudget&&onBudget()} className="tog" style={{fontSize:12.5}}>💰 예산으로</button>
-    <button onClick={()=>onLoan&&onLoan()} className="tog" style={{fontSize:12.5}}>🏦 대출 한도</button>
-   </div>
-   {/* 처음 온 일반 사용자 유입 훅 — 거래 상식 콘텐츠(도감)로 연결 */}
-   {onTips&&<div onClick={onTips} role="button" tabIndex={0} onKeyDown={onEnter(()=>onTips())} style={{marginTop:10,display:"flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderRadius:10,padding:"9px 12px",cursor:"pointer"}}>
-    <span style={{fontSize:16,flex:"none"}}>📝</span>
-    <span style={{fontSize:12.5,fontWeight:700,minWidth:0,flex:1}}>부동산 거래가 처음이라면 — 계약 전 확인 10가지</span>
-    <span style={{color:TEAL,fontSize:15,flex:"none"}}>›</span>
-   </div>}
-  </div>}
   {/* 청주 시세 요약(히어로) — 숨김(홈에서 제외, 부활 시 false 제거) */}
   {false&&<div className="card" style={{padding:"14px 15px",marginBottom:8}}>
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
@@ -3292,20 +3322,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
   </div>}
 
-  {/* ── 홈 개편(v1.223, 쿠팡식 위계·롤백=backup-home-v1.222): 히어로 1장 → 아이콘 그리드 → 관심단지 → 급매 → 청주는지금 ── */}
-  {/* 히어로 1장 — 광고 아닌 '판단 재료': 우리집 시세(등록 시), 아니면 온보딩(창끝), 아니면 우리집 등록 유도 */}
-  {myHome
-   ? <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
-   : !onbDone
-   ? <button onClick={onOnboard} style={{width:"100%",textAlign:"left",border:"none",cursor:"pointer",borderRadius:16,padding:"17px 16px",marginTop:8,background:"linear-gradient(100deg, rgba(15,118,110,.14), rgba(15,118,110,.04))",display:"flex",alignItems:"center",gap:12}}>
-    <span style={{flex:"none",lineHeight:0}}><Icon name="compass" active color={TEAL} size={28}/></span>
-    <span style={{minWidth:0,flex:1}}>
-     <span style={{display:"block",fontWeight:800,fontSize:15,color:INK}}>청주가 처음이세요?</span>
-     <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>직장·예산만 알려주면 맞춤 단지를 찾아드려요 · 3분</span>
-    </span>
-    <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-   </button>
-   : <MyHomeCard home={null} onOpen={onOpen} onRegister={onRegisterHome}/>}
+  {/* ── 홈 한 화면 구성(v1.225, 사용자 결정·롤백=backup-home-v1.222): 우리집 → 그리드 → 뉴스·청약 배너 ── */}
+  <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
@@ -3317,6 +3335,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
    {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
   ]}/>
+
+  <HomeTicker feed={feed} go={go}/>
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
 

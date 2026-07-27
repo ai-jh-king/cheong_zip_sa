@@ -2050,7 +2050,8 @@ function App(){
     ...(tab==="home"
      ?{minHeight:"calc(100dvh - 68px)",paddingBottom:"calc(80px + env(safe-area-inset-bottom, 0px))"}   // border-box: 패딩 포함 높이 = 뷰포트-헤더 → 푸터가 네비 직전(12px 위)
      :{minHeight:"calc(100dvh - 152px)"})}}>
-   {tab!=="map"&&<Banner status={status} data={data}/>}
+   {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
+   {tab!=="map"&&!(tab==="home"&&status==="live")&&<Banner status={status} data={data}/>}
    {tab!=="map"&&!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
@@ -2064,12 +2065,13 @@ function App(){
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
     tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
-   {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
-    시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
-    <div style={{marginTop:8}}>
-     <button onClick={()=>setLegalDoc("privacy")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:11.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>개인정보처리방침</button>
+   {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
+   {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
+    시세 집계는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준, 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다 · 자료: 국토교통부 실거래가
+    <div style={{marginTop:5}}>
+     <button onClick={()=>setLegalDoc("privacy")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:10.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>개인정보처리방침</button>
      <span style={{margin:"0 7px",color:"#cbd5d8"}}>·</span>
-     <button onClick={()=>setLegalDoc("terms")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:11.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>이용약관</button>
+     <button onClick={()=>setLegalDoc("terms")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:10.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>이용약관</button>
     </div>
    </footer>}
   </div>
@@ -3247,10 +3249,10 @@ function CityIssues(){
 }
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
 function HomeGrid({items}){
- return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"14px 6px",margin:"14px 0 6px",padding:"0 2px"}}>
-  {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:0}}>
-   <span style={{width:54,height:54,borderRadius:18,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
-    <Icon name={it.icon} active color={it.color} size={26}/>
+ return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 6px",margin:"11px 0 4px",padding:"0 2px"}}>
+  {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
+   <span style={{width:50,height:50,borderRadius:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
+    <Icon name={it.icon} active color={it.color} size={24}/>
    </span>
    <span style={{fontSize:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
   </button>))}
@@ -3299,7 +3301,7 @@ function HomeTicker({feed,go,onOpen,board}){
      :"linear-gradient(125deg,#0B5F57,#17A292)";
     const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
-      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"15px 16px 22px",boxSizing:"border-box",minHeight:172,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"13px 16px 18px",boxSizing:"border-box",minHeight:150,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
      {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
      <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":isLm?"👑":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>

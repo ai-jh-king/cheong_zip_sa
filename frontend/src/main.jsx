@@ -3246,18 +3246,23 @@ function HomeGrid({items}){
 }
 /* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
    광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
-function HomeTicker({feed,go,onOpen}){
+function HomeTicker({feed,go,onOpen,board}){
  const [subs,setSubs]=useState(null);
- const [bg,setBg]=useState(null);   // 급매 신호(홈 별도 티커를 배너 슬라이드로 흡수 — v1.228)
+ const [bg,setBg]=useState(null);       // 급매(급락 거래) — 슬라이드+클릭 시 전체 리스트 시트
+ const [listSheet,setListSheet]=useState(null);   // {kind:'bg'|'lm'} — 이전 티커처럼 하단 팝업 리스트
  useEffect(()=>{let on=true;
   fetch(`${API}/subscription?limit=50`).then(r=>r.json()).then(j=>{if(on)setSubs(j.items||[]);}).catch(()=>{if(on)setSubs([]);});
-  fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{if(on)setBg(j&&j.items&&j.items.length?{top:j.items[0],n:j.items.length,months:j.months}:null);}).catch(()=>{if(on)setBg(null);});
+  fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{if(on)setBg(j&&j.items&&j.items.length?{items:j.items.map((x,i)=>({...x,rank:i+1,contains_sample_data:x.is_sample})),months:j.months,disclaimer:j.disclaimer}:null);}).catch(()=>{if(on)setBg(null);});
   return ()=>{on=false;};},[]);
  const order={"접수중":0,"접수예정":1,"공고":2,"마감":3};
  const pick=[...(subs||[])].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9)).find(s=>s.status==="접수중"||s.status==="접수예정")||null;
  const news=((feed&&feed.news)||[]).slice(0,3);
+ // 대장 아파트(단지 대표 매매가 중앙값 상위) — 이전 홈 티커 구성 재사용
+ const lm=useMemo(()=>{const src=(board&&board.landmark)||[];
+  return src.slice().sort((x,y)=>(y.price||0)-(x.price||0)).map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));},[board]);
  const slides=[];
- if(bg)slides.push({type:"bg",it:bg.top,meta:bg});
+ if(bg)slides.push({type:"bg",it:bg.items[0],meta:bg});
+ if(lm.length)slides.push({type:"lm",it:lm[0],meta:{n:lm.length}});
  if(pick)slides.push({type:"sub",it:pick});
  news.forEach(n=>slides.push({type:"news",it:n}));
  const ref=useRef(null);
@@ -3269,33 +3274,41 @@ function HomeTicker({feed,go,onOpen}){
   return ()=>clearInterval(t); },[slides.length]);
  if(!slides.length)return null;
  const open=(s)=>{ if(s.type==="sub"){go&&go("subscription");}
-  else if(s.type==="bg"){onOpen&&onOpen({complex_name:s.it.name,lawd_cd:s.it.lawd_cd,property_type:"apartment",gu:s.it.gu});}
+  else if(s.type==="bg"||s.type==="lm"){setListSheet({kind:s.type});}   // 이전 티커처럼 하단 리스트 팝업
   else if(s.it.url&&s.it.url!=="#"){try{window.open(s.it.url,"_blank","noopener");}catch(e){}} };
  return (<div style={{position:"relative",marginTop:8}}>
   <div ref={ref} onScroll={e=>{const el=e.target;setIdx(Math.round(el.scrollLeft/(el.clientWidth||1)));}}
     style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",borderRadius:16,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
    {slides.map((s,i)=>{
-    const sub=s.type==="sub", isBg=s.type==="bg", it=s.it;
+    const sub=s.type==="sub", isBg=s.type==="bg", isLm=s.type==="lm", it=s.it;
     const grad=isBg?"linear-gradient(125deg,#123C7A,#2563D8)"
+     :isLm?"linear-gradient(125deg,#7A5200,#B8860B)"
      :sub?(it.status==="접수중"?"linear-gradient(125deg,#175A31,#2f9e5c)":"linear-gradient(125deg,#17448F,#4f86e0)")
      :"linear-gradient(125deg,#0B5F57,#17A292)";
     const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
       style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"15px 16px 22px",boxSizing:"border-box",minHeight:172,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
      {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
-     <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":sub?"🏗":"📰"}</div>
+     <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":isLm?"👑":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
      <div style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
-      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{isBg?"📉 급매 포착":sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
-      {it.is_sample&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
+      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{isBg?"📉 급매 포착":isLm?"👑 대장 아파트":sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
+      {(it.is_sample||it.contains_sample_data)&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
      </div>
      <div style={{fontWeight:800,fontSize:17.5,lineHeight:1.32,marginTop:9,position:"relative",letterSpacing:"-0.01em",...clamp2}}>
-      {isBg?<React.Fragment>{it.name} <span className="num" style={{fontSize:16}}>{it.diff_pct}%</span></React.Fragment>:sub?it.name:it.title}</div>
-     {/* 뉴스=본문 요약 일부 / 청약=공급·기간 / 급매=근거·면책 */}
+      {isBg?<React.Fragment>{it.name} <span className="num" style={{fontSize:16}}>{it.diff_pct}%</span></React.Fragment>
+       :isLm?<React.Fragment>{it.name} <span className="num" style={{fontSize:16}}>{eok(it.price)}</span></React.Fragment>
+       :sub?it.name:it.title}</div>
+     {/* 뉴스=본문 요약 일부 / 청약=공급·기간 / 급매·대장=근거·면책 */}
      {isBg
       ?<div style={{position:"relative",marginTop:7}}>
-        <div style={{fontSize:12.5,opacity:.94}}>{[it.gu,it.pyeong?`${it.pyeong}평`:null].filter(Boolean).join(" · ")} · 같은 평형 최근 {s.meta.months||12}개월 중앙값 대비{s.meta.n>1?` · 외 ${s.meta.n-1}건`:""}</div>
+        <div style={{fontSize:12.5,opacity:.94}}>{[it.gu,it.pyeong?`${it.pyeong}평`:null].filter(Boolean).join(" · ")} · 같은 평형 최근 {s.meta.months||12}개월 중앙값 대비{s.meta.items.length>1?` · 외 ${s.meta.items.length-1}건`:""}</div>
         <div style={{fontSize:11,opacity:.78,marginTop:6,lineHeight:1.45}}>특수거래(직거래·가족 간)일 수 있어요 · 판정이 아닌 신고가 기반 참고 신호</div>
+       </div>
+      :isLm
+      ?<div style={{position:"relative",marginTop:7}}>
+        <div style={{fontSize:12.5,opacity:.94}}>단지 대표 매매가(중앙값) 1위{s.meta.n>1?` · 상위 ${s.meta.n}곳`:""}</div>
+        <div style={{fontSize:11,opacity:.78,marginTop:6,lineHeight:1.45}}>최고가 1건이 아닌 거래 중앙값 기준 · 최근 집계 기간</div>
        </div>
       :sub
       ?<div style={{position:"relative",marginTop:7}}>
@@ -3307,13 +3320,24 @@ function HomeTicker({feed,go,onOpen}){
        </div>
       :<div style={{fontSize:13,lineHeight:1.5,opacity:.92,marginTop:7,position:"relative",...clamp2}}>{it.summary||""}</div>}
      <div style={{fontSize:11,opacity:.8,marginTop:"auto",paddingTop:8,position:"relative"}}>
-      {isBg?"단지 시세 보기 ›":sub?"청약홈 공고 · 자세히 보기 ›":[it.source,it.date].filter(Boolean).join(" · ")+" · 원문 보기 ›"}
+      {isBg||isLm?"전체 목록 보기 ›":sub?"청약홈 공고 · 자세히 보기 ›":[it.source,it.date].filter(Boolean).join(" · ")+" · 원문 보기 ›"}
      </div>
     </div>);})}
   </div>
   {slides.length>1&&<div style={{position:"absolute",right:10,bottom:7,display:"flex",gap:4}}>
    {slides.map((_,i)=><span key={i} style={{width:5,height:5,borderRadius:3,background:i===idx?"#fff":"rgba(255,255,255,.45)"}}/>)}
   </div>}
+  {/* 슬라이드 클릭 → 이전 티커와 같은 하단 팝업 리스트(RankSheet) */}
+  {listSheet&&listSheet.kind==="bg"&&bg&&<RankSheet title="급매 포착" items={bg.items}
+    info={bg.disclaimer||`같은 평형 중앙값보다 크게 낮게 신고된 실거래예요(최근 ${bg.months||12}개월). 특수거래(직거래·가족 등)·사유가 있을 수 있어 실제 급매가 아닐 수 있어요.`}
+    metric={it=><span className="num" style={{color:DOWN,fontWeight:800,fontSize:12.5}}>{it.diff_pct}% <span style={{color:MUTED,fontWeight:600,fontSize:11}}>{it.pyeong}평</span></span>}
+    onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:"apartment",gu:it.gu})}
+    onClose={()=>setListSheet(null)}/>}
+  {listSheet&&listSheet.kind==="lm"&&lm.length>0&&<RankSheet title="대장 아파트" items={lm}
+    info="단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요. 최근 집계 기간 거래 기준."
+    metric={it=><span className="num" style={{fontWeight:800,fontSize:13}}>{eok(it.price)}</span>}
+    onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:(board&&board.property_type)||"apartment"})}
+    onClose={()=>setListSheet(null)}/>}
  </div>);
 }
 function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse}){
@@ -3361,7 +3385,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   {/* ── 홈 한 화면 구성(v1.228, 사용자 결정·롤백=backup-home-v1.222): 배너 → 그리드. 우리집은 '등록된 경우만'(유도 카드 제거, 등록 경로=더보기). 급매는 배너 슬라이드로 흡수. ── */}
   {myHome&&<MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <HomeTicker feed={feed} go={go} onOpen={onOpen}/>
+  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b}/>
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},

@@ -1478,8 +1478,10 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
    {renderSub("board","게시판","board")}
    {renderSub("listing","매물","listing")}
   </div>
-  {section==="guide"?<GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
-    onGoBoard={()=>{setGuideGid(null);setSection&&setSection("board");}}/>
+  {section==="guide"?<React.Fragment>
+   <CityIssues/>{/* '청주는 지금'(개발 이슈) — 홈 무스크롤 개편(v1.232)으로 소식 탭 이동 */}
+   <GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
+    onGoBoard={()=>{setGuideGid(null);setSection&&setSection("board");}}/></React.Fragment>
   :section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   {latestGuide&&<div onClick={()=>{setGuideGid(latestGuide.id);setSection&&setSection("guide");}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{setGuideGid(latestGuide.id);setSection&&setSection("guide");})}
     className="card" style={{padding:"11px 14px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
@@ -1864,6 +1866,7 @@ function App(){
  const [onbOpen,setOnbOpen]=useState(false);
  const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
+ const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
  // 첫 방문 자동 온보딩 오버레이 제거(v1.225 — 사용자 결정: 처음 진입 안내 전부 제거).
@@ -2041,8 +2044,12 @@ function App(){
     </div>
    </div>
   </div>
-  {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231) */}
-  <div className="wrap" style={{display:"flex",flexDirection:"column",minHeight:"calc(100dvh - 152px)"}}>
+  {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231).
+      홈 탭(v1.232)은 무스크롤 한 화면: 패딩까지 정밀 조정(헤더 68+네비 68+여유 12 → 푸터가 메뉴바 직전). */}
+  <div className="wrap" style={{display:"flex",flexDirection:"column",
+    ...(tab==="home"
+     ?{minHeight:"calc(100dvh - 68px)",paddingBottom:"calc(80px + env(safe-area-inset-bottom, 0px))"}   // border-box: 패딩 포함 높이 = 뷰포트-헤더 → 푸터가 네비 직전(12px 위)
+     :{minHeight:"calc(100dvh - 152px)"})}}>
    {tab!=="map"&&<Banner status={status} data={data}/>}
    {tab!=="map"&&!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
@@ -2055,7 +2062,7 @@ function App(){
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onOnboard={()=>setOnbOpen(true)}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
@@ -2072,6 +2079,10 @@ function App(){
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
+  {favOpen&&<Sheet title="⭐ 관심 단지" onClose={()=>setFavOpen(false)}>
+   <FavList favs={favs} onOpen={(m)=>{setFavOpen(false);openComplex(m);}} onToggleFav={toggleFav} onGu={(g)=>{setFavOpen(false);goGu(g);}} onToggleRegion={toggleRegion}/>
+   {!(favs&&favs.length)&&<div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>아직 관심 단지가 없어요. 단지 상세에서 ⭐를 누르면 여기에 모여요.</div>}
+  </Sheet>}
   {onbOpen&&<OnboardingWizard
     onClose={()=>{setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}}}
     onDone={(o)=>{saveOnb(o);setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}setTab("home");window.scrollTo(0,0);}}
@@ -2847,7 +2858,7 @@ function OfficialLinks(){
   <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread}){
+function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread,onFavs}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -2890,7 +2901,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
    <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
   </div>
   <div style={{display:"flex",gap:8,marginTop:10}}>
-   <Quick icon="star" label="관심 단지" onClick={()=>go&&go("home")}/>
+   <Quick icon="star" label="관심 단지" onClick={()=>{onFavs&&onFavs();}}/>
    <Quick icon="subscription" label="청약" onClick={()=>go&&go("subscription")}/>
    <Quick icon="board" label="게시판" onClick={()=>{onBoard?onBoard():(go&&go("board"));}}/>
    {account&&<Quick icon="bell" label={unread>0?`알림 ${unread>99?"99+":unread}`:"알림"} onClick={()=>onNotif&&onNotif()}/>}
@@ -3428,9 +3439,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    </div>
   </div>}
 
-  <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
-
-  <CityIssues/>
+  {/* 무스크롤 한 화면(v1.232): 관심단지 → 더보기 '관심 단지' 시트, 청주는 지금 → 소식 탭 도감 상단으로 이동 */}
  </div>);
 }
 

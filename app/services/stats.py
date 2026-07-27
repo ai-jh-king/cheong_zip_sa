@@ -777,20 +777,34 @@ def map_markers(db: Session, deal_type: str = "trade", property_type: str = "apa
     dt = deal_type if deal_type in ("trade", "jeonse", "wolse") else "trade"
     rows = [r for r in _load(db, property_type)
             if r.deal_type == dt and r.complex_name and not r.is_canceled]
+    # (이름, 구, 동) 단위 그룹 — 같은 구 동명(同名) 단지(예: 흥덕구 '대원' 가경동/복대동)가
+    # 1개 마커로 합쳐지면 좌표·동 표기가 임의로 섞이고 중앙값도 두 단지 혼합(v1.224 교정).
     groups: dict[tuple, list] = {}
     for r in rows:
-        groups.setdefault((r.complex_name, r.lawd_cd), []).append(r)
-    cmap = {(c.name, c.lawd_cd): (c.lat, c.lng)
-            for c in db.scalars(select(Complex).where(Complex.lat.isnot(None)))}
+        groups.setdefault((r.complex_name, r.lawd_cd, r.dong_name), []).append(r)
+    dong_n: dict[tuple, int] = {}   # (이름, 구) → 동 개수(모호성 판별)
+    for (name, lawd, _d) in groups:
+        dong_n[(name, lawd)] = dong_n.get((name, lawd), 0) + 1
+    cmap_dong: dict[tuple, tuple] = {}
+    cmap_legacy: dict[tuple, tuple] = {}
+    for c in db.scalars(select(Complex).where(Complex.lat.isnot(None))):
+        if c.dong is not None:
+            cmap_dong[(c.name, c.lawd_cd, c.dong)] = (c.lat, c.lng)
+        else:
+            cmap_legacy[(c.name, c.lawd_cd)] = (c.lat, c.lng)
     markers = []
-    for (name, lawd), rs in groups.items():
-        c = cmap.get((name, lawd))
+    for (name, lawd, dong), rs in groups.items():
+        # 좌표: 동 일치 행 우선. 없으면 레거시(dong=None) 좌표는 '동이 유일'할 때만 —
+        # 복수 동이면 어느 단지 좌표인지 알 수 없어 제외(disclaimer 의 '좌표 미확인 제외').
+        c = cmap_dong.get((name, lawd, dong))
+        if not c and dong_n.get((name, lawd), 0) <= 1:
+            c = cmap_legacy.get((name, lawd))
         if not c:
             continue
         # 지도 필터용 부가 속성(왜곡 없음 — 실거래 행에서 도출, 없으면 None/빈 목록)
         bys = [x.build_year for x in rs if x.build_year]
         m = {"complex_name": name, "lawd_cd": lawd, "gu": _gu_name(lawd),
-             "dong": rs[0].dong_name, "property_type": property_type,
+             "dong": dong, "property_type": property_type,
              "deal_type": dt, "lat": c[0], "lng": c[1], "count": len(rs),
              "build_year": max(set(bys), key=bys.count) if bys else None,   # 최빈 건축년도
              "area_bands": sorted({b for b in (_bucket(x.exclusive_area) for x in rs) if b}),

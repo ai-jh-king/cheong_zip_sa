@@ -3591,9 +3591,10 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
   const guGroups={};
   if(guView)vis.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
-  // 동(洞) 그룹 — dong 없는 단지는 구 이름으로 묶음(제외하지 않음·왜곡 방지)
+  // 동(洞) 그룹 — dong 없는 단지는 구 이름으로 묶음(제외하지 않음·왜곡 방지).
+  // 전체 마커 기준으로 묶어 버블 위치·갯수를 고정(뷰포트 멤버만 쓰면 팬할 때마다 위치가 널뜀).
   const dongGroups={};
-  if(dongView)vis.forEach(m=>{const k=m.lawd_cd+"|"+(m.dong||m.gu||"");
+  if(dongView)markers.forEach(m=>{const k=m.lawd_cd+"|"+(m.dong||m.gu||"");
    (dongGroups[k]||(dongGroups[k]={name:m.dong||m.gu||"기타",arr:[]})).arr.push(m);});
   // 지도 인증 실패(키 미등록 도메인) 상태면 Marker.setMap 이 내부 null 참조로 throw →
   // 앱 전체 크래시(ErrorBoundary). try 로 감싸 마커만 건너뛰고 앱은 유지.
@@ -3634,9 +3635,12 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    }
    if(dongView){
     // 동 레벨: 영역(폴리곤) 없이 '동명+중앙값+단지수' 요약 버블만 — 클릭 시 그 동으로 확대.
+    const medOf=(xs)=>{const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)];};
     Object.values(dongGroups).forEach(g=>{
      const arr=g.arr;
-     const la=arr.reduce((s,m)=>s+m.lat,0)/arr.length, ln=arr.reduce((s,m)=>s+m.lng,0)/arr.length;
+     // 중앙값 좌표 — 평균은 좌표 이상치(잘못된 지오코딩 1건)에 끌려가 버블이 동 밖에 찍힘
+     const la=medOf(arr.map(m=>m.lat)), ln=medOf(arr.map(m=>m.lng));
+     if(bounds&&!inB({lat:la,lng:ln}))return;   // 화면 밖 버블은 생략(위치·갯수는 전체 기준 고정)
      const amts=arr.map(m=>deal==="trade"?m.median_amount:m.value).filter(v=>v!=null).sort((a,b)=>a-b);
      const med=amts.length?amts[Math.floor(amts.length/2)]:null;   // 소속 단지 대표가의 중앙값(참고용)
      const html=`<div style="transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;background:#fff;border:1.5px solid rgba(16,24,32,.14);border-radius:14px;padding:6px 12px;box-shadow:0 3px 10px rgba(0,0,0,.22);white-space:nowrap;text-align:center;line-height:1.15"><div style="font-weight:800;font-size:12px;color:#1A2430">${g.name}</div><div style="font-weight:800;font-size:11.5px;color:#0E7C71;margin-top:1px">${med!=null?money(med):"—"}<span style="font-weight:600;color:#8A94A0;margin-left:4px">${arr.length}곳</span></div></div>`;

@@ -36,6 +36,10 @@ class Complex(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120))
     lawd_cd: Mapped[str] = mapped_column(String(5), ForeignKey("regions.lawd_cd"))
+    # 법정동 — 같은 구(區)에 동명(同名) 단지가 여러 동에 존재(예: 흥덕구 '대원' 가경동/복대동).
+    # (name, lawd_cd)만으로는 서로 다른 단지가 1행으로 합쳐져 좌표·시세가 섞임(v1.224 교정).
+    # 신규 행은 동 단위로 생성·지오코딩. 레거시 행(dong=None)은 동이 유일할 때만 좌표 사용.
+    dong: Mapped[str | None] = mapped_column(String(40), nullable=True)
     property_type: Mapped[str] = mapped_column(String(20))  # apartment/officetel/rowhouse/detached
     build_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     households: Mapped[int | None] = mapped_column(Integer, nullable=True)

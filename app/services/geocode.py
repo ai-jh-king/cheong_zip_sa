@@ -75,25 +75,34 @@ def _kakao_query(key: str, url: str, query: str) -> tuple | None:
     return None
 
 
-def geocode_one(s, name: str | None, lawd_cd: str, dong: str | None) -> tuple | None:
-    """(lat, lng, precision) 또는 None. precision: complex | dong."""
+def geocode_one(s, name: str | None, lawd_cd: str, dong: str | None,
+                strict_dong: bool = False) -> tuple | None:
+    """(lat, lng, precision) 또는 None. precision: complex | dong.
+
+    strict_dong: 같은 구에 동명(同名) 단지가 여러 동에 있을 때 True — 동 없는 폴백 질의가
+    다른 동의 단지를 잡아 좌표가 섞이는 것을 금지(왜곡 없음). 법정동 폴백(2)은 동이
+    맞는 대략 좌표라 허용."""
     sigungu = _sigungu(lawd_cd)
     # 지오코딩 제공자: 기본은 카카오 단독. 네이버는 GEOCODE_USE_NAVER=true 일 때만(키도 있어야).
     # (네이버 Maps 가 신 게이트웨이 maps.apigw.ntruss.com 로 이전되어 구 호스트는 401 → 기본 비활성)
     use_naver = bool(s.geocode_use_naver and s.naver_map_client_id and s.naver_map_client_secret)
     use_kakao = bool(s.kakao_rest_api_key)
 
-    # 1) 단지명(정확)
+    # 1) 단지명(정확) — 동(dong)을 질의에 포함해 같은 구 동명(同名) 단지를 구분(v1.224).
+    #    동 포함 질의 실패 시 동 없이 재시도(신도시 명칭 개편 등으로 동+이름 검색이 안 잡히는 경우).
     if name:
-        if use_naver:
-            hit = _naver_query(s.naver_map_client_id, s.naver_map_client_secret,
-                               f"충청북도 {sigungu} {name}")
-            if hit:
-                return hit[0], hit[1], "complex"
-        if use_kakao:
-            hit = _kakao_query(s.kakao_rest_api_key, s.kakao_keyword_url or KAKAO_KEYWORD, f"충북 {sigungu} {name}")
-            if hit:
-                return hit[0], hit[1], "complex"
+        queries = ([f"{sigungu} {dong} {name}"] if dong else [])
+        if not (strict_dong and dong):
+            queries.append(f"{sigungu} {name}")
+        for q in queries:
+            if use_naver:
+                hit = _naver_query(s.naver_map_client_id, s.naver_map_client_secret, f"충청북도 {q}")
+                if hit:
+                    return hit[0], hit[1], "complex"
+            if use_kakao:
+                hit = _kakao_query(s.kakao_rest_api_key, s.kakao_keyword_url or KAKAO_KEYWORD, f"충북 {q}")
+                if hit:
+                    return hit[0], hit[1], "complex"
 
     # 2) 법정동(대략)
     if dong:
@@ -109,18 +118,67 @@ def geocode_one(s, name: str | None, lawd_cd: str, dong: str | None) -> tuple | 
     return None
 
 
-def _get_or_create_complex(db: Session, name: str, lawd_cd: str, ptype: str) -> Complex:
+def _km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    from math import radians, cos, sqrt
+    x = radians(lng2 - lng1) * 6371 * cos(radians(lat1))
+    y = radians(lat2 - lat1) * 6371
+    return sqrt(x * x + y * y)
+
+
+def _dong_ref(s, lawd_cd: str, dong: str, cache_d: dict) -> tuple | None:
+    """법정동 기준 좌표(주소 지오코딩, 런 중 캐시). 못 찾으면 None → 검증 생략(왜곡 없음)."""
+    key = (lawd_cd, dong)
+    if key not in cache_d:
+        sigungu = _sigungu(lawd_cd)
+        hit = None
+        if s.geocode_use_naver and s.naver_map_client_id and s.naver_map_client_secret:
+            hit = _naver_query(s.naver_map_client_id, s.naver_map_client_secret,
+                               f"충청북도 {sigungu} {dong}")
+        if not hit and s.kakao_rest_api_key:
+            hit = _kakao_query(s.kakao_rest_api_key, s.kakao_address_url or KAKAO_ADDRESS,
+                               f"충청북도 {sigungu} {dong}")
+        cache_d[key] = hit
+    return cache_d[key]
+
+
+def _dong_threshold_km(s, dong: str) -> float:
+    """단지 좌표가 소속 동 기준점에서 이보다 멀면 오탐(다른 지역 동명 시설을 잡은 것)으로 본다.
+    읍·면(…리)은 행정구역이 넓어 완화. 값은 설정으로 조정(하드코딩 금지 원칙)."""
+    rural = ("읍" in dong) or ("면" in dong) or dong.endswith("리")
+    return s.geocode_validate_km_rural if rural else s.geocode_validate_km
+
+
+def _get_or_create_complex(db: Session, name: str, lawd_cd: str, ptype: str,
+                           dong: str | None = None, claim_legacy: bool = False) -> Complex:
+    """동(dong) 단위 단지 행(동명 단지 분리 — v1.224).
+
+    claim_legacy: 이 (name, lawd)의 동이 거래상 유일할 때만 True — 레거시 행(dong=None)을
+    그 동으로 확정(0024 백필 누락분 안전망). 복수 동(모호)이면 레거시 좌표가 어느 동
+    것인지 알 수 없으므로 절대 재사용하지 않고 새 행을 만든다(좌표 오배정=왜곡 방지)."""
     cx = db.scalar(select(Complex).where(
-        Complex.name == name, Complex.lawd_cd == lawd_cd))
-    if not cx:
-        cx = Complex(name=name, lawd_cd=lawd_cd, property_type=ptype)
-        db.add(cx)
-        db.flush()
+        Complex.name == name, Complex.lawd_cd == lawd_cd, Complex.dong == dong))
+    if cx:
+        return cx
+    if dong is not None and claim_legacy:
+        legacy = db.scalars(select(Complex).where(
+            Complex.name == name, Complex.lawd_cd == lawd_cd)).all()
+        if len(legacy) == 1 and legacy[0].dong is None:
+            legacy[0].dong = dong
+            return legacy[0]
+    cx = Complex(name=name, lawd_cd=lawd_cd, property_type=ptype, dong=dong)
+    db.add(cx)
+    db.flush()
     return cx
 
 
-def run_geocode(db: Session, limit: int | None = None) -> dict:
-    """거래에 등장한 단지들을 지오코딩해 Complex.lat/lng 에 캐싱."""
+def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False) -> dict:
+    """거래에 등장한 단지들을 (이름·구·동) 단위로 지오코딩해 Complex.lat/lng 에 캐싱.
+
+    검증(v1.224): 단지명 검색 결과가 소속 법정동 기준점에서 임계거리보다 멀면
+    동명(同名) 시설을 잘못 잡은 것으로 보고 폐기 → 동 기준점 좌표로 폴백(동은 맞고
+    정확도만 낮음 — 기존 precision='dong' 폴백과 동일한 정직한 근사).
+    revalidate=True: 이미 저장된 좌표도 같은 기준으로 재검사해 오탐이면 지우고 다시 지오코딩.
+    """
     s = get_settings()
     naver_on = bool(s.geocode_use_naver and s.naver_map_client_id and s.naver_map_client_secret)
     if not naver_on and not s.kakao_rest_api_key:
@@ -133,26 +191,50 @@ def run_geocode(db: Session, limit: int | None = None) -> dict:
                Transaction.dong_name, Transaction.property_type)
         .where(Transaction.complex_name.isnot(None)).distinct()
     ).all()
+    # 같은 (이름, 구)가 몇 개 동에 걸치나 — 복수 동이면 strict(동 없는 폴백 질의 금지)
+    dong_counts: dict[tuple, set] = {}
+    for name, lawd, dong, _pt in pairs:
+        dong_counts.setdefault((name, lawd), set()).add(dong)
 
-    done, skipped, failed = 0, 0, 0
+    dong_refs: dict[tuple, tuple | None] = {}   # (lawd, dong) → 기준좌표(런 중 캐시)
+    cleared = 0
+    if revalidate:
+        for cx in db.scalars(select(Complex).where(
+                Complex.lat.isnot(None), Complex.dong.isnot(None))):
+            ref = _dong_ref(s, cx.lawd_cd, cx.dong, dong_refs)
+            if ref and _km(cx.lat, cx.lng, ref[0], ref[1]) > _dong_threshold_km(s, cx.dong):
+                cx.lat = cx.lng = None   # 오탐 → 아래 루프에서 재지오코딩
+                cleared += 1
+
+    done, skipped, failed, demoted = 0, 0, 0, 0
     for i, (name, lawd, dong, ptype) in enumerate(pairs):
         if limit and i >= limit:
             break
-        cx = _get_or_create_complex(db, name, lawd, ptype or "apartment")
+        strict = len(dong_counts.get((name, lawd), set())) > 1
+        cx = _get_or_create_complex(db, name, lawd, ptype or "apartment", dong,
+                                    claim_legacy=not strict)
         if cx.lat is not None and cx.lng is not None:
             skipped += 1
             continue
-        res = geocode_one(s, name, lawd, dong)
+        res = geocode_one(s, name, lawd, dong, strict_dong=strict)
+        # 검증: 단지 정밀 좌표가 소속 동 기준점에서 임계 초과 → 동 기준점으로 강등(왜곡 방지)
+        if res and res[2] == "complex" and dong:
+            ref = _dong_ref(s, lawd, dong, dong_refs)
+            if ref and _km(res[0], res[1], ref[0], ref[1]) > _dong_threshold_km(s, dong):
+                res = (ref[0], ref[1], "dong")
+                demoted += 1
         if res:
             cx.lat, cx.lng = res[0], res[1]
             done += 1
         else:
             failed += 1
     db.commit()
-    if done:
+    if done or cleared:
         bump_data_version()  # 좌표 변경 → 지도(heatmap) 캐시 무효화
-    logger.info("지오코딩: 신규 %s · 기존 %s · 실패 %s", done, skipped, failed)
-    return {"geocoded": done, "cached": skipped, "failed": failed}
+    logger.info("지오코딩: 신규 %s · 기존 %s · 실패 %s · 동폴백 %s · 재검증초기화 %s",
+                done, skipped, failed, demoted, cleared)
+    return {"geocoded": done, "cached": skipped, "failed": failed,
+            "demoted_to_dong": demoted, "revalidate_cleared": cleared}
 
 
 def run_geocode_places(db: Session, limit: int | None = None) -> dict:

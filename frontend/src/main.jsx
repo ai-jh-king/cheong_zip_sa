@@ -2380,18 +2380,25 @@ function useSheetDismiss(onClose,enabled=true){
   };
  },[]);
 }
+/* 바텀시트 공통 제스처(v1.229): 아래 스와이프=닫기(확장 상태면 70%로 축소), 위로 스와이프=90vh 확장. */
 function Sheet({title,info,onClose,children,fill}){
  useSheetDismiss(onClose);
  useEffect(()=>{const o=document.body.style.overflow;document.body.style.overflow="hidden";return ()=>{document.body.style.overflow=o;};},[]);
  const scRef=React.useRef(null);
  const start=React.useRef(null);
  const [dragY,setDragY]=useState(0);
+ const [tall,setTall]=useState(false);
  const onTouchStart=e=>{const t=e.touches[0];start.current={y:t.clientY,atTop:(scRef.current?scRef.current.scrollTop:0)<=0};};
- const onTouchMove=e=>{if(!start.current)return;const dy=e.touches[0].clientY-start.current.y;if(dy>0&&start.current.atTop)setDragY(dy);};
- const onTouchEnd=()=>{if(dragY>110)onClose();setDragY(0);start.current=null;};
+ const onTouchMove=e=>{if(!start.current)return;const dy=e.touches[0].clientY-start.current.y;
+  if(dy>0&&start.current.atTop)setDragY(dy);
+  else if(dy<0&&!tall)setDragY(Math.max(dy,-Math.round((window.innerHeight||800)*0.22)));};
+ const onTouchEnd=()=>{ if(dragY>110){ if(tall)setTall(false); else onClose(); }
+  else if(dragY<-60&&!tall)setTall(true);
+  setDragY(0);start.current=null;};
+ const hv=tall?"90vh":(dragY<0?`calc(70vh + ${-dragY}px)`:"70vh");
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:120,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
-   <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:"70vh"}:{maxHeight:"70vh"}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
+   <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:hv}:{maxHeight:hv}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY>0?`translateY(${dragY}px)`:"none",transition:dragY?"none":"max-height .25s ease, height .25s ease, transform .22s ease"}}>
     <div style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
     <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px 12px",flex:"none"}}>
      <span style={{fontWeight:800,fontSize:16,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span>
@@ -2408,15 +2415,20 @@ function SheetShell({onClose,zIndex=120,header,scrollKey,children}){
  const scRef=React.useRef(null);
  const start=React.useRef(null);
  const [dragY,setDragY]=useState(0);
+ const [tall,setTall]=useState(false);
  useEffect(()=>{if(scRef.current)scRef.current.scrollTop=0;},[scrollKey]);
  const onTouchStart=e=>{const t=e.touches[0];start.current={y:t.clientY,atTop:(scRef.current?scRef.current.scrollTop:0)<=0};};
- const onTouchMove=e=>{if(!start.current)return;const dy=e.touches[0].clientY-start.current.y;if(dy>0&&start.current.atTop)setDragY(dy);};
- const onTouchEnd=()=>{if(dragY>110)onClose();setDragY(0);start.current=null;};
+ const onTouchMove=e=>{if(!start.current)return;const dy=e.touches[0].clientY-start.current.y;
+  if(dy>0&&start.current.atTop)setDragY(dy);
+  else if(dy<0&&!tall)setDragY(Math.max(dy,-Math.round((window.innerHeight||800)*0.22)));};
+ const onTouchEnd=()=>{ if(dragY>110){ if(tall)setTall(false); else onClose(); }
+  else if(dragY<-60&&!tall)setTall(true);
+  setDragY(0);start.current=null;};
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
    <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-     style={{width:"100%",maxWidth:480,background:"var(--bg2)",borderRadius:"20px 20px 0 0",height:"70vh",display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",
-       transform:dragY?`translateY(${dragY}px)`:"none",transition:dragY?"none":"transform .22s ease"}}>
+     style={{width:"100%",maxWidth:480,background:"var(--bg2)",borderRadius:"20px 20px 0 0",height:tall?"90vh":(dragY<0?`calc(70vh + ${-dragY}px)`:"70vh"),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",
+       transform:dragY>0?`translateY(${dragY}px)`:"none",transition:dragY?"none":"height .25s ease, transform .22s ease"}}>
     <div style={{padding:"8px 0 4px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
     {header}
     <div ref={scRef} style={{overflowX:"hidden",overflowY:"auto",flex:1,padding:"0 14px 26px"}}>{children}</div>
@@ -4433,10 +4445,8 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
  const dest=(dests||[]).find(d=>d.id===destId);
  const rows=res&&res.results||[];
  return (<div style={{marginTop:6}}>
-  <div style={{display:"flex",alignItems:"center",gap:10,margin:"2px 0 10px"}}>
-   <button onClick={onClose} style={{border:"none",background:"var(--chip)",borderRadius:9,width:34,height:34,cursor:"pointer",fontSize:17,fontWeight:800,color:"var(--ink)",flex:"none"}}>‹</button>
-   <div style={{fontWeight:800,fontSize:17}}>🧭 통근권으로 찾기</div>
-  </div>
+  {/* 뒤로가기 버튼 제거(v1.229 사용자 요청) — 시트 자체의 아래 스와이프/백드롭/뒤로가기로 닫음 */}
+  <div style={{fontWeight:800,fontSize:17,margin:"2px 2px 10px"}}>🧭 통근권으로 찾기</div>
   <div className="card" style={{padding:13}}>
    <div style={{fontSize:12,color:MUTED,fontWeight:700,marginBottom:6}}>어디로 출근하세요?</div>
    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>

@@ -33,3 +33,11 @@ def test_compute_one_fallback_method():
     r = compute_one(36.6424, 127.4890, 36.6296, 127.4565, "car")
     assert r["method"] == "haversine"
     assert r["minutes"] >= 1 and r["distance_m"] > 0
+
+
+def test_gu_label_is_string():
+    """_gu 는 District 객체가 아니라 이름 문자열 — 객체 반환 시 프런트에 '[object Object]' 표출(실사고)."""
+    from app.services.commute import _gu
+    assert _gu("43113") == "흥덕구"
+    assert isinstance(_gu("43113"), str)
+    assert _gu("99999") == ""

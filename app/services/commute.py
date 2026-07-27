@@ -170,7 +170,9 @@ def search_by_commute(db: Session, dest_id: int, mode: str, max_minutes: int,
 
 def _gu(lawd_cd: str) -> str:
     from app.data.region_codes import DISTRICT_BY_CODE
-    return DISTRICT_BY_CODE.get(str(lawd_cd), "")
+    d = DISTRICT_BY_CODE.get(str(lawd_cd))
+    # District 객체 자체를 반환하면 dict 로 직렬화돼 프런트에 "[object Object]" 표출(실사고 v1.229)
+    return d.name if d else ""
 
 
 def hub_access(db: Session, lat: float, lng: float, limit_per_cat: int = 3) -> list[dict] | None:

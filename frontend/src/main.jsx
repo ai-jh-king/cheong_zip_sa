@@ -2041,7 +2041,8 @@ function App(){
     </div>
    </div>
   </div>
-  <div className="wrap">
+  {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231) */}
+  <div className="wrap" style={{display:"flex",flexDirection:"column",minHeight:"calc(100dvh - 152px)"}}>
    {tab!=="map"&&<Banner status={status} data={data}/>}
    {tab!=="map"&&!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
@@ -2056,7 +2057,7 @@ function App(){
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
     tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread}/>:
     null}
-   {tab!=="map"&&<footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
+   {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
     <div style={{marginTop:8}}>
      <button onClick={()=>setLegalDoc("privacy")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:11.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>개인정보처리방침</button>
@@ -3397,6 +3398,35 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
    {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
   ]}/>
+
+  {/* 시세 스냅샷(v1.231) — 그리드와 하단 사이 여백을 본업 데이터로 채움(이미 로드된 board.city, 추가 요청 0) */}
+  {city.avg_mae!=null&&<div className="card" style={{padding:"12px 14px",marginTop:2}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <span style={{fontWeight:800,fontSize:13.5}}>청주 아파트 지금</span>
+    <span style={{fontSize:10.5,color:MUTED}}>최근 {AGG_MONTHS}개월 평균</span>
+    {b.contains_sample_data&&<ExBadge/>}
+    {city.as_of&&<span className="num" style={{marginLeft:"auto",fontSize:10.5,color:MUTED}}>{city.as_of} 기준</span>}
+   </div>
+   <div style={{display:"flex",marginTop:9,textAlign:"center"}}>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{fontSize:11,color:MUTED}}>평균 매매가</div>
+     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{eok(city.avg_mae)}</div>
+     <div style={{fontSize:10.5,color:MUTED}}>전월 <Delta v={city.mae_dM}/></div>
+    </div>
+    <div style={{width:1,background:"var(--line)",margin:"2px 4px"}}/>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{fontSize:11,color:MUTED}}>평균 전세가</div>
+     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{city.avg_jeon!=null?eok(city.avg_jeon):"—"}</div>
+     <div style={{fontSize:10.5,color:MUTED}}>전년 <Delta v={city.mae_dY}/></div>
+    </div>
+    <div style={{width:1,background:"var(--line)",margin:"2px 4px"}}/>
+    <div style={{flex:1,minWidth:0}}>
+     <div style={{fontSize:11,color:MUTED}}>매매 거래</div>
+     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{city.trade_count!=null?city.trade_count.toLocaleString("ko-KR"):"—"}</div>
+     <div style={{fontSize:10.5,color:MUTED}}>건 신고</div>
+    </div>
+   </div>
+  </div>}
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
 

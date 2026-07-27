@@ -197,6 +197,49 @@ def _dong_threshold_km(s, dong: str) -> float:
     return s.geocode_validate_km_rural if rural else s.geocode_validate_km
 
 
+def _payload_addresses(d: dict, sigungu: str, dong: str | None) -> tuple[str | None, str | None]:
+    """실거래 raw_payload 의 공부(公簿) 주소 → (도로명주소, 지번주소) 질의 문자열.
+
+    키워드 검색(단지명)은 동명 학원·상가를 잡는 오탐이 있어(실사고: 학교 위 가격핀),
+    거래 신고에 적힌 주소를 1순위로 쓴다. 필드 없으면 None(추측 금지)."""
+    road = jib = None
+    rn = str(d.get("roadNm") or "").strip()
+    if rn:
+        try:
+            bon = int(str(d.get("roadNmBonbun") or "0") or 0)
+            bu = int(str(d.get("roadNmBubun") or "0") or 0)
+        except ValueError:
+            bon = bu = 0
+        if bon:
+            road = f"충청북도 {sigungu} {rn} {bon}" + (f"-{bu}" if bu else "")
+    j = str(d.get("jibun") or "").strip()
+    if j and dong:
+        jib = f"충청북도 {sigungu} {dong} {j}"
+    return road, jib
+
+
+def _tx_address(db: Session, name: str, lawd_cd: str, dong: str | None) -> tuple[str | None, str | None]:
+    """이 단지(이름·구·동)의 최근 거래 raw_payload 에서 주소 질의 후보 추출."""
+    q = (select(Transaction.raw_payload)
+         .where(Transaction.complex_name == name, Transaction.lawd_cd == lawd_cd,
+                Transaction.raw_payload.isnot(None))
+         .order_by(Transaction.contract_date.desc()).limit(1))
+    if dong is not None:
+        q = q.where(Transaction.dong_name == dong)
+    row = db.execute(q).scalar()
+    if not row:
+        return None, None
+    if isinstance(row, str):
+        import json
+        try:
+            row = json.loads(row)
+        except ValueError:
+            return None, None
+    if not isinstance(row, dict):
+        return None, None
+    return _payload_addresses(row, _sigungu(lawd_cd), dong)
+
+
 def _get_or_create_complex(db: Session, name: str, lawd_cd: str, ptype: str,
                            dong: str | None = None, claim_legacy: bool = False) -> Complex:
     """동(dong) 단위 단지 행(동명 단지 분리 — v1.224).
@@ -220,13 +263,15 @@ def _get_or_create_complex(db: Session, name: str, lawd_cd: str, ptype: str,
     return cx
 
 
-def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False) -> dict:
+def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False,
+                refresh: bool = False) -> dict:
     """거래에 등장한 단지들을 (이름·구·동) 단위로 지오코딩해 Complex.lat/lng 에 캐싱.
 
-    검증(v1.224): 단지명 검색 결과가 소속 법정동 기준점에서 임계거리보다 멀면
-    동명(同名) 시설을 잘못 잡은 것으로 보고 폐기 → 동 기준점 좌표로 폴백(동은 맞고
-    정확도만 낮음 — 기존 precision='dong' 폴백과 동일한 정직한 근사).
-    revalidate=True: 이미 저장된 좌표도 같은 기준으로 재검사해 오탐이면 지우고 다시 지오코딩.
+    좌표 결정 우선순위(v1.237): ①거래 신고의 도로명주소 ②지번주소(주소 지오코딩 —
+    공부 주소라 동명 시설 오탐 없음) ③단지명 키워드(동 포함) ④법정동 중심 폴백.
+    검증: 동 기준점 임계거리 + 구 경계 폴리곤(밖이면 저장 거부).
+    revalidate=True: 저장된 좌표를 재검사해 오탐만 지우고 재지오코딩(야간 자가치유).
+    refresh=True: 동 단위 단지 좌표를 전부 지우고 주소 기반으로 전면 재산출(1회성 교정).
     """
     s = get_settings()
     naver_on = bool(s.geocode_use_naver and s.naver_map_client_id and s.naver_map_client_secret)
@@ -247,7 +292,12 @@ def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False)
 
     dong_refs: dict[tuple, tuple | None] = {}   # (lawd, dong) → 기준좌표(런 중 캐시)
     cleared = 0
-    if revalidate:
+    if refresh:
+        for cx in db.scalars(select(Complex).where(
+                Complex.lat.isnot(None), Complex.dong.isnot(None))):
+            cx.lat = cx.lng = None
+            cleared += 1
+    elif revalidate:
         for cx in db.scalars(select(Complex).where(
                 Complex.lat.isnot(None), Complex.dong.isnot(None))):
             # ①구 경계 밖(다른 구·시 동명 시설 오탐) ②동 기준점에서 임계 초과 → 좌표 폐기 후 재지오코딩
@@ -270,8 +320,23 @@ def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False)
         if cx.lat is not None and cx.lng is not None:
             skipped += 1
             continue
-        res = geocode_one(s, name, lawd, dong, strict_dong=strict)
-        # 검증: 단지 정밀 좌표가 소속 동 기준점에서 임계 초과 → 동 기준점으로 강등(왜곡 방지)
+        # ①공부 주소(도로명→지번) 우선 — 동명 시설 오탐 원천 차단(v1.237)
+        res = None
+        for addr in _tx_address(db, name, lawd, dong):
+            if not addr:
+                continue
+            hit = None
+            if s.kakao_rest_api_key:
+                hit = _kakao_query(s.kakao_rest_api_key, s.kakao_address_url or KAKAO_ADDRESS, addr)
+            if not hit and naver_on:
+                hit = _naver_query(s.naver_map_client_id, s.naver_map_client_secret, addr)
+            if hit:
+                res = (hit[0], hit[1], "address")
+                break
+        # ②주소 실패 시 기존 키워드·동 폴백
+        if not res:
+            res = geocode_one(s, name, lawd, dong, strict_dong=strict)
+        # 검증: 단지명 키워드 좌표가 소속 동 기준점에서 임계 초과 → 동 기준점으로 강등(왜곡 방지)
         if res and res[2] == "complex" and dong:
             ref = _dong_ref(s, lawd, dong, dong_refs)
             if ref and _km(res[0], res[1], ref[0], ref[1]) > _dong_threshold_km(s, dong):

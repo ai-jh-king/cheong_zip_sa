@@ -69,14 +69,14 @@ def runs(db: Session = Depends(get_db), x_admin_token: str | None = Header(None)
     return {"items": recent_runs(db, limit=limit, name=name)}
 
 
-def _run_geocode_job(limit: int | None, revalidate: bool = False):
+def _run_geocode_job(limit: int | None, revalidate: bool = False, refresh: bool = False):
     if not _lock.acquire(blocking=False):
         return
     try:
         _state["running"] = True
         from app.services.geocode import run_geocode
         with SessionLocal() as db:
-            res = run_geocode(db, limit=limit, revalidate=revalidate)
+            res = run_geocode(db, limit=limit, revalidate=revalidate, refresh=refresh)
         _state["last"] = {"task": "geocode", **res}
     except Exception as e:  # noqa
         _state["last"] = {"task": "geocode", "error": str(e)}
@@ -109,12 +109,14 @@ def _run_collect_job(months: int | None, then_geocode: bool):
 @router.post("/geocode")
 def trigger_geocode(bg: BackgroundTasks, limit: int = Query(0, description="0=전체"),
                     revalidate: bool = Query(False, description="기존 좌표도 동 기준 재검증(오탐 재지오코딩)"),
+                    refresh: bool = Query(False, description="전면 재산출 — 주소(도로명·지번) 기반으로 좌표 새로 계산"),
                     x_admin_token: str | None = Header(None)):
     _require_admin(x_admin_token)
     if _state["running"]:
         raise HTTPException(status_code=409, detail="이미 작업이 실행 중입니다.")
-    bg.add_task(_run_geocode_job, (limit or None), revalidate)
-    return {"started": True, "task": "geocode", "limit": limit or None, "revalidate": revalidate}
+    bg.add_task(_run_geocode_job, (limit or None), revalidate, refresh)
+    return {"started": True, "task": "geocode", "limit": limit or None,
+            "revalidate": revalidate, "refresh": refresh}
 
 
 @router.post("/collect")
@@ -206,6 +208,7 @@ button.sec{background:#e7efef;color:#0F766E}pre{background:#0c1414;color:#d6f0ea
 <button onclick=call('/admin/geocode','POST')>지오코딩 실행(전체)</button>
 <button class=sec onclick=call('/admin/geocode?limit=50','POST')>지오코딩(50건)</button>
 <button class=sec onclick=call('/admin/geocode?revalidate=true','POST')>지오코딩 재검증(오좌표 교정)</button>
+<button class=sec onclick=call('/admin/geocode?refresh=true','POST')>지오코딩 전면 재산출(주소 기반)</button>
 <button class=sec onclick=call('/admin/collect?geocode=true','POST')>수집+지오코딩</button>
 <div class=muted style=margin-top:8px>실행은 백그라운드입니다. 진행/결과는 ‘상태’로 확인하세요.</div>
 </div>

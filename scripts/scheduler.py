@@ -37,11 +37,16 @@ def _cycle() -> None:
 
             def _geo():
                 try:
-                    # revalidate=True: 저장된 좌표도 매일 동 기준점·구 경계로 재검증(오좌표 자가치유 —
-                    # 동명 시설 오탐이 지도에 남는 실사고 재발 방지. 추가 비용은 동 기준점 조회 수십 건뿐)
-                    r1 = run_geocode(db, revalidate=True)   # 단지
+                    # 주소(도로명·지번) 기반 전면 재산출은 배포 후 최초 1회만(멱등 플래그) —
+                    # 키워드 오탐 시절 좌표('학교 위 가격핀' 실사고)를 프로드에서 사람 손 없이 청소.
+                    # 이후는 revalidate(동 기준점·구 경계 재검증)로 매일 자가치유.
+                    from app.services import appmeta
+                    first = not appmeta.get(db, "geocode_addr_refresh_v1237")
+                    r1 = run_geocode(db, refresh=first, revalidate=not first)   # 단지
+                    if first:
+                        appmeta.set(db, "geocode_addr_refresh_v1237", "1")
                     r2 = run_geocode_places(db)             # 시설(학원 등 좌표 미제공 소스)
-                    return {"complex": r1, "places": r2}
+                    return {"complex": r1, "places": r2, "addr_refresh": first}
                 except GeocodeKeyMissing:
                     return {"skipped": "no_key"}
             log.info("지오코딩 결과: %s", record_job(db, "geocode", _geo))

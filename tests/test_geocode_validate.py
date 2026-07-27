@@ -14,3 +14,20 @@ def test_in_own_gu_outside():
 
 def test_in_own_gu_unknown_code_skips():
     assert _in_own_gu("99999", 36.6, 127.4) is None
+
+
+def test_payload_addresses_road_and_jibun():
+    from app.services.geocode import _payload_addresses
+    d = {"roadNm": "산성로116번길", "roadNmBonbun": "00023", "roadNmBubun": "00000", "jibun": "418"}
+    road, jib = _payload_addresses(d, "청주시 상당구", "용담동")
+    assert road == "충청북도 청주시 상당구 산성로116번길 23"
+    assert jib == "충청북도 청주시 상당구 용담동 418"
+
+
+def test_payload_addresses_bubun_and_missing():
+    from app.services.geocode import _payload_addresses
+    d = {"roadNm": "수영로", "roadNmBonbun": "00180", "roadNmBubun": "00002"}
+    road, jib = _payload_addresses(d, "청주시 상당구", None)
+    assert road == "충청북도 청주시 상당구 수영로 180-2"
+    assert jib is None            # 지번·동 없으면 만들지 않음(추측 금지)
+    assert _payload_addresses({}, "청주시 상당구", "용담동") == (None, None)

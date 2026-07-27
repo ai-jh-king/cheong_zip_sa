@@ -3101,7 +3101,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
   fetch(`${API}/guides/series/${sKey}`).then(r=>r.json()).then(j=>{if(on)setSData(j);}).catch(()=>{if(on)setSData({guides:[]});});
   return ()=>{on=false;};},[sKey]);
  useEffect(()=>{if(!gid){setGData(null);return;}let on=true;setGData(null);
-  fetch(`${API}/guides/${gid}`).then(r=>r.json()).then(j=>{if(on){setGData(j);window.scrollTo(0,0);}}).catch(()=>{if(on)setGData(null);});
+  fetch(`${API}/guides/${gid}`).then(r=>r.json()).then(j=>{if(on){setGData(j);if(!inline)window.scrollTo(0,0);}}).catch(()=>{if(on)setGData(null);});
   fetch(`${API}/guides/${gid}/view`,{method:"POST"}).catch(()=>{});
   return ()=>{on=false;};},[gid]);
  const back=()=>{if(gid){setGid(null);setGData(null);}else if(sKey&&!autoRoot){setSKey(null);setSData(null);}else onClose&&onClose();};
@@ -3110,8 +3110,9 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
   if(navigator.share){navigator.share({title:g.title,text:t}).catch(()=>{});}
   else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast("링크를 복사했어요.")).catch(()=>{});}};
  const fmtDate=iso=>iso?iso.slice(0,10):"";
+ // inline: 편 본문은 바텀시트로 열리므로(v1.235) 헤더는 '시리즈 목록으로 뒤로'일 때만 필요
  const header=inline
-  ?((gid||(sKey&&!autoRoot))?<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}>
+  ?((sKey&&!autoRoot)?<div style={{display:"flex",alignItems:"center",gap:7,marginBottom:10}}>
      <button onClick={back} aria-label="뒤로" style={{border:"none",background:"var(--surface-2)",borderRadius:9,cursor:"pointer",fontSize:17,lineHeight:1,color:INK,padding:"7px 11px"}}>‹</button>
      <span style={{fontWeight:800,fontSize:15,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
       {gid?(gData&&gData.guide?gData.guide.title:"불러오는 중…"):(sData&&sData.series?sData.series.name:"…")}</span>
@@ -3122,11 +3123,28 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
      {gid?(gData&&gData.guide?gData.guide.title:"불러오는 중…"):sKey?(sData&&sData.series?sData.series.name:"…"):"📚 집사 도감"}</span>
     <button onClick={onClose} aria-label="닫기" style={{marginLeft:"auto",border:"none",background:"none",cursor:"pointer",fontSize:20,color:MUTED,padding:"2px 6px"}}>×</button>
    </div>;
+ // 편 본문 — 오버레이(더보기)는 본문이 화면을 대체, 인라인(소식 탭)은 바텀시트로 표시(v1.235)
+ const articleContent=gid?(gData===null?<SkeletonCard lines={6}/>:!gData.guide?<Empty>글을 불러오지 못했어요.</Empty>:
+  <React.Fragment>
+   <div className="card" style={{padding:"18px 18px 20px"}}>
+    <div className="num" style={{fontSize:11.5,color:MUTED,marginBottom:10}}>{fmtDate(gData.guide.published_at)} · 조회 {gData.guide.view_count||0}</div>
+    {renderMd(gData.guide.body_md)}
+    {onOnboard&&/청주가 처음|전입|출퇴근|통근/.test(gData.guide.body_md||"")&&
+     <button onClick={()=>{if(inline){setGid(null);setGData(null);}else{onClose&&onClose();}onOnboard();}} className="btn-primary" style={{width:"100%",marginTop:16,padding:"13px"}}>🧭 내 조건으로 다시 계산해보기 (3분)</button>}
+    {onGoBoard&&<button onClick={()=>{if(inline){setGid(null);setGData(null);}onGoBoard();}} className="btn-ghost" style={{width:"100%",marginTop:10,padding:"12px"}}>💬 이 주제, 게시판에서 얘기 나누기</button>}
+    <div style={{background:"var(--surface-2)",borderRadius:11,padding:"11px 13px",fontSize:11.5,color:MUTED,lineHeight:1.6,marginTop:16}}>{gData.notice||"청집사는 중개·광고 수익이 없어 특정 매물을 권유하지 않습니다."}</div>
+   </div>
+   <div style={{display:"flex",gap:8,marginTop:12}}>
+    {gData.prev&&<button onClick={()=>setGid(gData.prev.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>‹ {gData.prev.title}</button>}
+    {gData.next&&<button onClick={()=>setGid(gData.next.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{gData.next.title} ›</button>}
+   </div>
+   <button onClick={share} style={{width:"100%",marginTop:10,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"12px 0",cursor:"pointer"}}>📤 이 글 공유하기</button>
+  </React.Fragment>):null;
  const body=(
   <React.Fragment>
    {header}
    <div style={inline?{}:{maxWidth:640,margin:"0 auto",padding:"14px 16px 40px"}}>
-    {!sKey&&!gid&&(series===null?<SkeletonCard lines={3}/>:
+    {!sKey&&(!gid||inline)&&(series===null?<SkeletonCard lines={3}/>:
      series.length===0?<Empty>아직 준비된 시리즈가 없어요. 곧 찾아뵐게요!</Empty>:
      <React.Fragment>
       <div style={{fontSize:13,color:MUTED,margin:"2px 2px 12px",lineHeight:1.6}}>청주에서 잘 살고 싶은 사람을 위한 청집사의 실사용 안내서. 사실과 근거만 담아요.</div>
@@ -3138,7 +3156,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
        </div>))}
       </div>
      </React.Fragment>)}
-    {sKey&&!gid&&(sData===null?<SkeletonCard lines={3}/>:
+    {sKey&&(!gid||inline)&&(sData===null?<SkeletonCard lines={3}/>:
      <React.Fragment>
       {sData.series&&<div style={{fontSize:13,color:MUTED,margin:"2px 2px 12px",lineHeight:1.6}}>{sData.series.description}</div>}
       {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
@@ -3151,25 +3169,18 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
         <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
        </div>))}
      </React.Fragment>)}
-    {gid&&(gData===null?<SkeletonCard lines={6}/>:!gData.guide?<Empty>글을 불러오지 못했어요.</Empty>:
-     <React.Fragment>
-      <div className="card" style={{padding:"18px 18px 20px"}}>
-       <div className="num" style={{fontSize:11.5,color:MUTED,marginBottom:10}}>{fmtDate(gData.guide.published_at)} · 조회 {gData.guide.view_count||0}</div>
-       {renderMd(gData.guide.body_md)}
-       {onOnboard&&/청주가 처음|전입|출퇴근|통근/.test(gData.guide.body_md||"")&&
-        <button onClick={()=>{onClose&&onClose();onOnboard();}} className="btn-primary" style={{width:"100%",marginTop:16,padding:"13px"}}>🧭 내 조건으로 다시 계산해보기 (3분)</button>}
-       {onGoBoard&&<button onClick={onGoBoard} className="btn-ghost" style={{width:"100%",marginTop:10,padding:"12px"}}>💬 이 주제, 게시판에서 얘기 나누기</button>}
-       <div style={{background:"var(--surface-2)",borderRadius:11,padding:"11px 13px",fontSize:11.5,color:MUTED,lineHeight:1.6,marginTop:16}}>{gData.notice||"청집사는 중개·광고 수익이 없어 특정 매물을 권유하지 않습니다."}</div>
-      </div>
-      <div style={{display:"flex",gap:8,marginTop:12}}>
-       {gData.prev&&<button onClick={()=>setGid(gData.prev.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>‹ {gData.prev.title}</button>}
-       {gData.next&&<button onClick={()=>setGid(gData.next.id)} className="btn-ghost" style={{flex:1,minWidth:0,padding:"12px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{gData.next.title} ›</button>}
-      </div>
-      <button onClick={share} style={{width:"100%",marginTop:10,border:"1px solid rgba(15,118,110,.28)",background:"var(--surface-2)",color:TEAL,fontWeight:800,fontSize:14,borderRadius:12,padding:"12px 0",cursor:"pointer"}}>📤 이 글 공유하기</button>
-     </React.Fragment>)}
+    {gid&&!inline&&articleContent}
    </div>
   </React.Fragment>);
- if(inline)return <div style={{marginTop:4}}>{body}</div>;
+ if(inline)return (<div style={{marginTop:4}}>
+  {body}
+  {gid&&<SheetShell onClose={()=>{setGid(null);setGData(null);}} zIndex={122} scrollKey={gid}
+    header={<div style={{padding:"2px 18px 10px",fontWeight:800,fontSize:15.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:"none"}}>
+     {gData&&gData.guide?`${gData.guide.cover_emoji||"📄"} ${gData.guide.title}`:"불러오는 중…"}</div>}>
+   {articleContent}
+   <div style={{height:10}}/>
+  </SheetShell>}
+ </div>);
  return ReactDOM.createPortal(
   <div style={{position:"fixed",inset:0,zIndex:130,background:"var(--bg1)",overflowY:"auto"}}>{body}</div>, document.body);
 }

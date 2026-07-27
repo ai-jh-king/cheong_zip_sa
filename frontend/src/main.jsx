@@ -3261,17 +3261,30 @@ function HomeTicker({feed,go}){
     style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",borderRadius:16,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
    {slides.map((s,i)=>{
     const sub=s.type==="sub", it=s.it;
-    const grad=sub?(it.status==="접수중"?"linear-gradient(120deg,#1d6b3a,#2f9e5c)":"linear-gradient(120deg,#1E5FC4,#4f86e0)"):"linear-gradient(120deg,var(--teal),#14a08f)";
+    const grad=sub?(it.status==="접수중"?"linear-gradient(125deg,#175A31,#2f9e5c)":"linear-gradient(125deg,#17448F,#4f86e0)"):"linear-gradient(125deg,#0B5F57,#17A292)";
+    const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
-      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"13px 15px 15px",boxSizing:"border-box",minHeight:86,position:"relative",overflow:"hidden"}}>
-     <div style={{position:"absolute",right:-6,bottom:-16,fontSize:64,opacity:.15,lineHeight:1}}>{sub?"🏢":"📰"}</div>
+      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"15px 16px 22px",boxSizing:"border-box",minHeight:172,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+     {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
+     <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{sub?"🏗":"📰"}</div>
+     <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
      <div style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
-      <span style={{fontSize:10.5,fontWeight:800,background:"rgba(255,255,255,.24)",borderRadius:6,padding:"2px 8px"}}>{sub?`청약 ${it.status}`:"부동산 뉴스"}</span>
+      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
       {it.is_sample&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
      </div>
-     <div style={{fontWeight:800,fontSize:14.5,marginTop:6,position:"relative",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sub?it.name:it.title}</div>
-     <div style={{fontSize:11.5,opacity:.92,marginTop:2,position:"relative",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-      {sub?[it.location,it.period].filter(Boolean).join(" · "):[it.source,it.date].filter(Boolean).join(" · ")}
+     <div style={{fontWeight:800,fontSize:17.5,lineHeight:1.32,marginTop:9,position:"relative",letterSpacing:"-0.01em",...clamp2}}>{sub?it.name:it.title}</div>
+     {/* 뉴스=본문 요약 일부 크게 / 청약=공급·기간 정보 */}
+     {sub
+      ?<div style={{position:"relative",marginTop:7}}>
+        <div style={{fontSize:12.5,opacity:.94,...clamp2}}>{[it.location,it.units?`총 ${it.units}세대`:null].filter(Boolean).join(" · ")}</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
+         {it.period&&<span style={{fontSize:11,fontWeight:700,background:"rgba(255,255,255,.18)",borderRadius:6,padding:"3px 8px"}}>📅 {it.period}</span>}
+         {it.price&&<span style={{fontSize:11,fontWeight:700,background:"rgba(255,255,255,.18)",borderRadius:6,padding:"3px 8px"}}>분양가 {it.price}</span>}
+        </div>
+       </div>
+      :<div style={{fontSize:13,lineHeight:1.5,opacity:.92,marginTop:7,position:"relative",...clamp2}}>{it.summary||""}</div>}
+     <div style={{fontSize:11,opacity:.8,marginTop:"auto",paddingTop:8,position:"relative"}}>
+      {sub?"청약홈 공고 · 자세히 보기 ›":[it.source,it.date].filter(Boolean).join(" · ")+" · 원문 보기 ›"}
      </div>
     </div>);})}
   </div>

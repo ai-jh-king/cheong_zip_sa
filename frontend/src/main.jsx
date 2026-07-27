@@ -3713,14 +3713,16 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   if(onViewport){const vs=vis.map(m=>m.value).sort((a,b)=>a-b);
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
     avg:vs.length?Math.round(vs.reduce((s,v)=>s+v,0)/vs.length):null,
+    zoom:z,   // 구 선택 자동 해제 판단용(v1.238)
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
   // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~14) → 개별 단지 마커(z≥15).
   // 단지 핀 시작 줌을 네이버부동산·호갱노노와 동일한 z15로(z14는 여러 동이 한 화면 = 핀 수백 개 과밀, 실사고 스크린샷).
   const guView=z<12;
   const dongView=!guView&&z<15;
   const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
+  // 구 라벨 카운트는 전체 마커 기준 — 뷰포트 기준이면 지도를 조금만 움직여도 곳수가 널뜀(실사고 163≠178)
   const guGroups={};
-  if(guView)vis.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
+  if(guView)markers.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
   // 동(洞) 그룹 — dong 없는 단지는 구 이름으로 묶음(제외하지 않음·왜곡 방지).
   // 전체 마커 기준으로 묶어 버블 위치·갯수를 고정(뷰포트 멤버만 쓰면 팬할 때마다 위치가 널뜀).
   const dongGroups={};
@@ -3937,6 +3939,10 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  const [listOpen,setListOpen]=useState(false);
  const [regionSel,setRegionSel]=useState(null);   // {title, items} — 목록 시트용
  const [pick,setPick]=useState(null);             // {gu, dong?} — 선택 지역: 그 지역 단지'만' 표시(요청)
+ // 구 레벨(z<12)로 축소하면 선택 자동 해제 — 선택 유지 시 다른 구가 전부 '0곳'으로 보이는 모순(실사고 v1.238).
+ // pickAt 가드: 구 클릭 직후 fitBounds 애니메이션 중 z<12 가 순간 보고돼 방금 선택이 풀리는 레이스 방지.
+ const pickAt=useRef(0);
+ useEffect(()=>{ if(pick&&viewport&&viewport.zoom!=null&&viewport.zoom<12&&Date.now()-pickAt.current>800){setPick(null);setRegionSel(null);} },[viewport,pick]);
  useEffect(()=>{ let alive=true; setLoading(true); setViewport(null);
   fetch(`${API}/map/markers?deal_type=${deal}&property_type=${prop}`).then(r=>r.json())
    .then(j=>{if(alive)setData(j);}).catch(()=>{if(alive)setData({markers:[],bands:[]});}).finally(()=>{if(alive)setLoading(false);});
@@ -3980,6 +3986,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
   <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
+    pickAt.current=Date.now();
     setRegionSel({title:region,items:members});
     setPick({code,name:region});
    }}/>

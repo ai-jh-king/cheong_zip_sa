@@ -3234,15 +3234,18 @@ function HomeGrid({items}){
 }
 /* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
    광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
-function HomeTicker({feed,go}){
+function HomeTicker({feed,go,onOpen}){
  const [subs,setSubs]=useState(null);
+ const [bg,setBg]=useState(null);   // 급매 신호(홈 별도 티커를 배너 슬라이드로 흡수 — v1.228)
  useEffect(()=>{let on=true;
   fetch(`${API}/subscription?limit=50`).then(r=>r.json()).then(j=>{if(on)setSubs(j.items||[]);}).catch(()=>{if(on)setSubs([]);});
+  fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{if(on)setBg(j&&j.items&&j.items.length?{top:j.items[0],n:j.items.length,months:j.months}:null);}).catch(()=>{if(on)setBg(null);});
   return ()=>{on=false;};},[]);
  const order={"접수중":0,"접수예정":1,"공고":2,"마감":3};
  const pick=[...(subs||[])].sort((a,b)=>(order[a.status]??9)-(order[b.status]??9)).find(s=>s.status==="접수중"||s.status==="접수예정")||null;
  const news=((feed&&feed.news)||[]).slice(0,3);
  const slides=[];
+ if(bg)slides.push({type:"bg",it:bg.top,meta:bg});
  if(pick)slides.push({type:"sub",it:pick});
  news.forEach(n=>slides.push({type:"news",it:n}));
  const ref=useRef(null);
@@ -3254,26 +3257,35 @@ function HomeTicker({feed,go}){
   return ()=>clearInterval(t); },[slides.length]);
  if(!slides.length)return null;
  const open=(s)=>{ if(s.type==="sub"){go&&go("subscription");}
+  else if(s.type==="bg"){onOpen&&onOpen({complex_name:s.it.name,lawd_cd:s.it.lawd_cd,property_type:"apartment",gu:s.it.gu});}
   else if(s.it.url&&s.it.url!=="#"){try{window.open(s.it.url,"_blank","noopener");}catch(e){}} };
  return (<div style={{position:"relative",marginTop:8}}>
   <div ref={ref} onScroll={e=>{const el=e.target;setIdx(Math.round(el.scrollLeft/(el.clientWidth||1)));}}
     style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",borderRadius:16,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
    {slides.map((s,i)=>{
-    const sub=s.type==="sub", it=s.it;
-    const grad=sub?(it.status==="접수중"?"linear-gradient(125deg,#175A31,#2f9e5c)":"linear-gradient(125deg,#17448F,#4f86e0)"):"linear-gradient(125deg,#0B5F57,#17A292)";
+    const sub=s.type==="sub", isBg=s.type==="bg", it=s.it;
+    const grad=isBg?"linear-gradient(125deg,#123C7A,#2563D8)"
+     :sub?(it.status==="접수중"?"linear-gradient(125deg,#175A31,#2f9e5c)":"linear-gradient(125deg,#17448F,#4f86e0)")
+     :"linear-gradient(125deg,#0B5F57,#17A292)";
     const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
       style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"15px 16px 22px",boxSizing:"border-box",minHeight:172,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
      {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
-     <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{sub?"🏗":"📰"}</div>
+     <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
      <div style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
-      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
+      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{isBg?"📉 급매 포착":sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
       {it.is_sample&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
      </div>
-     <div style={{fontWeight:800,fontSize:17.5,lineHeight:1.32,marginTop:9,position:"relative",letterSpacing:"-0.01em",...clamp2}}>{sub?it.name:it.title}</div>
-     {/* 뉴스=본문 요약 일부 크게 / 청약=공급·기간 정보 */}
-     {sub
+     <div style={{fontWeight:800,fontSize:17.5,lineHeight:1.32,marginTop:9,position:"relative",letterSpacing:"-0.01em",...clamp2}}>
+      {isBg?<React.Fragment>{it.name} <span className="num" style={{fontSize:16}}>{it.diff_pct}%</span></React.Fragment>:sub?it.name:it.title}</div>
+     {/* 뉴스=본문 요약 일부 / 청약=공급·기간 / 급매=근거·면책 */}
+     {isBg
+      ?<div style={{position:"relative",marginTop:7}}>
+        <div style={{fontSize:12.5,opacity:.94}}>{[it.gu,it.pyeong?`${it.pyeong}평`:null].filter(Boolean).join(" · ")} · 같은 평형 최근 {s.meta.months||12}개월 중앙값 대비{s.meta.n>1?` · 외 ${s.meta.n-1}건`:""}</div>
+        <div style={{fontSize:11,opacity:.78,marginTop:6,lineHeight:1.45}}>특수거래(직거래·가족 간)일 수 있어요 · 판정이 아닌 신고가 기반 참고 신호</div>
+       </div>
+      :sub
       ?<div style={{position:"relative",marginTop:7}}>
         <div style={{fontSize:12.5,opacity:.94,...clamp2}}>{[it.location,it.units?`총 ${it.units}세대`:null].filter(Boolean).join(" · ")}</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
@@ -3283,7 +3295,7 @@ function HomeTicker({feed,go}){
        </div>
       :<div style={{fontSize:13,lineHeight:1.5,opacity:.92,marginTop:7,position:"relative",...clamp2}}>{it.summary||""}</div>}
      <div style={{fontSize:11,opacity:.8,marginTop:"auto",paddingTop:8,position:"relative"}}>
-      {sub?"청약홈 공고 · 자세히 보기 ›":[it.source,it.date].filter(Boolean).join(" · ")+" · 원문 보기 ›"}
+      {isBg?"단지 시세 보기 ›":sub?"청약홈 공고 · 자세히 보기 ›":[it.source,it.date].filter(Boolean).join(" · ")+" · 원문 보기 ›"}
      </div>
     </div>);})}
   </div>
@@ -3334,10 +3346,10 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
   </div>}
 
-  {/* ── 홈 한 화면 구성(v1.227, 사용자 결정·롤백=backup-home-v1.222): 우리집 → 배너 → 그리드(쿠팡 순서) ── */}
-  <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
+  {/* ── 홈 한 화면 구성(v1.228, 사용자 결정·롤백=backup-home-v1.222): 배너 → 그리드. 우리집은 '등록된 경우만'(유도 카드 제거, 등록 경로=더보기). 급매는 배너 슬라이드로 흡수. ── */}
+  {myHome&&<MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <HomeTicker feed={feed} go={go}/>
+  <HomeTicker feed={feed} go={go} onOpen={onOpen}/>
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
@@ -3351,8 +3363,6 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   ]}/>
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
-
-  <BargainRadar onOpen={onOpen}/>
 
   <CityIssues/>
  </div>);

@@ -1863,6 +1863,7 @@ function App(){
  const saveMyHome=useCallback((h)=>{setMyHome(h);try{safeStore.set("cj_myhome",h?JSON.stringify(h):"");}catch(e){}},[]);
  const [onbOpen,setOnbOpen]=useState(false);
  const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
+ const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
  useEffect(()=>{ let seen; try{seen=safeStore.get("cj_onb_seen");}catch(e){} if(seen||onb)return;
@@ -2048,7 +2049,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)} onTips={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onbDone={!!(onb&&onb.done)} onTips={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onGuide={()=>setGuideOpen(true)} onJeonse={()=>setJeonseOpen(true)}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2071,6 +2072,7 @@ function App(){
     <Icon name={k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
+  {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
   {onbOpen&&<OnboardingWizard
     onClose={()=>{setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}}}
     onDone={(o)=>{saveOnb(o);setOnbOpen(false);try{safeStore.set("cj_onb_seen","1");}catch(e){}setTab("home");window.scrollTo(0,0);}}
@@ -2754,7 +2756,8 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
   </div>}
  </SheetShell>);
 }
-function JeonseGuard(){
+function JeonseGuard({embedded}){
+ // embedded=true: 홈 그리드 → 시트 안에서 표시(시트가 제목을 그리므로 자체 헤더 생략)
  const [price,setPrice]=useState(""),[dep,setDep]=useState(""),[lien,setLien]=useState("");
  const [open,setOpen]=useState(false);
  const P=parseFloat(price)||0, D=parseFloat(dep)||0, L=parseFloat(lien)||0;
@@ -2771,9 +2774,9 @@ function JeonseGuard(){
   ["계약일",["등기부등본 당일 재발급 — 계약 직전 변동 확인","임대인 본인 확인(신분증) · 계약금은 임대인 명의 계좌로","특약 예: '잔금일까지 근저당 말소', '전입·확정일자 전 추가 담보 설정 금지'"]],
   ["잔금·입주",["잔금 직전 등기부 한 번 더 확인","이사 당일 전입신고 + 확정일자(주민센터/정부24) — 우선변제권 확보","전세보증금 반환보증(HUG 등) 가입 검토 — 역전세 대비"]],
  ];
- return (<div style={{marginTop:16}}>
+ return (<div style={{marginTop:embedded?4:16}}>
   <div style={{margin:"0 2px 6px"}}>
-   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="shield" active color={INK} size={17}/>전세 안전 진단</div>
+   {!embedded&&<div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="shield" active color={INK} size={17}/>전세 안전 진단</div>}
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>등기부등본의 숫자를 넣으면, 경매 시 보증금 회수 여유를 계산해드려요.</div>
   </div>
   <div className="card" style={{padding:"14px 15px"}}>
@@ -3219,7 +3222,18 @@ function CityIssues(){
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone,onTips}){
+/* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
+function HomeGrid({items}){
+ return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"14px 6px",margin:"14px 0 6px",padding:"0 2px"}}>
+  {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:0}}>
+   <span style={{width:54,height:54,borderRadius:18,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
+    <Icon name={it.icon} active color={it.color} size={26}/>
+   </span>
+   <span style={{fontSize:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
+  </button>))}
+ </div>);
+}
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onBudget,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onbDone,onTips,onGuide,onJeonse}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3278,44 +3292,37 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
   </div>}
 
-  {!onbDone&&<button onClick={onOnboard} style={{width:"100%",textAlign:"left",border:"none",cursor:"pointer",borderRadius:16,padding:"15px 16px",marginTop:8,background:"linear-gradient(100deg, rgba(15,118,110,.14), rgba(15,118,110,.04))",display:"flex",alignItems:"center",gap:12}}>
-   <span style={{flex:"none",lineHeight:0}}><Icon name="compass" active color={TEAL} size={26}/></span>
-   <span style={{minWidth:0,flex:1}}>
-    <span style={{display:"block",fontWeight:800,fontSize:14.5,color:INK}}>청주가 처음이세요?</span>
-    <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>직장·예산만 알려주면 맞춤 단지를 찾아드려요 · 3분</span>
-   </span>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </button>}
-  <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
+  {/* ── 홈 개편(v1.223, 쿠팡식 위계·롤백=backup-home-v1.222): 히어로 1장 → 아이콘 그리드 → 관심단지 → 급매 → 청주는지금 ── */}
+  {/* 히어로 1장 — 광고 아닌 '판단 재료': 우리집 시세(등록 시), 아니면 온보딩(창끝), 아니면 우리집 등록 유도 */}
+  {myHome
+   ? <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
+   : !onbDone
+   ? <button onClick={onOnboard} style={{width:"100%",textAlign:"left",border:"none",cursor:"pointer",borderRadius:16,padding:"17px 16px",marginTop:8,background:"linear-gradient(100deg, rgba(15,118,110,.14), rgba(15,118,110,.04))",display:"flex",alignItems:"center",gap:12}}>
+    <span style={{flex:"none",lineHeight:0}}><Icon name="compass" active color={TEAL} size={28}/></span>
+    <span style={{minWidth:0,flex:1}}>
+     <span style={{display:"block",fontWeight:800,fontSize:15,color:INK}}>청주가 처음이세요?</span>
+     <span style={{display:"block",fontSize:12,color:MUTED,marginTop:2}}>직장·예산만 알려주면 맞춤 단지를 찾아드려요 · 3분</span>
+    </span>
+    <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
+   </button>
+   : <MyHomeCard home={null} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <RecentList recents={recents} onOpen={onOpen}/>
+  <HomeGrid items={[
+   {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
+   {label:"시세",icon:"price",color:TEAL,bg:"rgba(15,118,110,.10)",onClick:()=>go&&go("price")},
+   {label:"청약",icon:"subscription",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("subscription")},
+   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
+   {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
+   {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
+  ]}/>
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
 
-  <CityIssues/>
-
   <BargainRadar onOpen={onOpen}/>
 
-  {b.trending&&b.trending.items&&b.trending.items.length>0&&
-   <TickerBanner icon="flame" label={b.trending.basis==="surge"?"거래 급상승":"거래 활발"} color={UP} bg="rgba(200,50,42,.10)"
-    title={b.trending.basis==="surge"?"거래 급상승":"거래 활발"}
-    info="최근 90일 거래 신고가 직전 90일보다 늘어난 단지 순입니다. 조회수가 아니라 실제 거래 건수 기준이며, 신고 지연·정정이 반영될 수 있어요."
-    items={b.trending.items}
-    metric={it=>it.delta>0
-     ?<span className="num" style={{color:UP,fontWeight:800,fontSize:12.5}}>▲{it.delta}건</span>
-     :<span className="num" style={{color:MUTED,fontWeight:700,fontSize:12.5}}>{it.recent_count}건</span>}
-    onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:it.property_type})}/>}
-
-  {b.landmark&&b.landmark.length>0&&(()=>{
-   const lm=b.landmark.slice().sort((x,y)=>(y.price||0)-(x.price||0)).map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));
-   return <TickerBanner icon="crown" label="대장 아파트" color="#9A6B00" bg="rgba(178,106,0,.12)"
-    title="대장 아파트" info="단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요. 최근 집계 기간 거래 기준."
-    items={lm}
-    metric={it=><span className="num" style={{fontWeight:800,fontSize:13}}>{eok(it.price)}</span>}
-    onItem={it=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:b.property_type||"apartment"})}/>;
-  })()}
-
-  <TodayInfo feed={feed} go={go}/>
+  <CityIssues/>
  </div>);
 }
 

@@ -2018,9 +2018,7 @@ function App(){
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
     </div>
-    {account&&<button onClick={()=>setNotifOpen(true)} aria-label="알림" style={{position:"relative",fontSize:16,padding:"11px 11px",minWidth:44,minHeight:44,justifyContent:"center",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="bell" size={20} color={INK}/>
-     {unread>0&&<span style={{position:"absolute",top:-5,right:-5,minWidth:17,height:17,borderRadius:9,background:"#C8322A",color:"#fff",fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}}>{unread>99?"99+":unread}</span>}
-    </button>}
+    {/* 알림 벨 헤더에서 제거(v1.227 사용자 요청) — 진입은 더보기 '알림'(기능 유지) */}
     <div style={{position:"relative",flex:"none"}}>
      <button onClick={()=>setAcctMenu(v=>!v)} aria-label="메뉴" style={{lineHeight:1,padding:"11px 11px",minWidth:44,minHeight:44,justifyContent:"center",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:INK,display:"flex",alignItems:"center"}}><Icon name="more" size={21} color={INK}/></button>
      {acctMenu&&<div onClick={()=>setAcctMenu(false)} style={{position:"fixed",inset:0,zIndex:80}}/>}
@@ -2056,7 +2054,7 @@ function App(){
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onOnboard={()=>setOnbOpen(true)}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread}/>:
     null}
    {tab!=="map"&&<footer style={{marginTop:22,fontSize:11.5,color:MUTED,lineHeight:1.7}}>
     시세 집계(중앙값·평단가·전세가율 등)는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준입니다. 추이 차트는 보유한 전체 기간을 보여줍니다.<br/>실거래가는 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다. 자료: 국토교통부 실거래가.
@@ -2836,7 +2834,7 @@ function OfficialLinks(){
   <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard}){
+function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -2882,6 +2880,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
    <Quick icon="star" label="관심 단지" onClick={()=>go&&go("home")}/>
    <Quick icon="subscription" label="청약" onClick={()=>go&&go("subscription")}/>
    <Quick icon="board" label="게시판" onClick={()=>{onBoard?onBoard():(go&&go("board"));}}/>
+   {account&&<Quick icon="bell" label={unread>0?`알림 ${unread>99?"99+":unread}`:"알림"} onClick={()=>onNotif&&onNotif()}/>}
   </div>
   <div style={{margin:"18px 2px 4px"}}>
    <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
@@ -3335,8 +3334,10 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {false&&<button onClick={()=>go&&go("price")} style={{marginTop:11,width:"100%",border:"1px solid rgba(15,118,110,.28)",background:"rgba(15,118,110,.06)",color:TEAL,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>청주 전체 시세 보기 →</button>}
   </div>}
 
-  {/* ── 홈 한 화면 구성(v1.225, 사용자 결정·롤백=backup-home-v1.222): 우리집 → 그리드 → 뉴스·청약 배너 ── */}
+  {/* ── 홈 한 화면 구성(v1.227, 사용자 결정·롤백=backup-home-v1.222): 우리집 → 배너 → 그리드(쿠팡 순서) ── */}
   <MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>
+
+  <HomeTicker feed={feed} go={go}/>
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
@@ -3348,8 +3349,6 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
    {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
   ]}/>
-
-  <HomeTicker feed={feed} go={go}/>
 
   <FavList favs={favs} onOpen={onOpen} onToggleFav={onToggleFav} onGu={onGu} onToggleRegion={onToggleRegion}/>
 

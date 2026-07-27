@@ -37,8 +37,10 @@ def _cycle() -> None:
 
             def _geo():
                 try:
-                    r1 = run_geocode(db)                 # 단지
-                    r2 = run_geocode_places(db)          # 시설(학원 등 좌표 미제공 소스)
+                    # revalidate=True: 저장된 좌표도 매일 동 기준점·구 경계로 재검증(오좌표 자가치유 —
+                    # 동명 시설 오탐이 지도에 남는 실사고 재발 방지. 추가 비용은 동 기준점 조회 수십 건뿐)
+                    r1 = run_geocode(db, revalidate=True)   # 단지
+                    r2 = run_geocode_places(db)             # 시설(학원 등 좌표 미제공 소스)
                     return {"complex": r1, "places": r2}
                 except GeocodeKeyMissing:
                     return {"skipped": "no_key"}

@@ -3714,10 +3714,10 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    onViewport({count:vis.length,median:vs.length?vs[Math.floor(vs.length/2)]:null,
     avg:vs.length?Math.round(vs.reduce((s,v)=>s+v,0)/vs.length):null,
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
-  // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~13) → 개별 단지 마커(z≥14).
-  // 어느 줌에서도 화면의 마커 수를 계단으로 제한해 과밀·겹침을 방지(호갱노노·네이버부동산 방식).
+  // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~14) → 개별 단지 마커(z≥15).
+  // 단지 핀 시작 줌을 네이버부동산·호갱노노와 동일한 z15로(z14는 여러 동이 한 화면 = 핀 수백 개 과밀, 실사고 스크린샷).
   const guView=z<12;
-  const dongView=!guView&&z<14;
+  const dongView=!guView&&z<15;
   const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
   const guGroups={};
   if(guView)vis.forEach(m=>{(guGroups[m.lawd_cd]||(guGroups[m.lawd_cd]=[])).push(m);});
@@ -3778,14 +3778,18 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      n.maps.Event.addListener(mk,"click",()=>{try{
       const b=new n.maps.LatLngBounds(); arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
       map.fitBounds(b);
-      if(map.getZoom()<14)map.setZoom(14);   // 단지 레벨(z≥14) 보장 — 동 뷰에 머물면 단지가 안 보임
+      if(map.getZoom()<15)map.setZoom(15);   // 단지 레벨(z≥15) 보장 — 동 뷰에 머물면 단지가 안 보임
      }catch(e){}});
      markerObjs.current.push(mk);
     });
    }
+   // 단지 마커 아이콘(부동산앱 문법 — 사용자 요청): 아파트·오피스텔=빌딩, 빌라=집 모양
+   const BLDG='<path d="M4.5 20V6.2L12 3.8v16.2M12 20V9.3l7.5 2.4V20M3.5 20h17"/><path d="M7.8 8.6v.01M7.8 12v.01M7.8 15.4v.01M15.6 14v.01M15.6 17v.01"/>';
+   const HOUSE='<path d="M3.5 10.8 12 4l8.5 6.8"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-4.6h4V20"/>';
    items.forEach(it=>{
-    // 단지 레벨(z≥14): 영역·클러스터 없이 개별 단지 가격 마커
-    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:6px 10px;border-radius:13px;white-space:nowrap;border:1.5px solid #fff">${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
+    // 단지 레벨(z≥15): 영역·클러스터 없이 개별 단지 가격 마커
+    const ic=it.property_type==="rowhouse"?HOUSE:BLDG;
+    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="display:flex;align-items:center;gap:4px;background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:5px 9px 5px 7px;border-radius:12px;white-space:nowrap;border:1.5px solid #fff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{
      onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});

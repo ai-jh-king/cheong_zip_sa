@@ -58,8 +58,8 @@ class Settings(BaseSettings):
     auto_geocode: bool = True              # 수집 후 단지 좌표 자동 지오코딩(키 있을 때만)
     geocode_use_naver: bool = False        # 지오코딩 제공자: 기본 카카오 단독. true 면 네이버 우선+카카오 폴백
     geocode_seed_limit: int = 0            # 0=제한없음(전체). 쿼터 보호용 상한
-    geocode_validate_km: float = 4.0       # 단지 좌표가 소속 동 기준점에서 이보다 멀면 오탐 → 동 폴백(v1.224)
-    geocode_validate_km_rural: float = 8.0  # 읍·면(…리)은 행정구역이 넓어 완화 임계
+    geocode_validate_km: float = 3.0       # 단지 좌표가 소속 동 기준점에서 이보다 멀면 오탐 → 동 폴백(v1.224, v1.236 축소)
+    geocode_validate_km_rural: float = 6.0  # 읍·면(…리)은 행정구역이 넓어 완화 임계(오송읍 폭 ~6km 기준)
     # 레이트리밋(어뷰징/스팸 방어) — 분당 IP 기준. 0=해당 버킷 무제한
     rate_limit_enabled: bool = True
     rate_limit_auth_per_min: int = 10        # 로그인 시작/개발로그인

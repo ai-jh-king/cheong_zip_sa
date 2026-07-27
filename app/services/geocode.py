@@ -118,6 +118,55 @@ def geocode_one(s, name: str | None, lawd_cd: str, dong: str | None,
     return None
 
 
+_GU_GEO = None   # 구 경계 GeoJSON(런타임 캐시). False=파일 없음(검증 생략)
+
+
+def _load_gu_geo():
+    global _GU_GEO
+    if _GU_GEO is not None:
+        return _GU_GEO
+    import json
+    from pathlib import Path
+    base = Path(__file__).resolve().parents[2]
+    for rel in ("frontend/public/geo/cheongju_gu.json", "frontend/dist/geo/cheongju_gu.json"):
+        p = base / rel
+        if p.exists():
+            try:
+                _GU_GEO = json.loads(p.read_text(encoding="utf-8"))
+                return _GU_GEO
+            except (OSError, ValueError):
+                pass
+    _GU_GEO = False
+    return _GU_GEO
+
+
+def _in_own_gu(lawd_cd: str, lat: float, lng: float) -> bool | None:
+    """좌표가 자기 구(區) 경계 폴리곤 안에 있는지. 경계 데이터 없으면 None(검증 생략 — 왜곡 없음).
+
+    동명(同名) 시설을 다른 구·시에서 잡은 오좌표를 걸러낸다(실사고: 시내 단지가 오송 좌표 등).
+    """
+    geo = _load_gu_geo()
+    if not geo:
+        return None
+
+    def _inside(ring, x, y):   # 레이 캐스팅(외곽 링 기준, 의존성 없음)
+        n = len(ring); j = n - 1; c = False
+        for i in range(n):
+            xi, yi = ring[i]; xj, yj = ring[j]
+            if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+                c = not c
+            j = i
+        return c
+
+    for f in geo.get("features", []):
+        if f.get("properties", {}).get("code") != str(lawd_cd):
+            continue
+        g = f.get("geometry", {})
+        polys = [g["coordinates"]] if g.get("type") == "Polygon" else g.get("coordinates", [])
+        return any(_inside(p[0], lng, lat) for p in polys)
+    return None
+
+
 def _km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     from math import radians, cos, sqrt
     x = radians(lng2 - lng1) * 6371 * cos(radians(lat1))
@@ -201,6 +250,11 @@ def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False)
     if revalidate:
         for cx in db.scalars(select(Complex).where(
                 Complex.lat.isnot(None), Complex.dong.isnot(None))):
+            # ①구 경계 밖(다른 구·시 동명 시설 오탐) ②동 기준점에서 임계 초과 → 좌표 폐기 후 재지오코딩
+            if _in_own_gu(cx.lawd_cd, cx.lat, cx.lng) is False:
+                cx.lat = cx.lng = None
+                cleared += 1
+                continue
             ref = _dong_ref(s, cx.lawd_cd, cx.dong, dong_refs)
             if ref and _km(cx.lat, cx.lng, ref[0], ref[1]) > _dong_threshold_km(s, cx.dong):
                 cx.lat = cx.lng = None   # 오탐 → 아래 루프에서 재지오코딩
@@ -223,6 +277,9 @@ def run_geocode(db: Session, limit: int | None = None, revalidate: bool = False)
             if ref and _km(res[0], res[1], ref[0], ref[1]) > _dong_threshold_km(s, dong):
                 res = (ref[0], ref[1], "dong")
                 demoted += 1
+        # 구 경계 검증: 결과가 자기 구 밖이면 저장하지 않음(틀린 좌표 저장 금지 — 왜곡 없음)
+        if res and _in_own_gu(lawd, res[0], res[1]) is False:
+            res = None
         if res:
             cx.lat, cx.lng = res[0], res[1]
             done += 1

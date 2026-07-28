@@ -1904,6 +1904,7 @@ function App(){
  const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
+ const [auctionOpen,setAuctionOpen]=useState(false); // 경매·공매 안내 시트(더보기 진입 v1.245)
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
  // '처음이라면' — 그리드에서 빼고 첫 진입 1회 알림 배너로(v1.244, 사용자 결정). 온보딩 완료·기해제 시 미표시.
  const [onbNudge,setOnbNudge]=useState(()=>{try{return !safeStore.get("cj_onb_nudge")&&!safeStore.get("cj_onb");}catch(e){return false;}});
@@ -2105,7 +2106,7 @@ function App(){
     tab==="board"?<CommunityTab kind="news" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} section={boardSection} setSection={setBoardSection} onOnboard={()=>setOnbOpen(true)} feed={data.feed} openGuideId={openGuideId} onConsumeGuide={()=>setOpenGuideId(null)} onGoTalk={()=>{setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>:
     tab==="chat"?<CommunityTab kind="talk" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={talkSection} setSection={setTalkSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onGoGuide={(gid)=>{setOpenGuideId(gid);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
    {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
@@ -2134,6 +2135,7 @@ function App(){
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
+  {auctionOpen&&<Sheet title="⚖️ 경매·공매 알아보기" onClose={()=>setAuctionOpen(false)}><AuctionInfo onGuide={()=>{setAuctionOpen(false);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/></Sheet>}
   {favOpen&&<Sheet title="⭐ 관심 단지" onClose={()=>setFavOpen(false)}>
    <FavList favs={favs} onOpen={(m)=>{setFavOpen(false);openComplex(m);}} onToggleFav={toggleFav} onGu={(g)=>{setFavOpen(false);goGu(g);}} onToggleRegion={toggleRegion}/>
    {!(favs&&favs.length)&&<div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>아직 관심 단지가 없어요. 단지 상세에서 ⭐를 누르면 여기에 모여요.</div>}
@@ -2974,9 +2976,53 @@ function JeonseGuard({embedded}){
   </div>}
  </div>);
 }
+/* 경매·공매 안내(v1.245) — 법원 경매는 공식 API 부재로 링크·지식만, 공매(온비드)는 공식 API 연동(활용신청 시). */
+function AuctionInfo({onGuide}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/auction/public-sale`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD({connected:false,items:[],links:[],notice:"정보를 불러오지 못했어요."});});
+  return ()=>{on=false;};},[]);
+ const won=(v)=>v==null?"—":eok(Math.round(v/10000));
+ return (<div style={{padding:"2px 2px 14px"}}>
+  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 10px"}}>
+   <b style={{color:INK}}>경매</b>는 법원이(담보 실행 등), <b style={{color:INK}}>공매</b>는 캠코가(세금 체납 압류 등) 파는 절차예요.
+   시세보다 싸게 살 기회가 있지만 <b>권리분석·명도 책임</b>이 따릅니다.
+  </div>
+  {onGuide&&<div onClick={onGuide} role="button" tabIndex={0} onKeyDown={onEnter(onGuide)} className="card" style={{padding:"12px 14px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
+   <span style={{fontSize:20,flex:"none"}}>⚖️</span>
+   <div style={{minWidth:0,flex:1}}>
+    <div style={{fontWeight:800,fontSize:13.5}}>경매 기초부터 읽기 — 집사 도감</div>
+    <div style={{fontSize:11.5,color:MUTED,marginTop:1}}>세입자 배당·대항력·입찰 기초·경매vs공매</div>
+   </div><span style={{color:TEAL,fontSize:16,flex:"none"}}>›</span>
+  </div>}
+  <div style={{fontWeight:800,fontSize:13.5,margin:"4px 2px 6px"}}>청주 공매 물건 <span style={{fontSize:10.5,color:MUTED,fontWeight:600}}>· 온비드(캠코) 공식</span></div>
+  {d===null?<SkeletonCard lines={3}/>:
+   d.connected&&d.items.length?(
+    <div className="card" style={{padding:"2px 14px"}}>
+     {d.items.slice(0,20).map((it,i)=>(<div key={i} style={{padding:"11px 0",borderBottom:i<Math.min(d.items.length,20)-1?"1px solid var(--line)":"none"}}>
+      <div style={{fontWeight:700,fontSize:13.5,lineHeight:1.4}}>{it.name}</div>
+      <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{[it.category,it.status].filter(Boolean).join(" · ")}</div>
+      <div className="num" style={{fontSize:12,marginTop:4}}>최저입찰 <b>{won(it.min_bid)}</b>{it.appraisal!=null&&<span style={{color:MUTED}}> · 감정 {won(it.appraisal)}</span>}</div>
+      {(it.bid_begin||it.bid_end)&&<div className="num" style={{fontSize:10.5,color:MUTED,marginTop:2}}>입찰 {String(it.bid_begin||"").slice(0,10)} ~ {String(it.bid_end||"").slice(0,10)}</div>}
+     </div>))}
+    </div>)
+   :<div className="card" style={{padding:"13px 14px",fontSize:12.5,color:MUTED,lineHeight:1.6}}>{d.notice||(d.connected?"현재 청주 소재 공매 물건이 없어요.":"")}</div>}
+  <div style={{fontWeight:800,fontSize:13.5,margin:"14px 2px 6px"}}>공식 확인처</div>
+  <div className="card" style={{padding:"2px 14px"}}>
+   {(d&&d.links||[]).map((L,i)=>(<a key={i} href={L.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:10,padding:"12px 0",borderBottom:i<(d.links.length-1)?"1px solid var(--line)":"none",textDecoration:"none"}}>
+    <div style={{minWidth:0,flex:1}}>
+     <div style={{fontWeight:700,fontSize:13.5,color:INK}}>{L.name}</div>
+     <div style={{fontSize:11.5,color:MUTED,marginTop:1}}>{L.desc}</div>
+    </div><span style={{fontSize:11,color:MUTED,flex:"none"}}>↗</span>
+   </a>))}
+  </div>
+  {d&&d.disclaimer&&<div style={{fontSize:10.5,color:MUTED,margin:"9px 2px 0",lineHeight:1.55}}>{d.disclaimer}</div>}
+ </div>);
+}
 function OfficialLinks(){
  const LINKS=[
   ["doc","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
+  ["gov","법원경매정보","경매 물건·기일 공식 조회 — 대법원","https://www.courtauction.go.kr"],
   ["build","건축물대장 발급","위반건축물·용도 확인 — 정부24","https://www.gov.kr"],
   ["rank","실거래가 원본 조회","국토교통부 실거래가 공개시스템","https://rt.molit.go.kr"],
   ["won","공시가격 알리미","주택 공시가격(보유세 기준) 확인","https://www.realtyprice.kr"],
@@ -3005,7 +3051,7 @@ function OfficialLinks(){
   <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread,onFavs}){
+function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread,onFavs,onAuction}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -3060,6 +3106,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
   <Tool icon="compass" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
   <Tool icon="won" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
   <Tool icon="loan" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
+  <Tool icon="gov" title="경매·공매 알아보기" desc="세입자 배당 기초부터 청주 공매 물건·공식 확인처까지" onClick={onAuction}/>
   <JeonseGuard/>
   <OfficialLinks/>
   <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.\n${location.origin}`;

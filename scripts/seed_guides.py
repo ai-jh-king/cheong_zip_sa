@@ -38,6 +38,8 @@ EPISODES = [
      "cheongju_ep5_landmarks.md", "🏗", 5),
     ("cheongju", "부동산 거래가 처음이라면 — 계약 전 확인 10가지",
      "cheongju_ep6_first_deal.md", "📝", 6),
+    ("cheongju", "경매, 남 얘기가 아닙니다 — 세입자와 실수요자를 위한 기초",
+     "cheongju_ep7_auction.md", "⚖️", 7),
 ]
 
 

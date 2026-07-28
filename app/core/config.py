@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     # 공급사 정책/도메인 이전으로 바뀔 수 있어 .env 로 덮어쓸 수 있게 분리. 빈 값이면 코드 기본값 사용.
     molit_base_url: str = "https://apis.data.go.kr/1613000"          # 실거래가 베이스(+operation path)
     naver_geocode_url: str = "https://maps.apigw.ntruss.com/map-geocode/v2/geocode"  # 신 Maps 게이트웨이
+    onbid_list_url: str = ""               # 온비드 공매물건 목록 URL(빈 값=코드 기본값·⚠️ Swagger 확정 후 오버라이드)
+    onbid_api_key: str = ""                # 비우면 MOLIT_SERVICE_KEY(data.go.kr 공통) 재사용 — 활용신청 필요
     kakao_keyword_url: str = "https://dapi.kakao.com/v2/local/search/keyword.json"
     kakao_address_url: str = "https://dapi.kakao.com/v2/local/search/address.json"
     kakao_category_url: str = "https://dapi.kakao.com/v2/local/search/category.json"

@@ -31,6 +31,7 @@ from app.api.home import router as home_router
 from app.api.complex import router as complex_router
 from app.api.places import router as places_router
 from app.api.landmarks import router as landmarks_router
+from app.api.auction import router as auction_router
 from app.api.compare import router as compare_router
 from app.api.subscription import router as subscription_router
 from app.api.push import router as push_router
@@ -79,6 +80,7 @@ app.include_router(home_router)
 app.include_router(complex_router)
 app.include_router(places_router)
 app.include_router(landmarks_router)
+app.include_router(auction_router)
 app.include_router(onboarding_router)
 app.include_router(pricecheck_router)
 app.include_router(loan_router)

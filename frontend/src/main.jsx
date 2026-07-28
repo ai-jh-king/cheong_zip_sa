@@ -2056,7 +2056,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -3192,7 +3192,7 @@ function MyHomeCard({home,onOpen,onRegister}){
   return ()=>{on=false;};
  },[home&&home.complex_name,home&&home.lawd_cd,home&&home.property_type]);
  if(!home)return (
-  <div className="card" style={{padding:"14px 15px",marginTop:8,display:"flex",alignItems:"center",gap:12}}>
+  <div className="card" style={{padding:"14px 15px",marginTop:10,display:"flex",alignItems:"center",gap:12}}>
    <div style={{flex:"none",lineHeight:0}}><Icon name="home" active color={TEAL} size={26}/></div>
    <div style={{minWidth:0,flex:1}}>
     <div style={{fontWeight:800,fontSize:14.5}}>우리집 등록하기</div>
@@ -3205,7 +3205,7 @@ function MyHomeCard({home,onOpen,onRegister}){
  const region=d&&d.vs_region?d.vs_region.pct:null;
  const latest=d?d.latest_amount:null;
  return (
-  <div className="card" style={{padding:"14px 15px",marginTop:8}}>
+  <div className="card" style={{padding:"14px 15px",marginTop:10}}>
    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
     <span style={{fontWeight:800,fontSize:14.5,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="home" active color={INK} size={16}/>우리집</span>
     <button onClick={onRegister} style={{marginLeft:"auto",border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:12,cursor:"pointer"}}>변경</button>
@@ -3260,7 +3260,7 @@ function CityIssues(){
 }
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
 function HomeGrid({items}){
- return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 6px",margin:"11px 0 4px",padding:"0 2px"}}>
+ return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 6px",margin:"10px 0 0",padding:"0 2px"}}>
   {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
    <span style={{width:50,height:50,borderRadius:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
     <Icon name={it.icon} active color={it.color} size={24}/>
@@ -3301,7 +3301,7 @@ function HomeTicker({feed,go,onOpen,board}){
  const open=(s)=>{ if(s.type==="sub"){go&&go("subscription");}
   else if(s.type==="bg"||s.type==="lm"){setListSheet({kind:s.type});}   // 이전 티커처럼 하단 리스트 팝업
   else if(s.it.url&&s.it.url!=="#"){try{window.open(s.it.url,"_blank","noopener");}catch(e){}} };
- return (<div style={{position:"relative",marginTop:8}}>
+ return (<div style={{position:"relative",marginTop:10}}>
   <div ref={ref} onScroll={e=>{const el=e.target;setIdx(Math.round(el.scrollLeft/(el.clientWidth||1)));}}
     style={{display:"flex",overflowX:"auto",scrollSnapType:"x mandatory",borderRadius:16,scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
    {slides.map((s,i)=>{
@@ -3365,7 +3365,7 @@ function HomeTicker({feed,go,onOpen,board}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3414,7 +3414,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
-   {label:"시세",icon:"price",color:TEAL,bg:"rgba(15,118,110,.10)",onClick:()=>go&&go("price")},
+   {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},   // 시세 탭 은퇴(사용자 결정) → 데일리 훅 복귀
    {label:"청약",icon:"subscription",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("subscription")},
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
@@ -3424,7 +3424,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   ]}/>
 
   {/* 시세 스냅샷(v1.231) — 그리드와 하단 사이 여백을 본업 데이터로 채움(이미 로드된 board.city, 추가 요청 0) */}
-  {city.avg_mae!=null&&<div className="card" style={{padding:"12px 14px",marginTop:2}}>
+  {city.avg_mae!=null&&<div className="card" style={{padding:"12px 14px",marginTop:10}}>
    <div style={{display:"flex",alignItems:"center",gap:6}}>
     <span style={{fontWeight:800,fontSize:13.5}}>청주 아파트 지금</span>
     <span style={{fontSize:10.5,color:MUTED}}>최근 {AGG_MONTHS}개월 평균</span>

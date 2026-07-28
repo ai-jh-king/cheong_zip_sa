@@ -1906,6 +1906,24 @@ function App(){
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
  const [auctionOpen,setAuctionOpen]=useState(false); // 경매·공매 안내 시트(더보기 진입 v1.245)
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
+ // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
+ // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
+ const homeWrapRef=useRef(null);
+ const [homeWrapH,setHomeWrapH]=useState(null);
+ useEffect(()=>{ if(tab!=="home")return;
+  const calc=()=>{try{const el=homeWrapRef.current;if(!el)return;
+   const top=el.getBoundingClientRect().top;
+   const vh=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+   setHomeWrapH(Math.max(360,Math.round(vh-top)));}catch(e){}};
+  const raf=requestAnimationFrame(calc);
+  const t=setTimeout(calc,250), t2=setTimeout(calc,900);   // 폰트·이미지 로딩 후 헤더 높이 변동 흡수
+  window.addEventListener("resize",calc);
+  window.addEventListener("orientationchange",calc);
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",calc);
+  return ()=>{cancelAnimationFrame(raf);clearTimeout(t);clearTimeout(t2);
+   window.removeEventListener("resize",calc);window.removeEventListener("orientationchange",calc);
+   if(window.visualViewport)window.visualViewport.removeEventListener("resize",calc);};
+ },[tab,data]);
  // '처음이라면' — 그리드에서 빼고 첫 진입 1회 알림 배너로(v1.244, 사용자 결정). 온보딩 완료·기해제 시 미표시.
  const [onbNudge,setOnbNudge]=useState(()=>{try{return !safeStore.get("cj_onb_nudge")&&!safeStore.get("cj_onb");}catch(e){return false;}});
  const dismissNudge=()=>{setOnbNudge(false);try{safeStore.set("cj_onb_nudge","1");}catch(e){}};
@@ -2088,9 +2106,10 @@ function App(){
   </div>
   {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231).
       홈 탭(v1.232)은 무스크롤 한 화면: 패딩까지 정밀 조정(헤더 68+네비 68+여유 12 → 푸터가 메뉴바 직전). */}
-  <div className="wrap" style={{display:"flex",flexDirection:"column",
+  <div className="wrap" ref={homeWrapRef} style={{display:"flex",flexDirection:"column",
     ...(tab==="home"
-     ?{minHeight:"calc(100dvh - 68px)",paddingBottom:"calc(80px + env(safe-area-inset-bottom, 0px))"}   // border-box: 패딩 포함 높이 = 뷰포트-헤더 → 푸터가 네비 직전(12px 위)
+     ?{height:homeWrapH?homeWrapH+"px":"calc(100dvh - 68px)",overflowY:"auto",overscrollBehavior:"contain",
+       paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}   // 실측 높이 = 페이지 스크롤 0(넘치면 내부 스크롤)
      :{minHeight:"calc(100dvh - 152px)"})}}>
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
    {tab!=="map"&&!(tab==="home"&&status==="live")&&<Banner status={status} data={data}/>}
@@ -2098,7 +2117,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2109,8 +2128,10 @@ function App(){
     tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
-   {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
-    시세 집계는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준, 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다 · 자료: 국토교통부 실거래가
+   {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:(tab==="home"&&homeWrapH&&homeWrapH<640)?8:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
+    {(tab==="home"&&homeWrapH&&homeWrapH<640)
+     ? <React.Fragment>최근 {AGG_MONTHS}개월 실거래 기준 <b>참고용</b>(법적 효력 없음) · 자료: 국토교통부</React.Fragment>
+     : <React.Fragment>시세 집계는 <b>최근 {AGG_MONTHS}개월 실거래</b> 기준, 신고 지연·정정·해제가 있을 수 있는 <b>참고용</b> 정보(법적 효력 없음)입니다 · 자료: 국토교통부 실거래가</React.Fragment>}
     <div style={{marginTop:5}}>
      <button onClick={()=>setLegalDoc("privacy")} style={{border:"none",background:"none",color:TEAL,fontWeight:700,fontSize:10.5,cursor:"pointer",padding:0,textDecoration:"underline"}}>개인정보처리방침</button>
      <span style={{margin:"0 7px",color:"#cbd5d8"}}>·</span>
@@ -3454,7 +3475,7 @@ function CityIssues(){
  </div>);
 }
 /* 홈 구별 시세 4칩(v1.240) — '청주 평균'보다 구간 비교가 실사용 정보. 탭=지도 해당 구 초점. */
-function GuChips({onGu}){
+function GuChips({onGu,compact}){
  const [d,setD]=useState(null);
  useEffect(()=>{let on=true;
   fetch(`${API}/pricecheck/gu-context`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(null);});
@@ -3467,7 +3488,7 @@ function GuChips({onGu}){
   </div>
  </div>);
  if(!d.items||!d.items.length)return null;
- return (<div className="card" style={{padding:"11px 13px",marginTop:10}}>
+ return (<div className="card" style={{padding:compact?"9px 13px":"11px 13px",marginTop:compact?4:10}}>
   <div style={{display:"flex",alignItems:"baseline",gap:6}}>
    <span style={{fontWeight:800,fontSize:13.5}}>구별 아파트 시세</span>
    <span style={{fontSize:10.5,color:MUTED}}>중앙값 · 최근 {d.months}개월</span>
@@ -3475,7 +3496,7 @@ function GuChips({onGu}){
   </div>
   <div style={{display:"flex",gap:6,marginTop:9}}>
    {d.items.map(g=>(<button key={g.lawd_cd} type="button" onClick={()=>onGu&&onGu({code:g.lawd_cd,name:g.gu})}
-     style={{flex:1,minWidth:0,border:"none",cursor:"pointer",background:"var(--surface-2)",borderRadius:10,padding:"9px 2px",textAlign:"center"}}>
+     style={{flex:1,minWidth:0,border:"none",cursor:"pointer",background:"var(--surface-2)",borderRadius:10,padding:compact?"7px 2px":"9px 2px",textAlign:"center"}}>
     <div style={{fontSize:11,color:MUTED,fontWeight:700}}>{(g.gu||"").replace("청주시 ","")}</div>
     <div className="num" style={{fontWeight:800,fontSize:14.5,color:INK,marginTop:2}}>{eok(g.price_median)}</div>
     <div className="num" style={{fontSize:10,color:MUTED,marginTop:1}}>평당 {Math.round(g.ppm_median).toLocaleString()}만</div>
@@ -3484,11 +3505,11 @@ function GuChips({onGu}){
  </div>);
 }
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
-function HomeGrid({items}){
- return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 6px",margin:"10px 0 0",padding:"0 2px"}}>
+function HomeGrid({items,compact}){
+ return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:compact?"6px 6px":"10px 6px",margin:compact?"6px 0 0":"10px 0 0",padding:"0 2px"}}>
   {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
-   <span style={{width:50,height:50,borderRadius:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
-    <Icon name={it.icon} active color={it.color} size={24}/>
+   <span style={{width:compact?44:50,height:compact?44:50,borderRadius:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
+    <Icon name={it.icon} active color={it.color} size={compact?21:24}/>
    </span>
    <span style={{fontSize:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
   </button>))}
@@ -3496,7 +3517,7 @@ function HomeGrid({items}){
 }
 /* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
    광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
-function HomeTicker({feed,go,onOpen,board,onNews}){
+function HomeTicker({feed,go,onOpen,board,onNews,compact}){
  const [subs,setSubs]=useState(null);
  const [bg,setBg]=useState(null);       // 급매(급락 거래) — 슬라이드+클릭 시 전체 리스트 시트
  const [listSheet,setListSheet]=useState(null);   // {kind:'bg'|'lm'} — 이전 티커처럼 하단 팝업 리스트
@@ -3538,7 +3559,7 @@ function HomeTicker({feed,go,onOpen,board,onNews}){
      :"linear-gradient(125deg,#0B5F57,#17A292)";
     const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
-      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:"13px 16px 18px",boxSizing:"border-box",minHeight:150,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:compact?"11px 14px 16px":"13px 16px 18px",boxSizing:"border-box",minHeight:compact?82:150,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
      {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
      <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":isLm?"👑":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
@@ -3591,7 +3612,7 @@ function HomeTicker({feed,go,onOpen,board,onNews}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3637,9 +3658,9 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   {/* ── 홈 한 화면 구성(v1.228, 사용자 결정·롤백=backup-home-v1.222): 배너 → 그리드. 우리집은 '등록된 경우만'(유도 카드 제거, 등록 경로=더보기). 급매는 배너 슬라이드로 흡수. ── */}
   {myHome&&<MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews}/>
+  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews} compact={compact}/>
 
-  <HomeGrid items={[
+  <HomeGrid compact={compact} items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
    {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},   // 시세 탭 은퇴(사용자 결정) → 데일리 훅 복귀
    {label:"청약",icon:"subscription",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("subscription")},
@@ -3651,7 +3672,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
-  <GuChips onGu={onGuMap}/>
+  <GuChips onGu={onGuMap} compact={compact}/>
 
   {/* 무스크롤 한 화면(v1.232): 관심단지 → 더보기 '관심 단지' 시트, 청주는 지금 → 소식 탭 도감 상단으로 이동 */}
  </div>);

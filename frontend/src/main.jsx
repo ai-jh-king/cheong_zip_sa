@@ -2667,6 +2667,8 @@ function LoanSheet({onClose,onOpen}){
  const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 대출 한도 계산</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
  return (<SheetShell onClose={onClose} zIndex={118} header={header}>
   <Loan onOpen={onOpen}/>
+  <PolicyMatch/>{/* 정책대출 매칭 — 동의 게이트·한도 계산과 무관하게 항상 표시(v1.241) */}
+  <div style={{height:10}}/>
  </SheetShell>);
 }
 function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
@@ -2785,6 +2787,23 @@ function JeonseGuard({embedded}){
  // embedded=true: 홈 그리드 → 시트 안에서 표시(시트가 제목을 그리므로 자체 헤더 생략)
  const [price,setPrice]=useState(""),[dep,setDep]=useState(""),[lien,setLien]=useState("");
  const [open,setOpen]=useState(false);
+ // ── v1.241 확장: 단지 연동(시세 자동)·최우선변제·HUG 요건·을구 위험신호 ──
+ const [q,setQ]=useState(""),[results,setResults]=useState([]),[cx,setCx]=useState(null),[cxd,setCxd]=useState(null);
+ const [rules,setRules]=useState(null);
+ const [flags,setFlags]=useState({});   // 을구·갑구 위험 등기 체크
+ useEffect(()=>{let on=true;
+  fetch(`${API}/loan/protection-rules`).then(r=>r.json()).then(j=>{if(on)setRules(j);}).catch(()=>{if(on)setRules(null);});
+  return ()=>{on=false;};},[]);
+ useEffect(()=>{ if(!q||q.length<1||(cx&&q===cx.complex_name)){setResults([]);return;}
+  const t=setTimeout(()=>{fetch(`${API}/search?q=${encodeURIComponent(q)}`).then(r=>r.json())
+   .then(j=>setResults((j.complexes||[]).slice(0,5))).catch(()=>setResults([]));},300);
+  return ()=>clearTimeout(t);},[q,cx]);
+ const pickCx=(c)=>{ setCx(c); setQ(c.complex_name); setResults([]); setCxd(null);
+  const qs=`name=${encodeURIComponent(c.complex_name)}&lawd_cd=${c.lawd_cd}&property_type=${c.property_type||"apartment"}`;
+  fetch(`${API}/complex/detail?${qs}`).then(r=>r.json()).then(j=>{ if(!j||!j.found)return;
+   setCxd({jeonse_ratio:j.jeonse_ratio,price_median:j.price_median,trade_count:j.trade_count});
+   if(j.price_median)setPrice(String(Math.round(j.price_median/1000)/10));   // 만원→억(소수1)
+  }).catch(()=>{});};
  const P=parseFloat(price)||0, D=parseFloat(dep)||0, L=parseFloat(lien)||0;
  const ratio=(P>0&&D>0)?Math.round((D+L)/P*1000)/10:null;
  let band=null;
@@ -2805,6 +2824,24 @@ function JeonseGuard({embedded}){
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>등기부등본의 숫자를 넣으면, 경매 시 보증금 회수 여유를 계산해드려요.</div>
   </div>
   <div className="card" style={{padding:"14px 15px"}}>
+   {/* 단지 연동(v1.241): 단지를 고르면 매매 중앙값 자동 입력 + 그 단지 전세가율 표시 */}
+   <div style={{position:"relative",marginBottom:10}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>단지로 채우기</span>
+     <input value={q} onChange={e=>{setQ(e.target.value);if(cx)setCx(null);}} placeholder="단지명 검색(선택)" style={inp}/>
+    </div>
+    {results.length>0&&<div style={{position:"absolute",left:126,right:0,top:"100%",zIndex:5,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:10,boxShadow:"0 8px 22px rgba(16,24,32,.18)",overflow:"hidden"}}>
+     {results.map((c,i)=>(<div key={i} onClick={()=>pickCx(c)} role="button" tabIndex={0} onKeyDown={onEnter(()=>pickCx(c))} style={{padding:"9px 12px",cursor:"pointer",borderTop:i?"1px solid var(--line)":"none"}}>
+      <div style={{fontWeight:700,fontSize:13}}>{c.complex_name}</div>
+      <div style={{fontSize:11,color:MUTED}}>{[(c.gu||"").replace("청주시 ",""),c.dong].filter(Boolean).join(" · ")}</div>
+     </div>))}
+    </div>}
+    {cx&&cxd&&<div style={{fontSize:11.5,color:MUTED,margin:"6px 2px 0",lineHeight:1.5}}>
+     {cx.complex_name}: 매매 중앙값 {cxd.price_median?eok(cxd.price_median):"표본 부족"}
+     {cxd.jeonse_ratio!=null&&<> · 단지 전세가율 <b style={{color:cxd.jeonse_ratio>=80?"var(--up)":INK}}>{cxd.jeonse_ratio}%</b></>}
+     {cxd.trade_count!=null&&<> · 최근 거래 {cxd.trade_count}건</>} <span style={{opacity:.8}}>(자동 입력됨 — 수정 가능)</span>
+    </div>}
+   </div>
    <div style={{display:"flex",flexDirection:"column",gap:8}}>
     <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>매매 시세(억)</span><input inputMode="decimal" value={price} onChange={e=>setPrice(e.target.value)} placeholder="예: 3.0 (단지 상세 참고)" style={inp}/></div>
     <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>전세 보증금(억)</span><input inputMode="decimal" value={dep} onChange={e=>setDep(e.target.value)} placeholder="예: 2.5" style={inp}/></div>
@@ -2819,6 +2856,18 @@ function JeonseGuard({embedded}){
     <div style={{fontSize:12.5,color:INK,marginTop:6,lineHeight:1.55}}>{band.m}</div>
     <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>계산식: (보증금+근저당 채권최고액)÷매매 시세. 채권최고액은 통상 대출원금의 110~130%로 설정돼요. <b>참고 지표</b>이며 경매 배당·법적 판단을 단정하지 않습니다. 시세는 이 앱 단지 상세의 최근 실거래를 참고하세요.</div>
    </div>}
+   {/* 을구·갑구 위험 등기 신호(v1.241) — 사용자가 등기부에서 본 사실 체크 → 의미 설명(판정 아님) */}
+   <div style={{marginTop:12}}>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED}}>등기부에 이런 게 있나요? <span style={{fontWeight:600,fontSize:11}}>· 갑구·을구에서 확인</span></div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:7}}>
+     {["압류","가압류","경매개시결정","신탁 등기","가처분·가등기"].map(k=>(
+      <button key={k} type="button" onClick={()=>setFlags(f=>({...f,[k]:!f[k]}))} className={"tog "+(flags[k]?"on":"")} style={{fontSize:12,padding:"7px 11px",...(flags[k]?{color:"var(--up)"}:{})}}>{k}</button>))}
+    </div>
+    {Object.values(flags).some(Boolean)&&<div style={{marginTop:8,background:"rgba(200,50,42,.08)",borderRadius:10,padding:"10px 12px",fontSize:12,color:INK,lineHeight:1.6}}>
+     ⚠️ 선택하신 등기는 소유자의 채무·분쟁 신호로, 보증금 회수가 어려워질 수 있고 <b>HUG 전세보증 가입도 제한</b>됩니다(권리침해 요건).
+     신탁 등기는 신탁회사 동의 없는 계약이 무효가 될 수 있어요. 이 상태로 계약하는 건 권하기 어렵고, 계약 전 법률 전문가·공인중개사와 반드시 상의하세요. (등기 의미의 일반 설명이며 개별 사안 판단이 아닙니다)
+    </div>}
+   </div>
    <button onClick={()=>setOpen(v=>!v)} style={{marginTop:11,width:"100%",border:"1px solid var(--line)",background:"var(--surface-2)",color:INK,fontWeight:700,fontSize:12.5,borderRadius:10,padding:"9px 0",cursor:"pointer"}}>{open?"체크리스트 접기 ▲":"📋 전세 계약 단계별 체크리스트 ▼"}</button>
    {open&&<div style={{marginTop:8}}>
     {CHECK.map(([t,items],i)=>(<div key={i} style={{marginTop:i?10:2}}>
@@ -2828,6 +2877,49 @@ function JeonseGuard({embedded}){
     <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>일반적인 절차 안내이며 법률 자문이 아닙니다. 개별 사안은 공인중개사·법률 전문가와 확인하세요.</div>
    </div>}
   </div>
+
+  {/* 최우선변제(소액임차인) — 법정 수치 그대로(청주=그 밖의 지역), 판정 아님(v1.241) */}
+  {rules&&rules.soak&&<div className="card" style={{padding:"13px 15px",marginTop:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <span style={{fontWeight:800,fontSize:13.5}}>⚖️ 최우선변제(소액임차인)</span>
+    <span style={{fontSize:10.5,color:MUTED}}>{rules.soak.region_label}</span>
+   </div>
+   {D>0?(()=>{const dm=Math.round(D*10000),cur=rules.soak.table[0];const isIn=dm<=cur.deposit_max;
+    return (<div style={{marginTop:8,background:isIn?"rgba(15,118,110,.08)":"var(--surface-2)",borderRadius:10,padding:"10px 12px",fontSize:12.5,lineHeight:1.6}}>
+     내 보증금 <b className="num">{eok(dm)}</b> — 현행 기준(2023-02-21 이후 담보 설정)으로는
+     {isIn?<> 소액임차인 범위 <b style={{color:TEAL}}>안</b>이에요. 경매 시에도 <b className="num">{cur.protected.toLocaleString()}만원</b>까지 다른 채권보다 먼저 변제받을 수 있어요(주택가액의 ½ 한도).</>
+      :<> 소액임차인 범위(보증금 {cur.deposit_max.toLocaleString()}만 이하) <b style={{color:"var(--up)"}}>밖</b>이라 최우선변제 대상이 아니에요. 확정일자 순위·보증보험이 더 중요해져요.</>}
+    </div>);})():<div style={{fontSize:12,color:MUTED,marginTop:6}}>위 계산기에 보증금을 입력하면 범위 여부를 보여드려요.</div>}
+   <div style={{marginTop:8,fontSize:11.5,color:MUTED}}>
+    {rules.soak.table.map((t,i)=>(<div key={i} className="num" style={{padding:"2px 0"}}>{t.from} 이후 설정: 보증금 {t.deposit_max.toLocaleString()}만 이하 → 최대 {t.protected.toLocaleString()}만</div>))}
+   </div>
+   <div style={{fontSize:10.5,color:MUTED,marginTop:7,lineHeight:1.55}}>{rules.soak.note} <a href={rules.soak.source_url} target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>법령 확인 ↗</a> · {rules.soak.as_of}</div>
+  </div>}
+
+  {/* HUG 전세보증 요건 사전 체크 — 요건 충족 여부만(가입 판정 아님, v1.241) */}
+  {rules&&rules.hug&&<div className="card" style={{padding:"13px 15px",marginTop:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:6}}>
+    <span style={{fontWeight:800,fontSize:13.5}}>🛡 HUG 전세보증 요건 미리보기</span>
+    <span style={{fontSize:10.5,color:MUTED}}>{rules.hug.as_of}</span>
+   </div>
+   <div style={{marginTop:8}}>
+    {rules.hug.items.map((it,i)=>{
+     let st="check";   // check=직접 확인
+     const Pm=P*10000,Dm=D*10000,Lm=L*10000;
+     if(it.key==="deposit_cap")st=D>0?(Dm<=it.value?"pass":"fail"):"none";
+     else if(it.key==="jeonse_ratio")st=(P>0&&D>0)?(Dm<=Pm*it.value/100?"pass":"fail"):"none";
+     else if(it.key==="senior_debt")st=(P>0)?((Lm<=Pm*0.6&&Lm+Dm<=Pm*0.9)?"pass":"fail"):"none";
+     const mark=st==="pass"?"✓":st==="fail"?"✕":st==="none"?"·":"☐";
+     const col=st==="pass"?TEAL:st==="fail"?"var(--up)":MUTED;
+     return (<div key={i} style={{display:"flex",gap:8,padding:"4px 0",fontSize:12.5,lineHeight:1.55}}>
+      <span style={{flex:"none",fontWeight:800,color:col,width:14,textAlign:"center"}}>{mark}</span>
+      <div style={{minWidth:0}}><span style={{fontWeight:600,color:st==="fail"?"var(--up)":INK}}>{it.label}</span>
+       {st==="none"&&<span style={{color:MUTED}}> — 위 계산기 입력 시 확인</span>}
+       {it.note&&<div style={{fontSize:11,color:MUTED}}>{it.note}</div>}</div>
+     </div>);})}
+   </div>
+   <div style={{fontSize:10.5,color:MUTED,marginTop:7,lineHeight:1.55}}>요건 충족 여부 참고용이며 가입 가능 여부는 HUG 심사로 확정됩니다. 주택가격 산정 기준이 앱 시세와 다를 수 있어요. <a href={rules.hug.official_url} target="_blank" rel="noopener noreferrer" style={{color:TEAL}}>HUG 공식 확인 ↗</a></div>
+  </div>}
  </div>);
 }
 function OfficialLinks(){
@@ -5467,6 +5559,67 @@ function AffordVerdict({a}){
   {msg&&<div style={{fontSize:12.5,color:"var(--ink)",marginTop:10,lineHeight:1.6}}>{msg}</div>}
   <div style={{fontSize:10.5,color:MUTED,marginTop:7,lineHeight:1.6}}>부담률 25% 이하 적정 · 25~35% 빠듯 · 35%↑ 부담. 정책·은행 심사, 금리 변동에 따라 실제와 달라질 수 있습니다.</div>
  </div>);
+}
+/* 정책대출(기금·HF) 요건 매칭(v1.241) — 백엔드 판정(3단: 가능성/확인필요/미충족)·면책 표시. 은행 공식 링크 포함(제휴·수수료 0). */
+function PolicyMatch(){
+ const [purpose,setPurpose]=useState("buy");
+ const [income,setIncome]=useState(""),[amount,setAmount]=useState("");
+ const [fl,setFl]=useState({newlywed:false,kids2:false,newborn:false,homeless:true});
+ const [res,setRes]=useState(null),[busy,setBusy]=useState(false);
+ const [links,setLinks]=useState([]);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/loan/protection-rules`).then(r=>r.json()).then(j=>{if(on)setLinks(j.bank_links||[]);}).catch(()=>{});
+  return ()=>{on=false;};},[]);
+ const run=()=>{ setBusy(true);
+  fetch(`${API}/loan/policy-match`,{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({purpose,income:income?Math.round(+income):null,amount:amount?Math.round(parseFloat(amount)*10000):null,
+    newlywed:fl.newlywed,kids2:fl.kids2,newborn:fl.newborn,homeless:fl.homeless})})
+   .then(r=>r.json()).then(setRes).catch(()=>setRes(null)).finally(()=>setBusy(false)); };
+ const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const OV={pass:["요건 충족 가능성","var(--ok-bg)","var(--ok-fg)"],maybe:["일부 확인 필요","var(--info-bg)","var(--info-fg)"],fail:["요건 미충족","var(--neutral-bg)",MUTED]};
+ return (<Collapsible icon="won" defaultOpen={false} title="정책대출 해당되나 보기 (기금·HF)">
+  <div style={{padding:"4px 14px 12px"}}>
+   <div style={{fontSize:12,color:MUTED,lineHeight:1.55,marginBottom:9}}>버팀목·디딤돌·보금자리론·신생아 특례는 시중은행보다 금리가 낮지만 아는 사람만 씁니다. 조건을 넣으면 해당 <b>가능성</b>을 보여드려요(승인 판정 아님).</div>
+   <div style={{display:"flex",gap:3,background:"var(--chip)",borderRadius:9,padding:3,width:"fit-content"}}>
+    {[["buy","🏠 구입"],["jeonse","🔑 전세"]].map(([k,l])=><button key={k} type="button" onClick={()=>{setPurpose(k);setRes(null);}} style={{border:"none",cursor:"pointer",fontWeight:700,fontSize:12.5,padding:"7px 12px",borderRadius:7,background:purpose===k?"var(--surface-solid)":"transparent",color:purpose===k?TEAL:MUTED}}>{l}</button>)}
+   </div>
+   <div style={{display:"flex",gap:8,marginTop:9}}>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:11.5,color:MUTED,fontWeight:700,marginBottom:3}}>부부합산 연소득(만원)</div><input inputMode="numeric" value={income} onChange={e=>setIncome(e.target.value)} placeholder="예: 6000" style={inp}/></div>
+    <div style={{flex:1,minWidth:0}}><div style={{fontSize:11.5,color:MUTED,fontWeight:700,marginBottom:3}}>{purpose==="buy"?"주택 가격(억)":"보증금(억)"}</div><input inputMode="decimal" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="예: 2.5" style={inp}/></div>
+   </div>
+   <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:9}}>
+    {[["homeless","무주택"],["newlywed","신혼(7년 내)"],["kids2","2자녀 이상"],["newborn","2년 내 출산"]].map(([k,l])=>(
+     <button key={k} type="button" onClick={()=>{setFl(f=>({...f,[k]:!f[k]}));setRes(null);}} className={"tog "+(fl[k]?"on":"")} style={{fontSize:12,padding:"7px 11px"}}>{l}</button>))}
+   </div>
+   <button onClick={run} disabled={busy} className="btn-primary" style={{width:"100%",marginTop:11,padding:"12px"}}>{busy?"확인 중…":"해당 상품 확인하기"}</button>
+   {res&&res.items&&<div style={{marginTop:11}}>
+    {res.items.map(it=>{const[t,bg,fg]=OV[it.overall]||OV.maybe;
+     return (<div key={it.key} className="card" style={{padding:"12px 13px",marginBottom:8,opacity:it.overall==="fail"?.62:1}}>
+      <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+       <span style={{fontWeight:800,fontSize:14}}>{it.name}</span>
+       <span className="statusdot" style={{background:bg,color:fg}}>{t}</span>
+       <span className="num" style={{marginLeft:"auto",fontSize:12,color:MUTED}}>한도 ~{eok(it.limit)}</span>
+      </div>
+      <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{it.desc}</div>
+      <div style={{marginTop:6}}>
+       {it.checks.map((c,i)=>(<div key={i} style={{display:"flex",gap:7,fontSize:12,lineHeight:1.5,padding:"1.5px 0"}}>
+        <span style={{flex:"none",fontWeight:800,width:13,textAlign:"center",color:c.state==="pass"?TEAL:c.state==="fail"?"var(--up)":MUTED}}>{c.state==="pass"?"✓":c.state==="fail"?"✕":"?"}</span>
+        <span style={{minWidth:0,color:c.state==="fail"?"var(--up)":INK}}>{c.label}{c.note?<span style={{color:MUTED}}> · {c.note}</span>:null}</span>
+       </div>))}
+      </div>
+      {it.extra&&<div style={{fontSize:10.5,color:MUTED,marginTop:5,lineHeight:1.5}}>{it.extra}</div>}
+      <a href={it.official_url} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",marginTop:7,fontSize:12,fontWeight:700,color:TEAL}}>공식 사이트에서 확인 ↗</a>
+     </div>);})}
+    <div style={{fontSize:10.5,color:MUTED,lineHeight:1.55}}>{res.disclaimer} · {res.as_of}</div>
+   </div>}
+   {links.length>0&&<div style={{marginTop:12}}>
+    <div style={{fontSize:12,fontWeight:800,color:MUTED}}>은행 공식 사이트 <span style={{fontWeight:600,fontSize:10.5}}>· 제휴·수수료 없음, 금리는 각 은행에서 확정</span></div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6}}>
+     {links.map((b,i)=><a key={i} href={b.url} target="_blank" rel="noopener noreferrer" className="tog" style={{fontSize:12,padding:"7px 11px",textDecoration:"none",color:INK}}>{b.name} ↗</a>)}
+    </div>
+   </div>}
+  </div>
+ </Collapsible>);
 }
 function Loan({initialPrice,onOpen}){
  const saved=React.useMemo(()=>loadLoanProfile(),[]);

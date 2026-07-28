@@ -31,6 +31,35 @@ def rules():
     return {**loan.LOAN_RULES, "disclaimer": loan.DISCLAIMER}
 
 
+class PolicyMatchInput(BaseModel):
+    purpose: str = Field("buy", description="buy(구입)/jeonse(전세)")
+    income: int | None = Field(None, description="부부합산 연소득(만원)")
+    newlywed: bool = False       # 혼인 7년 이내
+    kids2: bool = False          # 2자녀 이상
+    newborn: bool = False        # 2년 내 출산(2023.1.1 이후 출생)
+    homeless: bool | None = None  # 무주택 여부
+    amount: int | None = Field(None, description="주택가/보증금(만원)")
+
+
+@router.post("/policy-match")
+def policy_match(body: PolicyMatchInput):
+    """정책대출(기금·HF) 요건 매칭 — 가능성 안내(승인·한도 판정 아님, 면책 포함)."""
+    from app.services import policyloan
+    return policyloan.match(body.purpose, body.income, body.newlywed, body.kids2,
+                            body.newborn, body.homeless, body.amount)
+
+
+@router.get("/protection-rules")
+def protection_rules():
+    """임차인 보호 규정(청주 적용): 소액임차인 최우선변제 표 + HUG 전세보증 핵심 요건."""
+    from app.data import finance_rules as fr
+    return {"soak": {"table": fr.SOAK_TABLE_ETC, "note": fr.SOAK_NOTE,
+                     "as_of": fr.SOAK_AS_OF, "source_url": fr.SOAK_SOURCE_URL,
+                     "region_label": "청주시(그 밖의 지역)"},
+            "hug": fr.HUG_RULES,
+            "bank_links": [{"name": n, "url": u} for n, u in fr.BANK_LINKS]}
+
+
 @router.post("/estimate")
 def estimate(body: LoanInput):
     # 정책(HF)·은행(finlife 주담대+전세)·서민금융(서민금융 한눈에) — 실연동 있으면 사용, 없으면 예시 폴백.

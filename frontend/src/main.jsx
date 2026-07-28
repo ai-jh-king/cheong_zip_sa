@@ -1867,6 +1867,7 @@ function App(){
  const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
+ const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
  // 첫 방문 자동 온보딩 오버레이 제거(v1.225 — 사용자 결정: 처음 진입 안내 전부 제거).
@@ -2056,13 +2057,13 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onOnboard={()=>setOnbOpen(true)}/>:
-    tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare}/>:
+    tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)}/>:
     tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
@@ -3258,6 +3259,29 @@ function CityIssues(){
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
  </div>);
 }
+/* 홈 구별 시세 4칩(v1.240) — '청주 평균'보다 구간 비교가 실사용 정보. 탭=지도 해당 구 초점. */
+function GuChips({onGu}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/pricecheck/gu-context`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(null);});
+  return ()=>{on=false;};},[]);
+ if(!d||!d.items||!d.items.length)return null;
+ return (<div className="card" style={{padding:"11px 13px",marginTop:10}}>
+  <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+   <span style={{fontWeight:800,fontSize:13.5}}>구별 아파트 시세</span>
+   <span style={{fontSize:10.5,color:MUTED}}>중앙값 · 최근 {d.months}개월</span>
+   <span style={{marginLeft:"auto",fontSize:10.5,color:TEAL,fontWeight:700}}>탭하면 지도 ›</span>
+  </div>
+  <div style={{display:"flex",gap:6,marginTop:9}}>
+   {d.items.map(g=>(<button key={g.lawd_cd} type="button" onClick={()=>onGu&&onGu({code:g.lawd_cd,name:g.gu})}
+     style={{flex:1,minWidth:0,border:"none",cursor:"pointer",background:"var(--surface-2)",borderRadius:10,padding:"9px 2px",textAlign:"center"}}>
+    <div style={{fontSize:11,color:MUTED,fontWeight:700}}>{(g.gu||"").replace("청주시 ","")}</div>
+    <div className="num" style={{fontWeight:800,fontSize:14.5,color:INK,marginTop:2}}>{eok(g.price_median)}</div>
+    <div className="num" style={{fontSize:10,color:MUTED,marginTop:1}}>평당 {Math.round(g.ppm_median).toLocaleString()}만</div>
+   </button>))}
+  </div>
+ </div>);
+}
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
 function HomeGrid({items}){
  return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px 6px",margin:"10px 0 0",padding:"0 2px"}}>
@@ -3365,7 +3389,7 @@ function HomeTicker({feed,go,onOpen,board}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3423,34 +3447,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
   ]}/>
 
-  {/* 시세 스냅샷(v1.231) — 그리드와 하단 사이 여백을 본업 데이터로 채움(이미 로드된 board.city, 추가 요청 0) */}
-  {city.avg_mae!=null&&<div className="card" style={{padding:"12px 14px",marginTop:10}}>
-   <div style={{display:"flex",alignItems:"center",gap:6}}>
-    <span style={{fontWeight:800,fontSize:13.5}}>청주 아파트 지금</span>
-    <span style={{fontSize:10.5,color:MUTED}}>최근 {AGG_MONTHS}개월 평균</span>
-    {b.contains_sample_data&&<ExBadge/>}
-    {city.as_of&&<span className="num" style={{marginLeft:"auto",fontSize:10.5,color:MUTED}}>{city.as_of} 기준</span>}
-   </div>
-   <div style={{display:"flex",marginTop:9,textAlign:"center"}}>
-    <div style={{flex:1,minWidth:0}}>
-     <div style={{fontSize:11,color:MUTED}}>평균 매매가</div>
-     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{eok(city.avg_mae)}</div>
-     <div style={{fontSize:10.5,color:MUTED}}>전월 <Delta v={city.mae_dM}/></div>
-    </div>
-    <div style={{width:1,background:"var(--line)",margin:"2px 4px"}}/>
-    <div style={{flex:1,minWidth:0}}>
-     <div style={{fontSize:11,color:MUTED}}>평균 전세가</div>
-     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{city.avg_jeon!=null?eok(city.avg_jeon):"—"}</div>
-     <div style={{fontSize:10.5,color:MUTED}}>전년 <Delta v={city.mae_dY}/></div>
-    </div>
-    <div style={{width:1,background:"var(--line)",margin:"2px 4px"}}/>
-    <div style={{flex:1,minWidth:0}}>
-     <div style={{fontSize:11,color:MUTED}}>매매 거래</div>
-     <div className="num" style={{fontSize:17.5,fontWeight:800,lineHeight:1.25}}>{city.trade_count!=null?city.trade_count.toLocaleString("ko-KR"):"—"}</div>
-     <div style={{fontSize:10.5,color:MUTED}}>건 신고</div>
-    </div>
-   </div>
-  </div>}
+  {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
+  <GuChips onGu={onGuMap}/>
 
   {/* 무스크롤 한 화면(v1.232): 관심단지 → 더보기 '관심 단지' 시트, 청주는 지금 → 소식 탭 도감 상단으로 이동 */}
  </div>);
@@ -3910,7 +3908,7 @@ function FilterChips({opts,value,onPick,multi}){
    {ic&&<Icon name={ic} active={on(v)} size={15}/>}{l}</button>)}
  </div>);
 }
-function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
+function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onConsumeFocus}){
  const [deal,setDeal]=useState("trade");
  const [prop,setProp]=useState("apartment");
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
@@ -3943,6 +3941,24 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare}){
  // pickAt 가드: 구 클릭 직후 fitBounds 애니메이션 중 z<12 가 순간 보고돼 방금 선택이 풀리는 레이스 방지.
  const pickAt=useRef(0);
  useEffect(()=>{ if(pick&&viewport&&viewport.zoom!=null&&viewport.zoom<12&&Date.now()-pickAt.current>800){setPick(null);setRegionSel(null);} },[viewport,pick]);
+ // 홈 구별 칩 → 해당 구 선택 + 경계 fit(v1.240). 지도 인스턴스·경계 로드가 끝날 때까지 폴링 후 1회 실행.
+ useEffect(()=>{ if(!focusGu)return;
+  pickAt.current=Date.now();
+  setPick({code:focusGu.code,name:(focusGu.name||"").replace("청주시 ","")});
+  const t=setInterval(()=>{ const m=mapRef.current, g=_guGeo.data;
+   if(!m||!g||!window.naver)return;
+   clearInterval(t);
+   try{ const n=window.naver, f=g.features.find(x=>x.properties.code===focusGu.code);
+    if(f){ const b=new n.maps.LatLngBounds();
+     const polys=f.geometry.type==="Polygon"?[f.geometry.coordinates]:f.geometry.coordinates;
+     polys.forEach(poly=>poly[0].forEach(([lng,lat])=>b.extend(new n.maps.LatLng(lat,lng))));
+     m.fitBounds(b); if(m.getZoom()<12)m.setZoom(12);
+    }}catch(e){}
+   onConsumeFocus&&onConsumeFocus();   // fit 완료 후 소비(먼저 소비하면 이 effect 정리로 폴링이 죽음)
+  },250);
+  const stop=setTimeout(()=>{clearInterval(t);onConsumeFocus&&onConsumeFocus();},8000);   // 지도 미로드(키 미등록 등) 폴백
+  return ()=>{clearInterval(t);clearTimeout(stop);};
+ },[focusGu]);
  useEffect(()=>{ let alive=true; setLoading(true); setViewport(null);
   fetch(`${API}/map/markers?deal_type=${deal}&property_type=${prop}`).then(r=>r.json())
    .then(j=>{if(alive)setData(j);}).catch(()=>{if(alive)setData({markers:[],bands:[]});}).finally(()=>{if(alive)setLoading(false);});

@@ -1434,14 +1434,43 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
   
  </div>);
 }
-function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen,onOnboard}){
+/* 뉴스 리스트(v1.242) — 집사 소식 [뉴스] 서브탭: 피드의 부동산 뉴스 최근 7일. 원문 링크만(요약 왜곡 없음). */
+function NewsList({feed}){
+ const news=((feed&&feed.news)||[]).filter(n=>{
+  if(!n.date)return true;                       // 날짜 미상은 제외하지 않음(왜곡 방지)
+  const d=new Date(String(n.date).replace(/\./g,"-"));
+  return isNaN(d.getTime())?true:(Date.now()-d.getTime())<=7*86400000;
+ });
+ return (<div style={{marginTop:2}}>
+  <div style={{fontSize:12,color:MUTED,margin:"2px 2px 10px"}}>최근 7일 부동산 뉴스예요. 제목을 누르면 언론사 원문으로 이동합니다.</div>
+  {news.length===0?<div className="card" style={{padding:20}}><Empty>최근 7일 뉴스가 없어요.</Empty></div>:
+   <div className="card" style={{padding:"2px 14px"}}>
+   {news.map((n,i)=>{const inner=(<React.Fragment>
+     <div style={{minWidth:0,flex:1}}>
+      <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
+      {n.summary&&<div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
+      <div className="num" style={{fontSize:11,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")}</div>
+     </div>
+     <span style={{marginLeft:8,color:MUTED,fontSize:16,flex:"none"}}>↗</span>
+    </React.Fragment>);
+    return (n.url&&n.url!=="#")
+     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"12px 0",borderBottom:i<news.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
+     :<div key={i} style={{display:"flex",alignItems:"center",padding:"12px 0",borderBottom:i<news.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
+   </div>}
+  <div style={{fontSize:10.5,color:MUTED,margin:"8px 2px 0",lineHeight:1.5}}>네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
+ </div>);
+}
+function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen,onOnboard,feed,onGoTalk,onGoGuide,openGuideId,onConsumeGuide}){
+ // kind="news": 집사 소식(도감|뉴스, 콘텐츠) / kind="talk": 소통(게시판|매물, 커뮤니티) — v1.242 분리
  const [mode,setMode]=useState("list"),[selId,setSelId]=useState(null);
- const [guideGid,setGuideGid]=useState(null);        // 게시판 고정카드→특정 편 딥오픈
- const [latestGuide,setLatestGuide]=useState(null);  // 게시판 상단 최신 도감 편(교차 연결)
+ const [guideGid,setGuideGid]=useState(null);        // 소통 고정카드→특정 편 딥오픈(탭 간 전달)
+ useEffect(()=>{if(openGuideId!=null){setGuideGid(openGuideId);onConsumeGuide&&onConsumeGuide();}},[openGuideId]);
+ const [latestGuide,setLatestGuide]=useState(null);  // 소통 상단 최신 도감 편(교차 연결)
  useEffect(()=>{let on=true;
+  if(kind!=="talk")return;
   fetch(`${API}/guides/series/cheongju`).then(r=>r.ok?r.json():Promise.reject()).then(j=>{
    const gs=j.guides||[];if(on&&gs.length)setLatestGuide(gs.reduce((a,b)=>((a.published_at||"")>(b.published_at||"")?a:b)));
-  }).catch(()=>{});return ()=>{on=false;};},[]);
+  }).catch(()=>{});return ()=>{on=false;};},[kind]);
  const [cat,setCat]=useState(""),[sort,setSort]=useState("recent"),[q,setQ]=useState(""),[qIn,setQIn]=useState("");
  const [items,setItems]=useState(null),[page,setPage]=useState(1),[hasMore,setHasMore]=useState(false);
  const [best,setBest]=useState([]),[view,setView]=useState("all"),[mineData,setMineData]=useState(null),[editPost,setEditPost]=useState(null);
@@ -1474,16 +1503,21 @@ function CommunityTab({account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,se
   return <button key={key} onClick={()=>setSection&&setSection(key)} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:on?"var(--surface-solid)":"transparent",color:on?INK:MUTED,boxShadow:on?"0 1px 3px rgba(30,64,90,.12)":"none",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name={icon} active={on} color={on?INK:MUTED} size={15}/>{label}</button>;};
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
-   {renderSub("guide","도감","news")}
-   {renderSub("board","게시판","board")}
-   {renderSub("listing","매물","listing")}
+   {kind==="news"?<React.Fragment>
+    {renderSub("guide","도감","book")}
+    {renderSub("news","뉴스","news")}
+   </React.Fragment>:<React.Fragment>
+    {renderSub("board","게시판","board")}
+    {renderSub("listing","매물","listing")}
+   </React.Fragment>}
   </div>
-  {section==="guide"?<React.Fragment>
+  {kind==="news"&&section!=="news"?<React.Fragment>
    <CityIssues/>{/* '청주는 지금'(개발 이슈) — 홈 무스크롤 개편(v1.232)으로 소식 탭 이동 */}
    <GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
-    onGoBoard={()=>{setGuideGid(null);setSection&&setSection("board");}}/></React.Fragment>
+    onGoBoard={()=>{setGuideGid(null);onGoTalk&&onGoTalk();}}/></React.Fragment>
+  :kind==="news"?<NewsList feed={feed}/>
   :section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
-  {latestGuide&&<div onClick={()=>{setGuideGid(latestGuide.id);setSection&&setSection("guide");}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{setGuideGid(latestGuide.id);setSection&&setSection("guide");})}
+  {latestGuide&&<div onClick={()=>{onGoGuide&&onGoGuide(latestGuide.id);}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{onGoGuide&&onGoGuide(latestGuide.id);})}
     className="card" style={{padding:"11px 14px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
    <span style={{fontSize:19,flex:"none"}}>{latestGuide.cover_emoji||"📚"}</span>
    <div style={{minWidth:0,flex:1}}>
@@ -1859,7 +1893,9 @@ function App(){
  const [loanOpen,setLoanOpen]=useState(false);
  const [agentOpen,setAgentOpen]=useState(false);
  const [openListingId,setOpenListingId]=useState(null);
- const [boardSection,setBoardSection]=useState("guide");   // 집사 소식 내부: guide(도감·기본)|board|listing — 초기엔 콘텐츠 우선(콜드스타트 회피), 커뮤니티 활성화 후 board 기본 전환 검토
+ const [boardSection,setBoardSection]=useState("guide");   // 집사 소식(콘텐츠): guide(도감·기본)|news(뉴스, v1.242)
+ const [talkSection,setTalkSection]=useState("board");     // 소통 탭(v1.242 분리): board(게시판)|listing(매물)
+ const [openGuideId,setOpenGuideId]=useState(null);        // 소통→도감 최신 글 딥오픈
  const [myHome,setMyHome]=useState(()=>{try{const v=safeStore.get("cj_myhome");return v?JSON.parse(v):null;}catch(e){return null;}});
  const [homePick,setHomePick]=useState(false);   // 검색 오버레이가 '우리집 등록' 모드인지
  const saveMyHome=useCallback((h)=>{setMyHome(h);try{safeStore.set("cj_myhome",h?JSON.stringify(h):"");}catch(e){}},[]);
@@ -2005,7 +2041,7 @@ function App(){
   const rk=await fetch(`${API}/dashboard/ranking?property_type=${type}&limit=300&area_band=${band}`).then(r=>r.json());
   setData(p=>({...p,ranking:rk}));}catch(e){setData(p=>({...p,ranking:demoRanking(type,band)}));}},[]);
 
- const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","집사 소식"],["more","더보기"]];
+ const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","집사 소식"],["chat","소통"],["more","더보기"]];   // v1.242: 소통(게시판·매물) 분리, 집사 소식=콘텐츠(도감·뉴스)
  return (<UnitCtx.Provider value={unit}><div>
   <Splash ready={status!=="loading"}/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
@@ -2057,14 +2093,15 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
     tab==="subscription"?<SubscriptionTab/>:
-    tab==="board"?<CommunityTab account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={boardSection} setSection={setBoardSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onOnboard={()=>setOnbOpen(true)}/>:
+    tab==="board"?<CommunityTab kind="news" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} section={boardSection} setSection={setBoardSection} onOnboard={()=>setOnbOpen(true)} feed={data.feed} openGuideId={openGuideId} onConsumeGuide={()=>setOpenGuideId(null)} onGoTalk={()=>{setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>:
+    tab==="chat"?<CommunityTab kind="talk" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={talkSection} setSection={setTalkSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onGoGuide={(gid)=>{setOpenGuideId(gid);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setBoardSection("board");setTab("board");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
+    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
    {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
@@ -2078,7 +2115,7 @@ function App(){
   </div>
   {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
-    <Icon name={k} active={tab===k} size={24}/>{l}</button>))}
+    <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
@@ -2094,16 +2131,16 @@ function App(){
     board={data&&data.board} recents={recents}
     onComplex={it=>{setSearchOpen(false);if(homePick){setHomePick(false);saveMyHome({complex_name:it.complex_name||it.name,lawd_cd:it.lawd_cd,property_type:it.property_type||"apartment",gu:it.gu,dong:it.dong});}else{openComplex(it);}}}
     onGu={g=>{setSearchOpen(false);goGu(g);}}
-    onListing={id=>{setSearchOpen(false);setOpenListingId(id);setBoardSection("listing");setTab("board");window.scrollTo(0,0);}}/>}
+    onListing={id=>{setSearchOpen(false);setOpenListingId(id);setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}}/>}
   {notifOpen&&<NotificationsOverlay onClose={()=>setNotifOpen(false)} onAllRead={()=>setUnread(0)}
     onOpenComplex={it=>{setNotifOpen(false);openComplex(it);window.scrollTo(0,0);}}
-    onOpenPost={pid=>{setNotifOpen(false);setOpenPostId(pid);setBoardSection("board");setTab("board");window.scrollTo(0,0);}}/>}
+    onOpenPost={pid=>{setNotifOpen(false);setOpenPostId(pid);setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>}
   {legalDoc&&<LegalModal doc={legalDoc} onClose={()=>setLegalDoc(null)}/>}
   {sel&&<DetailSheet sel={sel} mapCfg={mapCfg} onClose={()=>setSel(null)} isFav={isFav} onToggleFav={toggleFav} inCompare={inCompare} onToggleCompare={toggleCompare} onOpen={openComplex}/>}
   {commuteOpen&&<CommuteSheet onClose={()=>setCommuteOpen(false)} onOpen={it=>{setCommuteOpen(false);openComplex(it);}} mapCfg={mapCfg}/>}
   {budgetOpen&&<BudgetSheet onClose={()=>setBudgetOpen(false)} onOpen={it=>{setBudgetOpen(false);openComplex(it);}} favs={favs}/>}
   {loanOpen&&<LoanSheet onClose={()=>setLoanOpen(false)} onOpen={it=>{setLoanOpen(false);openComplex(it);}}/>}
-  {agentOpen&&<AgentDashboard onClose={()=>setAgentOpen(false)} account={account} onGoListings={()=>{setAgentOpen(false);setBoardSection("listing");setTab("board");}} onOpenListing={id=>{setAgentOpen(false);setBoardSection("listing");setTab("board");setOpenListingId(id);}}/>}
+  {agentOpen&&<AgentDashboard onClose={()=>setAgentOpen(false)} account={account} onGoListings={()=>{setAgentOpen(false);setTalkSection("listing");setTab("chat");}} onOpenListing={id=>{setAgentOpen(false);setTalkSection("listing");setTab("chat");setOpenListingId(id);}}/>}
   {compare.length>0&&!compareOpen&&!sel&&<div style={{position:"fixed",left:0,right:0,bottom:64,zIndex:55,display:"flex",justifyContent:"center",pointerEvents:"none",padding:"0 12px"}}>
    <div style={{pointerEvents:"auto",display:"flex",alignItems:"center",gap:9,background:"var(--surface-solid)",border:"1px solid var(--line)",boxShadow:"0 8px 24px rgba(30,64,90,.2)",borderRadius:999,padding:"7px 9px 7px 15px",maxWidth:"100%"}}>
     <span style={{fontWeight:800,fontSize:13,whiteSpace:"nowrap"}}>비교 {compare.length}개</span>
@@ -3387,7 +3424,7 @@ function HomeGrid({items}){
 }
 /* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
    광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
-function HomeTicker({feed,go,onOpen,board}){
+function HomeTicker({feed,go,onOpen,board,onNews}){
  const [subs,setSubs]=useState(null);
  const [bg,setBg]=useState(null);       // 급매(급락 거래) — 슬라이드+클릭 시 전체 리스트 시트
  const [listSheet,setListSheet]=useState(null);   // {kind:'bg'|'lm'} — 이전 티커처럼 하단 팝업 리스트
@@ -3416,6 +3453,7 @@ function HomeTicker({feed,go,onOpen,board}){
  if(!slides.length)return null;
  const open=(s)=>{ if(s.type==="sub"){go&&go("subscription");}
   else if(s.type==="bg"||s.type==="lm"){setListSheet({kind:s.type});}   // 이전 티커처럼 하단 리스트 팝업
+  else if(onNews){onNews();}   // 뉴스 슬라이드 → 집사 소식 '뉴스' 탭(v1.242, 원문은 거기서)
   else if(s.it.url&&s.it.url!=="#"){try{window.open(s.it.url,"_blank","noopener");}catch(e){}} };
  return (<div style={{position:"relative",marginTop:10}}>
   <div ref={ref} onScroll={e=>{const el=e.target;setIdx(Math.round(el.scrollLeft/(el.clientWidth||1)));}}
@@ -3481,7 +3519,7 @@ function HomeTicker({feed,go,onOpen,board}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3526,7 +3564,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   {/* ── 홈 한 화면 구성(v1.228, 사용자 결정·롤백=backup-home-v1.222): 배너 → 그리드. 우리집은 '등록된 경우만'(유도 카드 제거, 등록 경로=더보기). 급매는 배너 슬라이드로 흡수. ── */}
   {myHome&&<MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b}/>
+  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews}/>
 
   <HomeGrid items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},

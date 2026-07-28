@@ -3537,7 +3537,8 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
  }));
  recs.sort((a,b)=>a.pri-b.pri);
  const recTop=recs.slice(0,4);
- return (<div style={{marginTop:6}}>
+ return (<div style={{marginTop:6,flex:1,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+  {/* 여백 분배(v1.243): 화면이 남으면 배너·그리드·칩 사이가 균등하게 벌어짐(최소 간격은 각 블록 margin 10px) */}
   {/* 청주 시세 요약(히어로) — 숨김(홈에서 제외, 부활 시 false 제거) */}
   {false&&<div className="card" style={{padding:"14px 15px",marginBottom:8}}>
    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>

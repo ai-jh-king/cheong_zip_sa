@@ -2117,7 +2117,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2125,7 +2125,7 @@ function App(){
     tab==="board"?<CommunityTab kind="news" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} section={boardSection} setSection={setBoardSection} onOnboard={()=>setOnbOpen(true)} feed={data.feed} openGuideId={openGuideId} onConsumeGuide={()=>setOpenGuideId(null)} onGoTalk={()=>{setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>:
     tab==="chat"?<CommunityTab kind="talk" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={talkSection} setSection={setTalkSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onGoGuide={(gid)=>{setOpenGuideId(gid);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)}/>:
-    tab==="more"?<MoreTab onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>setGuideOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)}/>:
+    tab==="more"?<MoreTab account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
    {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:(tab==="home"&&homeWrapH&&homeWrapH<640)?8:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
@@ -3072,7 +3072,7 @@ function OfficialLinks(){
   <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onOnboard,onGuide,onBoard,onNotif,unread,onFavs,onAuction}){
+function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onBoard,onNotif,unread,onFavs}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -3103,34 +3103,23 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
     </div>
    )}
   </div>
-  {/* 집사 도감 — 콘텐츠 시스템 진입(우리집 카드 다음) */}
-  <div onClick={onGuide} role="button" tabIndex={0} onKeyDown={onEnter(onGuide)} className="card" style={{padding:"14px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-   <span style={{fontSize:24,flex:"none"}}>📚</span>
-   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:14.5}}>집사 도감</div><div style={{fontSize:12,color:MUTED,marginTop:2}}>청주에서 잘 살고 싶은 사람을 위한 청집사의 실사용 안내서</div></div>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </div>
-  <div onClick={onOnboard} role="button" tabIndex={0} onKeyDown={onEnter(onOnboard)} className="card" style={{padding:"14px 15px",marginTop:10,cursor:"pointer",background:"linear-gradient(100deg, rgba(15,118,110,.13), rgba(15,118,110,.03))",display:"flex",alignItems:"center",gap:12}}>
-   <span style={{fontSize:24,flex:"none"}}>🧭</span>
-   <div style={{minWidth:0,flex:1}}><div style={{fontWeight:800,fontSize:14.5}}>청주가 처음이세요?</div><div style={{fontSize:12,color:MUTED,marginTop:2}}>직장·예산 기반 맞춤 단지 추천 · 3분</div></div>
-   <span style={{color:TEAL,fontSize:20,flex:"none"}}>›</span>
-  </div>
+  {/* 더보기 = 마이페이지(v1.247): 도구는 홈 그리드로 일원화, 여기엔 '내 것'만(프로필·우리집·알림·설정·소개·법적) */}
   <div style={{display:"flex",gap:8,marginTop:10}}>
    <Quick icon="star" label="관심 단지" onClick={()=>{onFavs&&onFavs();}}/>
-   <Quick icon="subscription" label="청약" onClick={()=>go&&go("subscription")}/>
-   <Quick icon="board" label="게시판" onClick={()=>{onBoard?onBoard():(go&&go("board"));}}/>
+   <Quick icon="board" label="내 활동" onClick={()=>{onBoard?onBoard():(go&&go("chat"));}}/>
    {account&&<Quick icon="bell" label={unread>0?`알림 ${unread>99?"99+":unread}`:"알림"} onClick={()=>onNotif&&onNotif()}/>}
   </div>
-  <div style={{margin:"18px 2px 4px"}}>
-   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em"}}>집 찾기 도구</div>
-   <div style={{fontSize:12,color:MUTED,marginTop:2}}>조건으로 청주 단지를 찾고, 대출까지 한 번에.</div>
+  <div onClick={()=>go&&go("home")} role="button" tabIndex={0} onKeyDown={onEnter(()=>go&&go("home"))} className="card" style={{padding:"13px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
+   <span style={{flex:"none",lineHeight:0}}><Icon name="home" active color={TEAL} size={21}/></span>
+   <div style={{minWidth:0,flex:1}}>
+    <div style={{fontWeight:800,fontSize:14}}>집 찾기 도구는 홈에 있어요</div>
+    <div style={{fontSize:12,color:MUTED,marginTop:2}}>통근검색·대출·전세진단·예산추천·경매공매 — 홈 아이콘에서 바로</div>
+   </div>
+   <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
   </div>
-  <Tool icon="compass" title="통근권으로 집 찾기" desc="직장·역까지 시간으로 단지를 찾아보세요" onClick={onCommute}/>
-  <Tool icon="won" title="내 예산 맞춤 추천" desc="보유 현금으로 살 수 있는 청주 단지를 찾아드려요" onClick={onBudget}/>
-  <Tool icon="loan" title="내 대출 한도 계산" desc="이 시세로 얼마까지 받을 수 있는지 바로 확인하세요" onClick={onLoan}/>
-  <Tool icon="gov" title="경매·공매 알아보기" desc="세입자 배당 기초부터 청주 공매 물건·공식 확인처까지" onClick={onAuction}/>
-  <JeonseGuard/>
   <OfficialLinks/>
-  <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.\n${location.origin}`;
+  <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.
+${location.origin}`;
     if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
     else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast("소개 문구를 복사했어요!")).catch(()=>{});}}}
    className="card" style={{width:"100%",padding:"14px 15px",marginTop:12,border:"1px dashed rgba(15,118,110,.4)",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
@@ -3141,7 +3130,7 @@ function MoreTab({onCommute,onBudget,onLoan,account,myHome,onRegisterHome,onClea
    </span>
    <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
   </button>
-  <div style={{fontSize:11,color:MUTED,margin:"14px 2px 0",lineHeight:1.6}}>※ 대출 한도·예산 추천은 공시·입력값 기반 참고용 추정이며, 실제 조건은 금융회사 심사로 달라집니다.</div>
+  <div style={{fontSize:11,color:MUTED,margin:"14px 2px 0",lineHeight:1.6}}>※ 청집사는 중개·광고 수익이 없습니다. 시세·대출·세금 정보는 참고용 추정이며 금융·법률 자문이 아닙니다.</div>
  </div>);
 }
 function ComplexTalk({name,lawd}){
@@ -3612,7 +3601,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3663,7 +3652,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   <HomeGrid compact={compact} items={[
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
    {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},   // 시세 탭 은퇴(사용자 결정) → 데일리 훅 복귀
-   {label:"청약",icon:"subscription",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("subscription")},
+   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},   // 청약은 하단 네비에 있어 중복 제거(v1.247)
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
    {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},

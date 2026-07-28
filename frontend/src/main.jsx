@@ -1155,7 +1155,8 @@ function SearchOverlay({onClose,onComplex,onGu,onListing,board,recents}){
  const empty=res&&!loading&&(res.regions||[]).length===0&&(res.complexes||[]).length===0&&(res.listings||[]).length===0;
  const header=(<div style={{display:"flex",alignItems:"center",gap:9,padding:"2px 14px 10px"}}>
    <Icon name="search" active size={20}/>
-   <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="단지·지역·매물 검색 (예: 가경아이파크, 복대동)"
+   {/* autoFocus 제거(v1.244 사용자 요청) — 오버레이 열리자마자 키패드가 화면을 덮는 문제. 입력칸 탭 시에만 키패드. */}
+   <input value={q} onChange={e=>setQ(e.target.value)} placeholder="단지·지역·매물 검색 (예: 가경아이파크, 복대동)"
      style={{flex:1,border:"none",outline:"none",fontSize:15,background:"none",minWidth:0}}/>
    <button onClick={onClose} style={{border:"none",background:"none",color:MUTED,fontWeight:700,fontSize:14,cursor:"pointer",flex:"none"}}>취소</button>
   </div>);
@@ -1904,6 +1905,9 @@ function App(){
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
+ // '처음이라면' — 그리드에서 빼고 첫 진입 1회 알림 배너로(v1.244, 사용자 결정). 온보딩 완료·기해제 시 미표시.
+ const [onbNudge,setOnbNudge]=useState(()=>{try{return !safeStore.get("cj_onb_nudge")&&!safeStore.get("cj_onb");}catch(e){return false;}});
+ const dismissNudge=()=>{setOnbNudge(false);try{safeStore.set("cj_onb_nudge","1");}catch(e){}};
  const [onb,setOnb]=useState(()=>{try{const v=safeStore.get("cj_onb");return v?JSON.parse(v):null;}catch(e){return null;}});
  const saveOnb=useCallback((o)=>{setOnb(o);try{safeStore.set("cj_onb",o?JSON.stringify(o):"");}catch(e){}},[]);
  // 첫 방문 자동 온보딩 오버레이 제거(v1.225 — 사용자 결정: 처음 진입 안내 전부 제거).
@@ -2093,7 +2097,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2113,6 +2117,17 @@ function App(){
     </div>
    </footer>}
   </div>
+  {tab==="home"&&onbNudge&&!sel&&<div style={{position:"fixed",left:12,right:12,bottom:"calc(80px + env(safe-area-inset-bottom, 0px))",zIndex:60,display:"flex",justifyContent:"center"}}>
+   <div style={{display:"flex",alignItems:"center",gap:10,background:"var(--surface-solid)",borderRadius:14,padding:"11px 13px",boxShadow:"0 8px 28px rgba(16,24,32,.30)",maxWidth:456,width:"100%"}}>
+    <span style={{flex:"none",lineHeight:0}}><Icon name="compass" active color={TEAL} size={22}/></span>
+    <div style={{minWidth:0,flex:1}}>
+     <div style={{fontWeight:800,fontSize:13.5}}>청주가 처음이세요?</div>
+     <div style={{fontSize:11.5,color:MUTED,marginTop:1}}>직장·예산으로 맞춤 단지 추천 · 3분</div>
+    </div>
+    <button onClick={()=>{dismissNudge();setOnbOpen(true);}} className="btn-primary" style={{flex:"none",fontSize:12.5,padding:"8px 13px"}}>시작</button>
+    <span onClick={dismissNudge} role="button" tabIndex={0} onKeyDown={onEnter(dismissNudge)} aria-label="닫기" style={{flex:"none",cursor:"pointer",color:MUTED,fontSize:19,lineHeight:1,fontWeight:600,padding:"0 2px"}}>×</span>
+   </div>
+  </div>}
   {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
@@ -3288,16 +3303,19 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
      </React.Fragment>)}
     {sKey&&(!gid||inline)&&(sData===null?<SkeletonCard lines={3}/>:
      <React.Fragment>
-      {sData.series&&<div style={{fontSize:13,color:MUTED,margin:"2px 2px 12px",lineHeight:1.6}}>{sData.series.description}</div>}
+      {sData.series&&<div style={{fontSize:12,color:MUTED,margin:"2px 2px 10px",lineHeight:1.6}}>{sData.series.description}</div>}
+      {/* 뉴스 리스트와 동일한 단일 카드+구분선 행 스타일로 통일(v1.244) */}
       {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
-       (sData.guides||[]).map(g=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} className="card" style={{padding:"14px 15px",marginBottom:9,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-        <span style={{fontSize:22,flex:"none"}}>{g.cover_emoji||"📄"}</span>
+       <div className="card" style={{padding:"2px 14px"}}>
+       {(sData.guides||[]).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+        <span style={{fontSize:20,flex:"none"}}>{g.cover_emoji||"📄"}</span>
         <div style={{minWidth:0,flex:1}}>
-         <div style={{fontWeight:800,fontSize:14.5,lineHeight:1.4}}>{g.title}</div>
-         <div className="num" style={{fontSize:11.5,color:MUTED,marginTop:3}}>{fmtDate(g.published_at)} · 조회 {g.view_count||0}</div>
+         <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{g.title}</div>
+         <div className="num" style={{fontSize:11,color:MUTED,marginTop:3}}>{fmtDate(g.published_at)} · 조회 {g.view_count||0}</div>
         </div>
-        <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
+        <span style={{color:TEAL,fontSize:16,flex:"none"}}>›</span>
        </div>))}
+       </div>}
      </React.Fragment>)}
     {gid&&!inline&&articleContent}
    </div>
@@ -3394,7 +3412,14 @@ function GuChips({onGu}){
  useEffect(()=>{let on=true;
   fetch(`${API}/pricecheck/gu-context`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(null);});
   return ()=>{on=false;};},[]);
- if(!d||!d.items||!d.items.length)return null;
+ // 로딩 중에도 같은 높이 자리를 유지 — space-between 홈에서 그리드가 아래로 갔다가 점프하는 레이아웃 시프트 방지(v1.244)
+ if(d===null)return (<div className="card" style={{padding:"11px 13px",marginTop:10,minHeight:104,boxSizing:"border-box"}}>
+  <div style={{width:120,height:13,borderRadius:6,background:"var(--surface-2)"}}/>
+  <div style={{display:"flex",gap:6,marginTop:12}}>
+   {[0,1,2,3].map(i=><div key={i} style={{flex:1,height:62,borderRadius:10,background:"var(--surface-2)"}}/>)}
+  </div>
+ </div>);
+ if(!d.items||!d.items.length)return null;
  return (<div className="card" style={{padding:"11px 13px",marginTop:10}}>
   <div style={{display:"flex",alignItems:"baseline",gap:6}}>
    <span style={{fontWeight:800,fontSize:13.5}}>구별 아파트 시세</span>
@@ -3519,7 +3544,7 @@ function HomeTicker({feed,go,onOpen,board,onNews}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3575,7 +3600,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
    {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
-   {label:"처음이라면",icon:"compass",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onOnboard&&onOnboard()},
+   {label:"예산추천",icon:"won",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onBudget&&onBudget()},   // '처음이라면'은 첫 진입 알림으로 이동(v1.244)
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
@@ -3812,7 +3837,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   if(!ready||!ref.current||!window.naver)return;
   const n=window.naver;
   if(!mapObj.current){
-   mapObj.current=new n.maps.Map(ref.current,{center:new n.maps.LatLng(36.6424,127.489),zoom:12});
+   // 로고·축척은 공식 옵션으로 숨김(하단 네비와 겹침 — 사용자 요청). 저작권(© NAVER) 표기는 유지(약관).
+   mapObj.current=new n.maps.Map(ref.current,{center:new n.maps.LatLng(36.6424,127.489),zoom:12,
+    logoControl:false,scaleControl:false});
   }
   let t=null;
   const listener=n.maps.Event.addListener(mapObj.current,"idle",()=>{clearTimeout(t);t=setTimeout(()=>setTick(x=>x+1),350);});
@@ -3881,12 +3908,15 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:60});
      markerObjs.current.push(mk);
      const drill=()=>{
-      // 초점: 단지 평균이 아니라 '구 경계 전체'에 맞춤(fitBounds) — 단지가 한쪽에 몰려도 구 중심 유지
+      // 초점(v1.244): 구 경계 전체가 아니라 '매물(단지)이 있는 범위'로 — 경계 fit 은 농촌 지역까지 포함돼
+      // 화면 대부분이 빈 들판이 되는 실사고. 단지 좌표 fit + 동 요약 단계(z12~13) 클램프.
       try{
        const b=new n.maps.LatLngBounds();
-       paths.flat().forEach(p=>b.extend(p));
+       if(arr.length)arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
+       else paths.flat().forEach(p=>b.extend(p));   // 단지 없는 구는 경계 폴백
        map.fitBounds(b);
-       if(map.getZoom()<12)map.setZoom(12);   // 구 선택 후엔 동 요약 단계(z12~13)로 진입 — 계단식
+       const z2=map.getZoom();
+       if(z2<12)map.setZoom(12); else if(z2>13)map.setZoom(13);
       }catch(e){}
       onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
@@ -3909,7 +3939,10 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      n.maps.Event.addListener(mk,"click",()=>{try{
       const b=new n.maps.LatLngBounds(); arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
       map.fitBounds(b);
-      if(map.getZoom()<15)map.setZoom(15);   // 단지 레벨(z≥15) 보장 — 동 뷰에 머물면 단지가 안 보임
+      // 동 클릭은 '동네 시야': 단지 1~2곳 동에서 fitBounds 가 최대 확대(아파트 클로즈업)되는 것 방지(실사고).
+      const z2=map.getZoom();
+      if(z2>15)map.setZoom(15);              // 과확대 → 동네 레벨로
+      else if(z2<15)map.setZoom(15);         // 동 뷰에 머묾 → 단지 핀 레벨 보장
      }catch(e){}});
      markerObjs.current.push(mk);
     });

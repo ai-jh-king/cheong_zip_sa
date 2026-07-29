@@ -2124,7 +2124,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -3489,7 +3489,7 @@ function GuChips({onGu,compact}){
   </div>
  </div>);
  if(!d.items||!d.items.length)return null;
- return (<div className="card" style={{padding:compact?"9px 13px":"11px 13px",marginTop:compact?4:10}}>
+ return (<div className="card" style={{padding:compact?"9px 13px":"11px 13px",marginTop:compact?2:10}}>
   <div style={{display:"flex",alignItems:"baseline",gap:6}}>
    <span style={{fontWeight:800,fontSize:13.5}}>구별 아파트 시세</span>
    <span style={{fontSize:10.5,color:MUTED}}>중앙값 · 최근 {d.months}개월</span>
@@ -3497,22 +3497,34 @@ function GuChips({onGu,compact}){
   </div>
   <div style={{display:"flex",gap:6,marginTop:9}}>
    {d.items.map(g=>(<button key={g.lawd_cd} type="button" onClick={()=>onGu&&onGu({code:g.lawd_cd,name:g.gu})}
-     style={{flex:1,minWidth:0,border:"none",cursor:"pointer",background:"var(--surface-2)",borderRadius:10,padding:compact?"7px 2px":"9px 2px",textAlign:"center"}}>
+     style={{flex:1,minWidth:0,border:"none",cursor:"pointer",background:"var(--surface-2)",borderRadius:10,padding:compact?"6px 2px":"9px 2px",textAlign:"center"}}>
     <div style={{fontSize:11,color:MUTED,fontWeight:700}}>{(g.gu||"").replace("청주시 ","")}</div>
-    <div className="num" style={{fontWeight:800,fontSize:14.5,color:INK,marginTop:2}}>{eok(g.price_median)}</div>
-    <div className="num" style={{fontSize:10,color:MUTED,marginTop:1}}>평당 {Math.round(g.ppm_median).toLocaleString()}만</div>
+    <div className="num" style={{fontWeight:800,fontSize:compact?13.5:14.5,color:INK,marginTop:2}}>{eok(g.price_median)}</div>
+    {!compact&&<div className="num" style={{fontSize:10,color:MUTED,marginTop:1}}>평당 {Math.round(g.ppm_median).toLocaleString()}만</div>}
    </button>))}
   </div>
  </div>);
 }
+/* 홈 상황 선택(v1.250) — 컨셉 "집 사고 팔기 전에 확인하세요".
+   사용자가 자기 상황(살 때/팔 때/빌릴 때)을 고르면 그 상황의 확인 도구 4종이 앞줄에 온다.
+   선택은 기기에 저장(safeStore)해 다음 방문에도 유지. */
+const SITUATIONS=[["buy","🏠 살 때"],["sell","💰 팔 때"],["rent","🔑 빌릴 때"]];
+function SituationBar({value,onPick,compact}){
+ return (<div style={{display:"flex",gap:6,marginTop:compact?5:8}}>
+  {SITUATIONS.map(([k,l])=>{const on=value===k;
+   return <button key={k} type="button" onClick={()=>onPick(k)} style={{flex:1,minWidth:0,border:"none",cursor:"pointer",
+     borderRadius:11,padding:compact?"7px 0":"11px 0",fontWeight:on?800:600,fontSize:compact?12.5:13,
+     background:on?"rgba(15,118,110,.12)":"var(--surface-2)",color:on?TEAL:MUTED}}>{l}</button>;})}
+ </div>);
+}
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
 function HomeGrid({items,compact}){
- return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:compact?"6px 6px":"10px 6px",margin:compact?"6px 0 0":"10px 0 0",padding:"0 2px"}}>
+ return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:compact?"4px 6px":"10px 6px",margin:compact?"5px 0 0":"10px 0 0",padding:"0 2px"}}>
   {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
-   <span style={{width:compact?44:50,height:compact?44:50,borderRadius:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
-    <Icon name={it.icon} active color={it.color} size={compact?21:24}/>
+   <span style={{width:compact?40:50,height:compact?40:50,borderRadius:compact?14:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
+    <Icon name={it.icon} active color={it.color} size={compact?19:24}/>
    </span>
-   <span style={{fontSize:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
+   <span style={{fontSize:compact?10.5:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
   </button>))}
  </div>);
 }
@@ -3561,7 +3573,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
      :"linear-gradient(125deg,#0B5F57,#17A292)";
     const clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
     return (<div key={i} onClick={()=>open(s)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(s))}
-      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:compact?"11px 14px 16px":"13px 16px 18px",boxSizing:"border-box",minHeight:compact?82:150,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+      style={{flex:"none",width:"100%",scrollSnapAlign:"start",cursor:"pointer",background:grad,color:"#fff",padding:compact?"11px 14px 16px":"13px 16px 18px",boxSizing:"border-box",minHeight:compact?52:150,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column"}}>
      {/* 큰 일러스트(뉴스 피드는 이미지 미제공 — 사진 날조 대신 장식 그래픽) */}
      <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":isLm?"👑":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
@@ -3614,11 +3626,34 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
  const GU4=["상당구","서원구","흥덕구","청원구"];
+ // 상황별 확인 도구(v1.250) — 앞줄 4칸. 뒷줄은 상황 무관 공통(계약전확인·지도·관심단지·도감).
+ const [situation,setSituation]=useState(()=>safeStore.get("cj_situation")||"buy");
+ const pickSituation=(k)=>{setSituation(k);try{safeStore.set("cj_situation",k);}catch(e){}};
+ const SIT_TOOLS={
+  buy:[   // 살 때: 얼마까지 · 대출 · 통근 · 경매까지 확인
+   {label:"예산추천",icon:"won",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>onBudget&&onBudget()},
+   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
+  ],
+  sell:[  // 팔 때: 내 집 시세 · 부대비용 · 내놓기 · 동네 시세 비교
+   {label:"우리집 시세",icon:"home",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>myHome?(onOpen&&onOpen(myHome)):(onRegisterHome&&onRegisterHome())},
+   {label:"세금·중개보수",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"매물 내놓기",icon:"listing",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onListing&&onListing()},
+   {label:"시세 비교",icon:"price",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("map")},
+  ],
+  rent:[  // 빌릴 때: 보증금 안전 · 전세위험 지도 · 통근 · 도감(전세 편)
+   {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
+   {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>go&&go("map")},
+   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+  ],
+ };
  // 첫 방문 환영 카드 제거(v1.225) — 홈은 히어로+그리드+배너로 한 화면 구성(사용자 결정).
  const regionFav=new Set((favs||[]).filter(f=>f.target_type==="region").map(f=>(f.meta&&f.meta.gu)||f.name));
  const favComplexGus=new Set((favs||[]).filter(f=>f.target_type!=="region").map(f=>f.meta&&f.meta.gu).filter(Boolean));
@@ -3662,15 +3697,15 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
 
   <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews} compact={compact} live={live}/>
 
-  {/* 정체성(v1.249): '계약 전에 확인하는 앱' — 검증 도구를 앞줄에, 탐색·콘텐츠를 뒷줄에 */}
-  <HomeGrid compact={compact} items={[
-   {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
+  {/* 컨셉(v1.250): 집 사고 팔기 전 체크포인트 — 상황을 고르면 그 상황의 확인 도구가 앞줄에 */}
+  {!compact&&<div style={{fontSize:12.5,color:MUTED,fontWeight:600,margin:"4px 2px 0"}}>
+   집 <b style={{color:INK}}>사고 팔기 전</b>, 여기서 먼저 확인하세요
+  </div>}
+  <SituationBar value={situation} onPick={pickSituation} compact={compact}/>
+  <HomeGrid compact={compact} items={[...SIT_TOOLS[situation],
    {label:"계약전확인",icon:"doc",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onChecklist&&onChecklist()},
-   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
-   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
    {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
    {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},
-   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
   ]}/>
 

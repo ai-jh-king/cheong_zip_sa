@@ -61,10 +61,19 @@ services:
         sync: false              # 웹 서비스와 동일 키를 여기에도 입력
       - key: KAKAO_REST_API_KEY
         sync: false              # (선택) 지오코딩용 — 없으면 지오코딩만 건너뜀(수집은 정상)
+      - key: BACKUP_DIR
+        value: /var/backups/cheongju   # 영구 디스크(아래) — 기본값(상대경로)은 컨테이너 임시FS라 재시작 시 유실(실사고)
+    disk:
+      name: cheongju-backups
+      mountPath: /var/backups/cheongju
+      sizeGB: 1
 
 databases:
   # ── 관리형 PostgreSQL ───────────────────────────────────────────────────────
+  # ⚠️ 실사고(2026-07): free 플랜 DB가 만료되어 운영 데이터 전량 유실.
+  #    무료 티어는 생성 후 일정 기간이 지나면 자동 만료(복구 불가)되므로 운영은 반드시 유료 플랜.
+  #    DB 교체 후 복구는 `python -m scripts.bootstrap` 1회(마이그레이션→시드→수집→지오코딩→스냅샷).
   - name: cheongju-db
-    plan: free                   # 무료 티어(용량·보존기간 제한) → 운영은 유료(백업·PITR) 권장
+    plan: basic-256mb            # 운영 필수(무료는 만료 시 삭제 — 실사고). 백업·PITR 포함 플랜 권장
     databaseName: cheongju
     region: singapore

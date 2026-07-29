@@ -23,13 +23,37 @@ Render 대시보드 > 해당 Postgres 상태(`Available` / `Suspended` / `Expire
 
 ## 1. 새 DB 준비 (만료·삭제된 경우)
 
-1. Render > New + > **PostgreSQL** 생성 — **반드시 유료 플랜**(무료는 일정 기간 후 자동 만료, 복구 불가).
-   region은 서비스와 동일(`singapore`), `databaseName: cheongju`.
+### 1-0. 어디에 만들까 — 선택지
+
+| 선택 | 비용 | 만료 | 비고 |
+|---|---|---|---|
+| **Render Postgres 유료**(basic-256mb) | 유료(월 몇 달러) | 없음 | 같은 대시보드·내부 네트워크(빠름)·백업 포함. **운영 권장** |
+| Render Postgres **무료** | 0 | **30일 후 자동 삭제** | 이번 사고의 원인. 테스트 외 비권장 |
+| **Neon**(외부 서버리스 PG) | 무료 티어 있음 | 만료 없음(용량 제한) | 앱 코드 수정 불필요. 무료 유지가 목표면 현실적 대안. **Pooled 연결 문자열** 사용 권장 |
+| Supabase Postgres | 무료 티어 있음 | 만료 없음(비활성 시 일시정지) | 위와 동일하게 URL만 교체 |
+
+> 코드는 `postgres://`·`postgresql://`를 자동으로 psycopg3 드라이버로 정규화하고 `?sslmode=require`
+> 같은 파라미터도 그대로 전달하므로, **어느 제공자를 골라도 DATABASE_URL 교체만으로 동작**한다.
+> 외부(Neon/Supabase)를 쓰면 지연이 조금 늘고(다른 리전이면 더), Render 내부 DB보다 느릴 수 있다.
+
+### 1-1. 생성·연결
+
+1. 위 표에서 하나를 골라 PostgreSQL 생성 — Render라면 region은 서비스와 동일(`singapore`), `databaseName: cheongju`.
 2. 생성된 **Internal Database URL** 복사.
 3. 다음 서비스의 `DATABASE_URL` 환경변수를 새 값으로 교체:
    - 웹 서비스(`cheongju-realestate`)
    - 크론(`cheongju-collect`)
 4. 웹 서비스 **Manual Deploy** — `preDeployCommand`(`python -m scripts.db_upgrade`)가 스키마를 생성한다.
+
+> ⚠️ **DB가 죽어 있으면 배포 자체가 막힌다.** pre-deploy 마이그레이션이 실패해 Render가 배포를 중단하고
+> 이전 버전을 유지하기 때문(실사고 2026-07: 그 사이 푸시한 v1.246~1.250이 반영되지 않았음).
+> 즉 **DB 복구 = 밀린 배포 반영**이 한 번에 이뤄진다.
+
+### 1-2. 연결만 먼저 확인하고 싶다면
+
+```bash
+python -m scripts.doctor          # 설정·DB 연결·테이블·데이터 신선도 자가진단
+```
 
 > Blueprint(`render.yaml`)를 그대로 Apply 하는 경우 위 1~3은 자동. 단, 기존 서비스가 대시보드에서
 > 수동 생성됐다면 중복 생성 방지를 위해 수동 교체를 권장.

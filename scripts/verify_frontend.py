@@ -98,6 +98,35 @@ def main() -> int:
     missing = sorted(used - imported)
     check("React 훅 import/구조분해 정합", not missing, f"누락(런타임 크래시)={missing}" if missing else "")
 
+    # TDZ 방지: App 컴포넌트 안에서 useState 로 선언한 식별자를 '선언보다 앞줄'에서 쓰면
+    # 런타임 ReferenceError("Cannot access 'x' before initialization")로 앱 전체가 크래시(실사고 v1.249).
+    # 오프라인 검사(괄호·구문)로는 못 잡으므로 선언·사용 줄을 대조한다.
+    # 범위: App 함수 본문만(다른 컴포넌트의 동명 변수 오탐 방지).
+    tdz = []
+    app_start = next((i for i, l in enumerate(mj) if re.match(r"^function App\s*\(", l)), None)
+    if app_start is not None:
+        app_end = next((i for i in range(app_start + 1, len(mj))
+                        if re.match(r"^(function |const [A-Za-z_$][\w$]*\s*=\s*\()", mj[i])), len(mj))
+        body = mj[app_start:app_end]
+        decl_re = re.compile(r"^\s*const\s*\[\s*([A-Za-z_$][\w$]*)\s*,\s*set[\w$]*\s*\]\s*=\s*(?:React\.)?useState")
+        decls = {}
+        for i, line in enumerate(body):
+            m = decl_re.match(line)
+            if m and m.group(1) not in decls:
+                decls[m.group(1)] = i
+        for name, dline in decls.items():
+            if len(name) < 3:                 # 1~2글자는 오탐 많아 제외
+                continue
+            pat = re.compile(rf"(?<![A-Za-z_$.]){re.escape(name)}(?![\w$])")
+            for i in range(dline):
+                line = body[i]
+                if line.lstrip().startswith(("//", "*", "/*")):
+                    continue
+                if pat.search(line):
+                    tdz.append(f"{name}: {app_start+i+1}행 사용 < {app_start+dline+1}행 선언")
+                    break
+    check("App useState 선언-사용 순서(TDZ)", not tdz, "; ".join(tdz[:3]) if tdz else "")
+
     print("== 결과:", "PASS ✅" if ok else "FAIL ❌", "==")
     return 0 if ok else 1
 

@@ -207,13 +207,20 @@ def service_worker():
 
 
 @app.get("/config")
-def config():
+def config(db: Session = Depends(get_db)):
     """프론트가 쓰는 공개 설정만 노출. (네이버 지도 클라이언트 ID는 도메인 제한된 공개 키)"""
     s = get_settings()
+    # 실연동이 확인된 소스만 UI 노출(예시 화면 차단) — DB 1회 읽기(외부 호출 없음).
+    from app.services import sources_status
+    try:
+        live = sources_status.get(db)
+    except Exception:  # noqa: BLE001 — 설정 조회가 부팅을 막지 않도록(DB 장애 시에도 앱 로드)
+        live = dict(sources_status.DEFAULT)
     return {
         "naver_map_client_id": s.naver_map_client_id,   # 지도 표시용(공개 가능)
         "map_enabled": bool(s.naver_map_client_id),
         "aggregate_months": s.aggregate_months,          # 시세 집계 윈도우(개월) — 화면 표기용
+        "live": live,                                    # {subscription, bank_rates, places}
     }
 DISCLAIMER = "실거래가는 신고 지연·정정·해제가 있을 수 있는 참고용 정보이며 법적 효력이 없습니다. 자료: 국토교통부 실거래가."
 
@@ -290,6 +297,12 @@ def _startup():
             from app.services.geocode import coords_map
             db = SessionLocal()
             try:
+                # 외부 소스 실연동 프로브(v1.249) — 예시 화면 차단 게이트. 워밍업과 같은 백그라운드에서.
+                try:
+                    from app.services import sources_status
+                    sources_status.probe(db)
+                except Exception as e:  # noqa: BLE001
+                    logging.getLogger(__name__).info("소스 프로브 스킵: %s", e)
                 coords_map(db)   # /dashboard/ranking 매 요청 풀스캔이던 것(캐시 프리워밍)
                 for pt in ("apartment",):
                     # /dashboard/board

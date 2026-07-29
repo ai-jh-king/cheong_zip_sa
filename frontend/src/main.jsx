@@ -351,7 +351,7 @@ function ShareCard({card,onClose}){
   RR(0,0,W,16,0,TEALc);
   // brand
   T("청주 시세",P,70,40,"800",TEALc,"left");
-  T("청주 부동산 한눈에",W-P,80,26,"600",MUTc,"right");
+  T("계약 전 확인",W-P,80,26,"600",MUTc,"right");
   // 단지명 (최대 2줄)
   let cy=170; x.font=F(60,"800");
   const chars=[...String(card.name||"")]; let lines=[],cur="";
@@ -402,7 +402,7 @@ function ShareCard({card,onClose}){
   // footer
   RR(P,H-150,cw,2,1,"rgba(99,120,128,.14)");
   T("자료: 국토교통부 실거래가 · 참고용(법적 효력 없음)",P,H-118,24,"600",MUTc,"left");
-  T("🏠 청집사 — 청주 부동산을 한눈에",P,H-82,28,"800",TEALc,"left");
+  T("🏠 청집사 — 계약 전에 확인하는 청주 부동산",P,H-82,28,"800",TEALc,"left");
   T((typeof location!=="undefined"&&location.host)?location.host:"",W-P,H-82,26,"700",MUTc,"right");
  }
  async function getBlob(){ return await new Promise(res=>ref.current.toBlob(res,"image/png")); }
@@ -1764,7 +1764,7 @@ function Splash({ready}){
     </svg>
    </div>
    <div style={{color:"#fff",fontWeight:800,fontSize:30,letterSpacing:"-0.02em",marginTop:4}}>청집사</div>
-   <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>직지의 도시 청주, 집을 기록하다</div>
+   <div style={{color:"rgba(255,255,255,.9)",fontSize:14,fontWeight:600}}>계약 전에 확인하는 청주 부동산</div>
   </div>, document.body);
 }
 function OnbDots({n,i}){
@@ -1905,7 +1905,12 @@ function App(){
  const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
  const [auctionOpen,setAuctionOpen]=useState(false); // 경매·공매 안내 시트(더보기 진입 v1.245)
+ const [checklistOpen,setChecklistOpen]=useState(false); // 계약 전 꼭 확인(공식 서비스) 시트 — 홈 그리드(v1.249)
+ // 실연동이 확인된 소스만 노출(v1.249) — 예시 화면 차단. null=확인 전(깜빡임 방지로 숨기지 않음)
+ // ⚠️ 선언은 반드시 사용(useEffect·NAV)보다 위 — 아래에 두면 TDZ ReferenceError 로 앱 전체 크래시(실사고)
+ const [live,setLive]=useState(null);
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
+ useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
  const homeWrapRef=useRef(null);
@@ -2045,7 +2050,7 @@ function App(){
  const [priceView,setPriceView]=useState("list");   // 시세 탭 내부 뷰: list/map/rank
  const goGu=useCallback((guName)=>{ setPriceGu(guName||"전체"); setPriceView("list"); setSel(null); setTab("map"); window.scrollTo(0,0); },[]);
  useEffect(()=>{fetch(`${API}/config`).then(r=>r.json())
-  .then(c=>{setMapCfg({key:c.naver_map_client_id||"",enabled:!!c.map_enabled});if(c.aggregate_months)AGG_MONTHS=c.aggregate_months;if(c.feature_flags)FEATURES={...FEATURES,...c.feature_flags};}).catch(()=>{});},[]);
+  .then(c=>{setMapCfg({key:c.naver_map_client_id||"",enabled:!!c.map_enabled});if(c.aggregate_months)AGG_MONTHS=c.aggregate_months;if(c.feature_flags)FEATURES={...FEATURES,...c.feature_flags};if(c.live)setLive(c.live);}).catch(()=>{});},[]);
 
  const load=useCallback(async()=>{setStatus("loading");
   try{
@@ -2064,7 +2069,9 @@ function App(){
   const rk=await fetch(`${API}/dashboard/ranking?property_type=${type}&limit=300&area_band=${band}`).then(r=>r.json());
   setData(p=>({...p,ranking:rk}));}catch(e){setData(p=>({...p,ranking:demoRanking(type,band)}));}},[]);
 
- const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","집사 소식"],["chat","소통"],["more","더보기"]];   // v1.242: 소통(게시판·매물) 분리, 집사 소식=콘텐츠(도감·뉴스)
+ // v1.242: 소통(게시판·매물) 분리, 집사 소식=콘텐츠(도감·뉴스)
+ // v1.249: 청약 실연동(applyhome) 전에는 탭 자체를 숨김 — 예시 공고를 보여주지 않기 위해(왜곡 없음)
+ const NAV=[["home","홈"],["map","지도"],...((live&&live.subscription!==false)?[["subscription","청약"]]:[]),["board","집사 소식"],["chat","소통"],["more","더보기"]];
  return (<UnitCtx.Provider value={unit}><div>
   <Splash ready={status!=="loading"}/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
@@ -2117,7 +2124,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2156,6 +2163,7 @@ function App(){
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
+  {checklistOpen&&<Sheet title="📋 계약 전 꼭 확인" onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
   {auctionOpen&&<Sheet title="⚖️ 경매·공매 알아보기" onClose={()=>setAuctionOpen(false)}><AuctionInfo onGuide={()=>{setAuctionOpen(false);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/></Sheet>}
   {favOpen&&<Sheet title="⭐ 관심 단지" onClose={()=>setFavOpen(false)}>
    <FavList favs={favs} onOpen={(m)=>{setFavOpen(false);openComplex(m);}} onToggleFav={toggleFav} onGu={(g)=>{setFavOpen(false);goGu(g);}} onToggleRegion={toggleRegion}/>
@@ -3040,7 +3048,7 @@ function AuctionInfo({onGuide}){
   {d&&d.disclaimer&&<div style={{fontSize:10.5,color:MUTED,margin:"9px 2px 0",lineHeight:1.55}}>{d.disclaimer}</div>}
  </div>);
 }
-function OfficialLinks(){
+function OfficialLinks({embedded}){
  const LINKS=[
   ["doc","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
   ["gov","법원경매정보","경매 물건·기일 공식 조회 — 대법원","https://www.courtauction.go.kr"],
@@ -3054,9 +3062,9 @@ function OfficialLinks(){
   ["subscription","청약홈","청약 신청·자격 확인 — 한국부동산원","https://www.applyhome.co.kr"],
   ["gov","청주시청 부동산 정보","고시·공고·도시계획","https://www.cheongju.go.kr"],
  ];
- return (<div style={{marginTop:16}}>
+ return (<div style={{marginTop:embedded?2:16}}>
   <div style={{margin:"0 2px 6px"}}>
-   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="search" active color={INK} size={16}/>계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>
+   {!embedded&&<div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="search" active color={INK} size={16}/>계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>}
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>청집사가 대신 확인해줄 수 없는 것들이에요. 계약 전 아래 공식 서비스에서 직접 확인하세요.</div>
   </div>
   <div className="card" style={{padding:"4px 15px"}}>
@@ -3112,13 +3120,17 @@ function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogi
   <div onClick={()=>go&&go("home")} role="button" tabIndex={0} onKeyDown={onEnter(()=>go&&go("home"))} className="card" style={{padding:"13px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:11}}>
    <span style={{flex:"none",lineHeight:0}}><Icon name="home" active color={TEAL} size={21}/></span>
    <div style={{minWidth:0,flex:1}}>
-    <div style={{fontWeight:800,fontSize:14}}>집 찾기 도구는 홈에 있어요</div>
-    <div style={{fontSize:12,color:MUTED,marginTop:2}}>통근검색·대출·전세진단·예산추천·경매공매 — 홈 아이콘에서 바로</div>
+    <div style={{fontWeight:800,fontSize:14}}>계약 전 확인 도구는 홈에 있어요</div>
+    <div style={{fontSize:12,color:MUTED,marginTop:2}}>전세진단·계약전확인·대출세금·경매공매 — 홈 아이콘에서 바로</div>
    </div>
    <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
   </div>
+  <div className="card" style={{padding:"12px 14px",marginTop:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
+   <div style={{fontWeight:800,fontSize:13.5}}>청집사는 <span style={{color:TEAL}}>계약 전에 확인하는 앱</span>이에요</div>
+   <div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.6}}>매물을 팔지 않습니다. 중개·광고 수익이 0이라 <b>거래를 말리는 정보</b>(급매·전세위험·주의 신호)도 그대로 보여드려요.</div>
+  </div>
   <OfficialLinks/>
-  <button onClick={()=>{const t=`🏠 청집사 — 청주 아파트 실거래 시세·급매 포착·호가 검증을 한눈에. 중개·광고 없이 데이터만 보여줘요.
+  <button onClick={()=>{const t=`🏠 청집사 — 계약 전에 확인하는 청주 부동산. 전세 안전 진단·실거래 시세·급매 신호를 중개·광고 없이.
 ${location.origin}`;
     if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
     else{navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast("소개 문구를 복사했어요!")).catch(()=>{});}}}
@@ -3506,12 +3518,13 @@ function HomeGrid({items,compact}){
 }
 /* 홈 배너 캐러셀 — 청약(임박 1건) + 부동산 뉴스(최신 3건) 회전. 쿠팡식 히어로 자리지만
    광고가 아니라 정보(공식 청약·뉴스 피드)만. 스와이프(scroll-snap)+자동 회전. */
-function HomeTicker({feed,go,onOpen,board,onNews,compact}){
+function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
  const [subs,setSubs]=useState(null);
  const [bg,setBg]=useState(null);       // 급매(급락 거래) — 슬라이드+클릭 시 전체 리스트 시트
  const [listSheet,setListSheet]=useState(null);   // {kind:'bg'|'lm'} — 이전 티커처럼 하단 팝업 리스트
  useEffect(()=>{let on=true;
-  fetch(`${API}/subscription?limit=50`).then(r=>r.json()).then(j=>{if(on)setSubs(j.items||[]);}).catch(()=>{if(on)setSubs([]);});
+  if(!live||live.subscription!==false)   // 미연동이면 예시 공고 슬라이드를 만들지 않음
+   fetch(`${API}/subscription?limit=50`).then(r=>r.json()).then(j=>{if(on)setSubs(j.items||[]);}).catch(()=>{if(on)setSubs([]);});
   fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{if(on)setBg(j&&j.items&&j.items.length?{items:j.items.map((x,i)=>({...x,rank:i+1,contains_sample_data:x.is_sample})),months:j.months,disclaimer:j.disclaimer}:null);}).catch(()=>{if(on)setBg(null);});
   return ()=>{on=false;};},[]);
  const order={"접수중":0,"접수예정":1,"공고":2,"마감":3};
@@ -3601,7 +3614,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3647,17 +3660,18 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   {/* ── 홈 한 화면 구성(v1.228, 사용자 결정·롤백=backup-home-v1.222): 배너 → 그리드. 우리집은 '등록된 경우만'(유도 카드 제거, 등록 경로=더보기). 급매는 배너 슬라이드로 흡수. ── */}
   {myHome&&<MyHomeCard home={myHome} onOpen={onOpen} onRegister={onRegisterHome}/>}
 
-  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews} compact={compact}/>
+  <HomeTicker feed={feed} go={go} onOpen={onOpen} board={b} onNews={onNews} compact={compact} live={live}/>
 
+  {/* 정체성(v1.249): '계약 전에 확인하는 앱' — 검증 도구를 앞줄에, 탐색·콘텐츠를 뒷줄에 */}
   <HomeGrid compact={compact} items={[
-   {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
-   {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},   // 시세 탭 은퇴(사용자 결정) → 데일리 훅 복귀
-   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},   // 청약은 하단 네비에 있어 중복 제거(v1.247)
-   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
-   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
    {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
+   {label:"계약전확인",icon:"doc",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onChecklist&&onChecklist()},
+   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
+   {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
+   {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},
+   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
-   {label:"예산추천",icon:"won",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onBudget&&onBudget()},   // '처음이라면'은 첫 진입 알림으로 이동(v1.244)
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
@@ -5853,9 +5867,9 @@ function LoanResult({res}){
    </div>)):<Empty>한도가 0이라 시뮬레이션이 없습니다.</Empty>}
    </div>
   </Collapsible>
-  <Collapsible icon="doc" defaultOpen={true} title={<React.Fragment>상품 비교 {res.rates_live
-    ? <span className="pill" style={{background:"var(--ok-bg)",color:"var(--ok-fg)"}}>은행 실시간 공시</span>
-    : <span className="pill ex">예시</span>}</React.Fragment>}>
+  {/* v1.249: 은행 금리 미연동(finlife)일 때 '예시 상품' 표를 숨김 — 예시 수치를 보여주지 않음(왜곡 없음).
+      정책대출 매칭(공고 요건 기반)은 실데이터라 그대로 유지. */}
+  {res.rates_live&&<Collapsible icon="doc" defaultOpen={true} title={<React.Fragment>상품 비교 <span className="pill" style={{background:"var(--ok-bg)",color:"var(--ok-fg)"}}>은행 실시간 공시</span></React.Fragment>}>
    <div style={{padding:"4px 14px"}}>
    {res.products.map((p,i)=>(<div key={i} className="listrow" style={{opacity:p.eligible?1:0.5}}>
     <div style={{minWidth:0}}>
@@ -5866,10 +5880,10 @@ function LoanResult({res}){
      <span className="num" style={{display:"block",fontSize:11.5,color:MUTED}}>{p.limit?`~${eok(p.limit)}`:p.method}</span></span>
    </div>))}
    </div>
-  </Collapsible>
+  </Collapsible>}
   <div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:12,padding:"11px 14px",fontSize:11.5,fontWeight:600,lineHeight:1.6,margin:"14px 0"}}>
    ⓘ 기준 {res.as_of} · {res.region}. {res.disclaimer} 금리·한도는 공시·정책 변경에 따라 달라집니다.
-   {res.rates_live?" 은행 금리는 finlife 공시 실시간이며, 정책대출은 예시입니다.":" 상품 금리는 finlife 미연동 상태의 예시입니다."}
+   {res.rates_live?" 은행 금리는 finlife 공시 실시간입니다.":" 은행 상품 금리는 아직 연동 전이라 표시하지 않습니다(정책대출 요건은 공고 기준)."}
    {" 취득세 등 부대비용은 1주택 일반과세 기준 추정이며 다주택 중과·감면 요건·국민주택채권·법무 실비는 별도입니다."}
   </div>
  </div>);

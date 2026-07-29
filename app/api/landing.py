@@ -326,7 +326,7 @@ def onboarding_landing(request: Request, dest: str = Query(""),
                 '💡 청집사는 <b>중개·광고 수익이 없어요.</b> 그래서 “이 단지 사세요”가 아니라 '
                 '<b>조심할 점(급매·전세위험)</b>까지 솔직히 알려드릴 수 있어요.</div>'
                 '<a class="cta" href="/">청집사 앱 열기 →</a>')
-        desc = "청주 전입자 맞춤 — 직장 근처 살 만한 단지를 시세·조심할 점까지. 중개·광고 없이 데이터만."
+        desc = "청주 전입자 맞춤 — 직장 근처 살 만한 단지를 시세·조심할 점까지. 중개·광고 없이 데이터만 — 계약 전에 확인하세요."
         return _page(title="청주가 처음이세요? 직장 근처 단지 추천 | " + SITE,
                      desc=desc, url=base + "/start", body=body)
 
@@ -403,7 +403,7 @@ def newcomer_guide(request: Request, db: Session = Depends(get_db)):
     body = (bc_html
             + '<h1>청주 전입 가이드</h1>'
             '<div class="sub">청주가 처음이신 분(SK하이닉스·오송·오창 발령 등)을 위한 동네·시세·조심할 점. '
-            '중개·광고 없이 데이터만.</div>'
+            '중개·광고 없이 데이터만 — 계약 전에 확인하세요.</div>'
             '<div class="card"><div class="lbl" style="margin-bottom:6px">① 청주 4개 구, 한눈에</div>'
             f'{regions}</div>'
             '<div class="card" style="background:rgba(15,118,110,.06);border-color:rgba(15,118,110,.2)">'

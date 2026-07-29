@@ -52,6 +52,20 @@ def _cycle() -> None:
             log.info("지오코딩 결과: %s", record_job(db, "geocode", _geo))
         except Exception as e:  # noqa
             log.warning("지오코딩 실패: %s", e)
+        # 외부 소스 실연동 프로브(예시 화면 차단 게이트 갱신)
+        try:
+            from app.services import sources_status
+            log.info("소스 프로브: %s", sources_status.probe(db))
+        except Exception as e:  # noqa: BLE001
+            log.warning("소스 프로브 실패(무시): %s", e)
+        # 관심단지·우리집 새 실거래 일간 알림(수집 직후 신규 적재분만·하루 1회 멱등)
+        try:
+            from app.services import daily_alert
+            res = daily_alert.run(db)
+            if not res.get("skipped"):
+                log.info("일간 실거래 알림: %s", record_job(db, "daily_alert", lambda: res))
+        except Exception as e:  # noqa
+            log.warning("일간 실거래 알림 실패(무시): %s", e)
         # 관심단지 주간 다이제스트(월요일·주 1회 멱등 — 서비스 내부 가드)
         try:
             from app.services import weekly_digest

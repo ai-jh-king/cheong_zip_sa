@@ -20,6 +20,7 @@ os.environ["ADMIN_TOKEN"] = ""
 os.environ["RATE_LIMIT_ENABLED"] = "false"   # 테스트는 레이트리밋 비활성(결정성)
 os.environ["AUTO_SEED_COMMUTE"] = "false"     # 테스트는 startup 자동 시드 비활성(격리·결정성)
 os.environ["AUTO_SEED_GUIDES"] = "false"
+os.environ["AUTO_SEED_LANDMARKS"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

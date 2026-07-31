@@ -278,6 +278,21 @@ def _startup():
                 log.info("집사 도감 자동 시드: %s", _res)
         except Exception as e:  # noqa: BLE001
             log.warning("집사 도감 자동 시드 스킵(무시): %s", e)
+    # 개발 호재 자동 시드(멱등) — DB 재구축 시 '청주는 지금' 카드·지도 호재 핀이 조용히 사라지는 것 방지.
+    # (2026-07 DB 유실 복구 때 실제로 landmarks 만 비어 있던 사례 → 부팅 자동화)
+    if getattr(s, "auto_seed_landmarks", False):
+        try:
+            from app.models import Landmark
+            from sqlalchemy import select as _sel, func as _fn
+            from app.db.session import SessionLocal as _SL
+            with _SL() as _db:
+                n = _db.scalar(_sel(_fn.count()).select_from(Landmark)) or 0
+            if n == 0:
+                from scripts.seed_landmarks import main as _seed_lm
+                _seed_lm()
+                log.info("개발 호재 자동 시드 완료(0건 → 시드)")
+        except Exception as e:  # noqa: BLE001
+            log.warning("개발 호재 자동 시드 스킵(무시): %s", e)
     # 에러 모니터링(Sentry) — DSN 설정 시에만. 패키지 없으면 조용히 건너뜀.
     dsn = (get_settings().sentry_dsn or "").strip()
     if dsn:

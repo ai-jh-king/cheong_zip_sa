@@ -70,14 +70,63 @@ def estimate(body: LoanInput):
     if live_seomin:
         catalog = catalog + live_seomin
     rates_live = bool(live_policy or live_bank or live_seomin)
+    # 금리 미지정 시: 실연동이면 '시장 대표 금리'를, 아니면 설정 기본값(사용자가 찍는 값 최소화 — v1.253)
+    rate = body.rate_pct
+    if rate is None and rates_live:
+        mk = loan.market_rate(catalog)
+        if mk:
+            rate = mk["typical"]
     return loan.estimate(
         price=body.price, consent=body.consent, self_capital=body.self_capital,
         annual_income=body.annual_income, existing_annual_payment=body.existing_annual_payment,
         is_no_house=body.is_no_house, is_first_time=body.is_first_time,
         over_85=body.over_85,
-        rate_pct=body.rate_pct, years=body.years,
+        rate_pct=rate, years=body.years,
         products=catalog, rates_live=rates_live,
     )
+
+
+class RentLoanInput(BaseModel):
+    deposit: float = Field(..., description="전세 보증금(만원)")
+    cash: float | None = Field(None, description="보유현금(만원)")
+    income: int | None = Field(None, description="부부합산 연소득(만원)")
+    homeless: bool | None = None
+    newlywed: bool = False
+    kids2: bool = False
+    newborn: bool = False
+
+
+@router.post("/rent")
+def rent_loan(body: RentLoanInput):
+    """전세자금대출 — 통상 한도 구조 + 정책상품(버팀목·신생아) 요건 매칭. 금리는 실연동 시에만."""
+    from app.services import rentloan
+    rate = None
+    prods = fetch_loan_products(limit=10) or []
+    rents = [p for p in prods if "전세" in str(p.get("name", "")) and p.get("rate_min") is not None]
+    if rents:                       # 실연동 전세대출 금리의 대표값(최저~최고 중앙)
+        lows = sorted(p["rate_min"] for p in rents)
+        highs = sorted(p["rate_max"] for p in rents if p.get("rate_max") is not None) or lows
+        rate = round((lows[len(lows) // 2] + highs[len(highs) // 2]) / 2, 2)
+    return {**rentloan.estimate(body.deposit, body.cash, body.income, body.homeless,
+                                body.newlywed, body.kids2, body.newborn, rate_pct=rate),
+            "rates_live": bool(rents)}
+
+
+class HoldingInput(BaseModel):
+    loan_monthly: float | None = Field(None, description="월 원리금(만원)")
+    official_price: float | None = Field(None, description="공시가격(만원) — 없으면 재산세 계산 안 함")
+    one_house: bool = True
+    maintenance_fee: float | None = Field(None, description="월 관리비(만원) — 입력값만 사용")
+
+
+@router.post("/holding-cost")
+def holding_cost(body: HoldingInput):
+    """매달 나가는 돈 = 대출 원리금 + 재산세(월) + 관리비. 공시가격 없으면 재산세는 계산하지 않음."""
+    from app.services import holding
+    return holding.monthly_burden(loan_monthly=body.loan_monthly,
+                                  official_price=body.official_price,
+                                  one_house=body.one_house,
+                                  maintenance_fee=body.maintenance_fee)
 
 
 class AffordInput(BaseModel):

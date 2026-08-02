@@ -584,6 +584,7 @@ function Icon({name,active,size=24,color}){
  if(name==="pill")return <svg {...p}><path d="M6 14 14 6a4 4 0 0 1 5.7 5.7L11.7 19.7A4 4 0 0 1 6 14Z"/><path d="M9 11.2 12.8 15"/></svg>;
  if(name==="book")return <svg {...p}><path d="M5 5h10v14H7a2 2 0 0 1-2-2z"/><path d="M8 5v12"/></svg>;
  if(name==="crown")return <svg {...p}><path d="M4 8.5 7.5 15h9L20 8.5l-4.5 3L12 6 8.5 11.5z"/><path d="M6.5 18h11"/></svg>;
+ if(name==="key")return <svg {...p}><circle cx="8.5" cy="9.5" r="4"/><path d="M11.4 12.6 20 21"/><path d="M17.2 18.2l2-2M14.6 15.6l2-2"/></svg>;
  if(name==="flame")return <svg {...p}><path d="M12 3c2.4 3 4.8 5 4.8 8.7A4.8 4.8 0 0 1 12 16.5a4.8 4.8 0 0 1-4.8-4.8c0-2 1-3.5 2.4-5C9.8 8.5 11 6 12 3Z"/></svg>;
  return null;
 }
@@ -1913,6 +1914,7 @@ function App(){
  const [mapPreset,setMapPreset]=useState(null);    // 홈에서 지도로 들어올 때의 의도(jeonse_risk 등) — v1.252
  const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
  const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
+ const [rentLoanOpen,setRentLoanOpen]=useState(false); // 전세자금대출 시트(v1.253)
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
@@ -2127,7 +2129,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} onRentLoan={()=>setRentLoanOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2165,15 +2167,16 @@ function App(){
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
-  {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
-  {checklistOpen&&<Sheet title="📋 계약 전 꼭 확인" onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
-  {bargainOpen&&<Sheet title="📉 급매 포착" onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
-  {recentOpen&&<Sheet title="🕘 최근 본 단지" onClose={()=>setRecentOpen(false)}>
+  {jeonseOpen&&<Sheet title={<React.Fragment><Icon name="shield" active size={16}/> 전세 안전 진단</React.Fragment>} onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
+  {checklistOpen&&<Sheet title={<React.Fragment><Icon name="doc" active size={16}/> 계약 전 꼭 확인</React.Fragment>} onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
+  {rentLoanOpen&&<Sheet title={<React.Fragment><Icon name="key" active size={16}/> 전세자금대출</React.Fragment>} onClose={()=>setRentLoanOpen(false)}><RentLoan/></Sheet>}
+  {bargainOpen&&<Sheet title={<React.Fragment><Icon name="bargain" active size={16}/> 급매 포착</React.Fragment>} onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
+  {recentOpen&&<Sheet title={<React.Fragment><Icon name="search" active size={16}/> 최근 본 단지</React.Fragment>} onClose={()=>setRecentOpen(false)}>
    {(recents&&recents.length)?<RecentList recents={recents} onOpen={(m)=>{setRecentOpen(false);openComplex(m);}}/>
     :<div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>아직 본 단지가 없어요. 지도나 검색에서 단지를 열면 여기에 쌓여요.</div>}
   </Sheet>}
-  {auctionOpen&&<Sheet title="⚖️ 경매·공매 알아보기" onClose={()=>setAuctionOpen(false)}><AuctionInfo onGuide={()=>{setAuctionOpen(false);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/></Sheet>}
-  {favOpen&&<Sheet title="⭐ 관심 단지" onClose={()=>setFavOpen(false)}>
+  {auctionOpen&&<Sheet title={<React.Fragment><Icon name="gov" active size={16}/> 경매·공매 알아보기</React.Fragment>} onClose={()=>setAuctionOpen(false)}><AuctionInfo onGuide={()=>{setAuctionOpen(false);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/></Sheet>}
+  {favOpen&&<Sheet title={<React.Fragment><Icon name="star" active size={16}/> 관심 단지</React.Fragment>} onClose={()=>setFavOpen(false)}>
    <FavList favs={favs} onOpen={(m)=>{setFavOpen(false);openComplex(m);}} onToggleFav={toggleFav} onGu={(g)=>{setFavOpen(false);goGu(g);}} onToggleRegion={toggleRegion}/>
    {!(favs&&favs.length)&&<div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>아직 관심 단지가 없어요. 단지 상세에서 ⭐를 누르면 여기에 모여요.</div>}
   </Sheet>}
@@ -3541,13 +3544,17 @@ function GuChips({onGu,compact}){
 /* 홈 상황 선택(v1.250) — 컨셉 "집 사고 팔기 전에 확인하세요".
    사용자가 자기 상황(살 때/팔 때/빌릴 때)을 고르면 그 상황의 확인 도구 4종이 앞줄에 온다.
    선택은 기기에 저장(safeStore)해 다음 방문에도 유지. */
-const SITUATIONS=[["buy","🏠 살 때"],["sell","💰 팔 때"],["rent","🔑 전월세"]];   // v1.252: "빌릴 때"는 실사용자 말이 아님(전세 세입자는 자기를 빌리는 사람으로 인식 안 함)
+// v1.252: "빌릴 때"는 실사용자 말이 아님(전세 세입자는 자기를 빌리는 사람으로 인식 안 함)
+// v1.253: 이모지 → SVG Icon 통일(기기·폰트별 렌더 차이 제거, 테마 색 대응)
+const SITUATIONS=[["buy","살 때","home"],["sell","팔 때","won"],["rent","전월세","key"]];
 function SituationBar({value,onPick,compact}){
  return (<div style={{display:"flex",gap:6,marginTop:compact?5:8}}>
-  {SITUATIONS.map(([k,l])=>{const on=value===k;
+  {SITUATIONS.map(([k,l,ic])=>{const on=value===k;
    return <button key={k} type="button" onClick={()=>onPick(k)} style={{flex:1,minWidth:0,border:"none",cursor:"pointer",
      borderRadius:11,padding:compact?"7px 0":"11px 0",fontWeight:on?800:600,fontSize:compact?12.5:13,
-     background:on?"rgba(15,118,110,.12)":"var(--surface-2)",color:on?TEAL:MUTED}}>{l}</button>;})}
+     background:on?"rgba(15,118,110,.12)":"var(--surface-2)",color:on?TEAL:MUTED,
+     display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5}}>
+    <Icon name={ic} active={on} color={on?TEAL:MUTED} size={compact?15:16}/>{l}</button>;})}
  </div>);
 }
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
@@ -3611,7 +3618,9 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
      <div style={{position:"absolute",right:-14,bottom:-26,fontSize:120,opacity:.14,lineHeight:1,transform:"rotate(-8deg)"}}>{isBg?"📉":isLm?"👑":sub?"🏗":"📰"}</div>
      <div style={{position:"absolute",left:-30,top:-40,width:150,height:150,borderRadius:"50%",background:"rgba(255,255,255,.07)"}}/>
      <div style={{display:"flex",alignItems:"center",gap:6,position:"relative"}}>
-      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px"}}>{isBg?"📉 급매 포착":isLm?"👑 대장 아파트":sub?`🏢 청약 ${it.status}`:"📰 부동산 뉴스"}</span>
+      <span style={{fontSize:11,fontWeight:800,background:"rgba(255,255,255,.26)",borderRadius:7,padding:"3px 10px",display:"inline-flex",alignItems:"center",gap:4}}>
+       <Icon name={isBg?"bargain":isLm?"crown":sub?"subscription":"news"} active color="#fff" size={12}/>
+       {isBg?"급매 포착":isLm?"대장 아파트":sub?`청약 ${it.status}`:"부동산 뉴스"}</span>
       {(it.is_sample||it.contains_sample_data)&&<span style={{fontSize:10,fontWeight:800,background:"rgba(255,255,255,.25)",borderRadius:5,padding:"2px 6px"}}>예시</span>}
      </div>
      <div style={{fontWeight:800,fontSize:17.5,lineHeight:1.32,marginTop:9,position:"relative",letterSpacing:"-0.01em",...clamp2}}>
@@ -3659,7 +3668,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent,onRentLoan}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3683,7 +3692,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   rent:[  // 전월세: 보증금 안전 · 위험 단지 지도(전세 모드로) · 보증금 대출 · 통근
    {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
    {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onRiskMap&&onRiskMap()},
-   {label:"보증금 대출",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"보증금 대출",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onRentLoan&&onRentLoan()},
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
   ],
  };
@@ -4343,9 +4352,9 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
     <FilterChips multi opts={[["education","학원","academy"],["sports","체육","sports"],["living","생활","store"]]} value={poiCats} onPick={togglePoi}/>
     <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>지도 신호 <span style={{fontWeight:500,fontSize:11}}>· 참고·근거 표기, 판정 아님</span></div>
     <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:7}}>
-     <button type="button" onClick={()=>setShowLm(v=>!v)} className={"tog "+(showLm?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="build" active={showLm} size={15}/>🏗 개발 호재</button>
-     <button type="button" onClick={()=>setShowBg(v=>!v)} className={"tog "+(showBg?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="bargain" active={showBg} size={15}/>📉 급매</button>
-     <button type="button" onClick={()=>setShowJr(v=>!v)} className={"tog "+(showJr?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="alerthome" active={showJr} size={15}/>⚠️ 전세위험</button>
+     <button type="button" onClick={()=>setShowLm(v=>!v)} className={"tog "+(showLm?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="build" active={showLm} size={15}/>개발 호재</button>
+     <button type="button" onClick={()=>setShowBg(v=>!v)} className={"tog "+(showBg?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="bargain" active={showBg} size={15}/>급매</button>
+     <button type="button" onClick={()=>setShowJr(v=>!v)} className={"tog "+(showJr?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="alerthome" active={showJr} size={15}/>전세위험</button>
     </div>
     {fYear&&<div style={{fontSize:11,color:MUTED,marginTop:14,lineHeight:1.5}}>※ 연식 정보가 없는 단지는 결과에서 제외됩니다(왜곡 방지).</div>}
     <div style={{display:"flex",gap:8,marginTop:20}}>
@@ -5864,6 +5873,8 @@ function Loan({initialPrice,onOpen}){
    <button className="tog" style={{marginLeft:"auto"}} onClick={()=>{setConsent(null);setRes(null);}}>동의 다시 선택</button>
   </div>
   <div className="card" style={{padding:16,marginTop:10}}>
+   {/* 단지 연동(v1.253) — 매매가를 손으로 만들지 않게. 고르면 실거래 중앙값이 들어감 */}
+   <ComplexPicker label="단지로 채우기" onPick={(c,d)=>{ if(d&&d.price_median)setPrice(String(Math.round(d.price_median))); }}/>
    <div className="grid2">
     <LoanField label="매매가" val={price} set={setPrice} suf="만원"/>
     <LoanField label="보유 현금(자기자본)" val={cash} set={setCash} suf="만원" ph="선택"/>
@@ -5899,6 +5910,155 @@ function Loan({initialPrice,onOpen}){
   {res&&<LoanResult res={res}/>}
  </div>);
 }
+/* 단지 검색 → 상세(시세) 콜백. 대출·전세진단 등에서 '손으로 시세 입력'을 없애는 공용 부품(v1.253). */
+function ComplexPicker({label="단지 검색",onPick,note}){
+ const [q,setQ]=useState(""),[rows,setRows]=useState([]),[sel,setSel]=useState(null),[info,setInfo]=useState(null);
+ useEffect(()=>{ if(!q||(sel&&q===sel.complex_name)){setRows([]);return;}
+  const t=setTimeout(()=>{fetch(`${API}/search?q=${encodeURIComponent(q)}`).then(r=>r.json())
+   .then(j=>setRows((j.complexes||[]).slice(0,5))).catch(()=>setRows([]));},300);
+  return ()=>clearTimeout(t);},[q,sel]);
+ const pick=(c)=>{ setSel(c); setQ(c.complex_name); setRows([]); setInfo(null);
+  const qs=`name=${encodeURIComponent(c.complex_name)}&lawd_cd=${c.lawd_cd}&property_type=${c.property_type||"apartment"}`;
+  fetch(`${API}/complex/detail?${qs}`).then(r=>r.json()).then(j=>{ if(!j||!j.found)return;
+   setInfo({price_median:j.price_median,latest:j.latest_amount,count:j.trade_count});
+   onPick&&onPick(c,j);}).catch(()=>{});};
+ const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ return (<div style={{position:"relative",marginBottom:10}}>
+  <div style={{display:"flex",alignItems:"center",gap:8}}>
+   <span style={{flex:"none",width:104,fontSize:12,fontWeight:700,color:MUTED}}>{label}</span>
+   <input value={q} onChange={e=>{setQ(e.target.value);if(sel)setSel(null);}} placeholder="단지명 검색(선택)" style={inp}/>
+  </div>
+  {rows.length>0&&<div style={{position:"absolute",left:112,right:0,top:"100%",zIndex:5,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:10,boxShadow:"0 8px 22px rgba(16,24,32,.18)",overflow:"hidden"}}>
+   {rows.map((c,i)=>(<div key={i} onClick={()=>pick(c)} role="button" tabIndex={0} onKeyDown={onEnter(()=>pick(c))} style={{padding:"9px 12px",cursor:"pointer",borderTop:i?"1px solid var(--line)":"none"}}>
+    <div style={{fontWeight:700,fontSize:13}}>{c.complex_name}</div>
+    <div style={{fontSize:11,color:MUTED}}>{[(c.gu||"").replace("청주시 ",""),c.dong].filter(Boolean).join(" · ")}</div>
+   </div>))}
+  </div>}
+  {sel&&info&&<div style={{fontSize:11.5,color:MUTED,margin:"6px 2px 0",lineHeight:1.5}}>
+   {sel.complex_name}: 매매 중앙값 {info.price_median?eok(info.price_median):"표본 부족"}
+   {info.count!=null&&<> · 최근 거래 {info.count}건</>} <span style={{opacity:.8}}>(자동 입력됨 — 수정 가능)</span>
+  </div>}
+  {note&&<div style={{fontSize:11,color:MUTED,margin:"5px 2px 0"}}>{note}</div>}
+ </div>);
+}
+/* 전세자금대출(v1.253) — 매매 대출과 구조가 달라 별도. 보증금 기준 한도 + 정책상품 요건. */
+function RentLoan(){
+ const [dep,setDep]=useState(""),[cash,setCash]=useState(""),[income,setIncome]=useState("");
+ const [fl,setFl]=useState({homeless:true,newlywed:false,kids2:false,newborn:false});
+ const [d,setD]=useState(null),[busy,setBusy]=useState(false);
+ const run=()=>{ if(!dep)return; setBusy(true);
+  fetch(`${API}/loan/rent`,{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({deposit:Math.round(parseFloat(dep)*10000),
+    cash:cash?Math.round(parseFloat(cash)*10000):null,
+    income:income?Math.round(+income):null,homeless:fl.homeless,
+    newlywed:fl.newlywed,kids2:fl.kids2,newborn:fl.newborn})})
+   .then(r=>r.json()).then(setD).catch(()=>setD(null)).finally(()=>setBusy(false));};
+ const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const OV={pass:["요건 충족 가능성","var(--ok-bg)","var(--ok-fg)"],maybe:["일부 확인 필요","var(--info-bg)","var(--info-fg)"],fail:["요건 미충족","var(--neutral-bg)",MUTED]};
+ return (<div style={{padding:"2px 2px 12px"}}>
+  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 10px"}}>전세대출은 매매 대출과 구조가 달라요 — 보증금 기준으로 한도가 정해지고, 보통 <b>이자만</b> 냅니다.</div>
+  <div className="card" style={{padding:"14px 15px"}}>
+   <div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:104,fontSize:12.5,fontWeight:700,color:MUTED}}>보증금(억)</span><input inputMode="decimal" value={dep} onChange={e=>setDep(e.target.value)} placeholder="예: 2.0" style={inp}/></div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:104,fontSize:12.5,fontWeight:700,color:MUTED}}>보유 현금(억)</span><input inputMode="decimal" value={cash} onChange={e=>setCash(e.target.value)} placeholder="예: 0.5" style={inp}/></div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{flex:"none",width:104,fontSize:12.5,fontWeight:700,color:MUTED}}>연소득(만원)</span><input inputMode="numeric" value={income} onChange={e=>setIncome(e.target.value)} placeholder="정책대출 확인용(선택)" style={inp}/></div>
+   </div>
+   <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:9}}>
+    {[["homeless","무주택"],["newlywed","신혼(7년 내)"],["kids2","2자녀 이상"],["newborn","2년 내 출산"]].map(([k,l])=>(
+     <button key={k} type="button" onClick={()=>{setFl(f=>({...f,[k]:!f[k]}));setD(null);}} className={"tog "+(fl[k]?"on":"")} style={{fontSize:12,padding:"7px 11px"}}>{l}</button>))}
+   </div>
+   <button onClick={run} disabled={busy||!dep} className="btn-primary" style={{width:"100%",marginTop:11,padding:"12px"}}>{busy?"계산 중…":"전세대출 확인하기"}</button>
+  </div>
+  {d&&<React.Fragment>
+   <div className="card" style={{padding:"14px 15px",marginTop:10}}>
+    <div style={{fontSize:12,color:MUTED}}>빌릴 금액(통상 한도 내)</div>
+    <div className="num" style={{fontSize:26,fontWeight:800,margin:"3px 0"}}>{eok(d.loan_amount)}</div>
+    <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6}}>
+     보증금 {eok(d.deposit)} · 통상 한도 {eok(d.max_by_deposit)}(보증금의 {Math.round(d.ltv_typical*100)}%)
+     {d.need!=null&&<> · 필요액 {eok(d.need)}</>}
+    </div>
+    {d.shortfall>0&&<div style={{marginTop:8,background:"rgba(200,50,42,.08)",borderRadius:10,padding:"10px 12px",fontSize:12.5,lineHeight:1.6}}>
+     ⚠️ 통상 한도로도 <b className="num">{eok(d.shortfall)}</b>이 모자라요. 보증금을 낮추거나 현금을 더 준비해야 합니다.
+    </div>}
+    {d.monthly_interest!=null
+     ? <div style={{marginTop:9,fontSize:13}}>월 이자 <b className="num" style={{fontSize:17}}>{won(d.monthly_interest)}</b> <span style={{fontSize:11.5,color:MUTED}}>· 금리 {d.rate_pct}%({d.rates_live?"은행 공시 기준":"참고"})</span></div>
+     : <div style={{marginTop:9,fontSize:11.5,color:MUTED,lineHeight:1.6}}>은행 금리가 아직 연동되지 않아 월 이자는 계산하지 않았어요(예시 금리로 만들지 않습니다). 금리는 은행·보증기관에서 확인하세요.</div>}
+    <div style={{fontSize:11,color:MUTED,marginTop:8,lineHeight:1.6}}>{d.repayment} · {d.note}</div>
+   </div>
+   {d.policy&&d.policy.items&&d.policy.items.length>0&&<div style={{marginTop:10}}>
+    <div style={{fontWeight:800,fontSize:13.5,margin:"0 2px 6px"}}>정책 전세대출 해당 가능성</div>
+    {d.policy.items.map(it=>{const[t,bg,fg]=OV[it.overall]||OV.maybe;
+     return (<div key={it.key} className="card" style={{padding:"12px 13px",marginBottom:8,opacity:it.overall==="fail"?.62:1}}>
+      <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+       <span style={{fontWeight:800,fontSize:14}}>{it.name}</span>
+       <span className="statusdot" style={{background:bg,color:fg}}>{t}</span>
+       <span className="num" style={{marginLeft:"auto",fontSize:12,color:MUTED}}>한도 ~{eok(it.limit)}</span>
+      </div>
+      <div style={{marginTop:6}}>
+       {it.checks.map((ck,i)=>(<div key={i} style={{display:"flex",gap:7,fontSize:12,lineHeight:1.5,padding:"1.5px 0"}}>
+        <span style={{flex:"none",fontWeight:800,width:13,textAlign:"center",color:ck.state==="pass"?TEAL:ck.state==="fail"?"var(--up)":MUTED}}>{ck.state==="pass"?"✓":ck.state==="fail"?"✕":"?"}</span>
+        <span style={{minWidth:0,color:ck.state==="fail"?"var(--up)":INK}}>{ck.label}{ck.note?<span style={{color:MUTED}}> · {ck.note}</span>:null}</span>
+       </div>))}
+      </div>
+      <a href={it.official_url} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",marginTop:7,fontSize:12,fontWeight:700,color:TEAL}}>공식 사이트에서 확인 ↗</a>
+     </div>);})}
+   </div>}
+   <div style={{fontSize:10.5,color:MUTED,margin:"8px 2px 0",lineHeight:1.55}}>{d.disclaimer} · {d.as_of}</div>
+  </React.Fragment>}
+ </div>);
+}
+/* 매달 나가는 돈(v1.253) — 대출 원리금 + 재산세(공시가격 입력 시 법정 계산) + 관리비(입력).
+   공시가격이 없으면 재산세를 추정하지 않는다(시세≠공시가격 — 왜곡 방지). */
+function MonthlyBurden({loanMonthly}){
+ const [official,setOfficial]=useState("");
+ const [fee,setFee]=useState("");
+ const [oneHouse,setOneHouse]=useState(true);
+ const [d,setD]=useState(null);
+ useEffect(()=>{ let on=true;
+  const body={loan_monthly:loanMonthly||null,one_house:oneHouse,
+   official_price:official?Math.round(parseFloat(official)*10000):null,
+   maintenance_fee:fee?Math.round(parseFloat(fee)):null};
+  fetch(`${API}/loan/holding-cost`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+   .then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(null);});
+  return ()=>{on=false;};
+ },[loanMonthly,official,fee,oneHouse]);
+ const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ return (<Collapsible icon="won" defaultOpen={true} title="매달 나가는 돈">
+  <div style={{padding:"6px 16px 14px"}}>
+   <div style={{fontSize:12,color:MUTED,lineHeight:1.6,marginBottom:9}}>대출 원리금만 보면 실제 부담을 놓쳐요. 재산세·관리비까지 합쳐서 봅니다.</div>
+   {d&&d.parts&&d.parts.length>0&&<div style={{background:"var(--surface-2)",borderRadius:11,padding:"11px 13px",marginBottom:10}}>
+    {d.parts.map((p,i)=>(<div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0"}}>
+     <span style={{fontSize:12.5,color:MUTED,minWidth:96}}>{p.label}</span>
+     <span className="num" style={{fontWeight:700,fontSize:13.5}}>{won(p.amount)}</span>
+     <span style={{marginLeft:"auto",fontSize:10.5,color:MUTED}}>{p.source}</span>
+    </div>))}
+    <div style={{display:"flex",alignItems:"baseline",gap:8,marginTop:7,paddingTop:7,borderTop:"1px solid var(--line)"}}>
+     <span style={{fontSize:12.5,fontWeight:800,minWidth:96}}>합계</span>
+     <span className="num" style={{fontWeight:800,fontSize:18}}>{won(d.total)}/월</span>
+    </div>
+   </div>}
+   <div style={{display:"flex",flexDirection:"column",gap:8}}>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{flex:"none",width:104,fontSize:12,fontWeight:700,color:MUTED}}>공시가격(억)</span>
+     <input inputMode="decimal" value={official} onChange={e=>setOfficial(e.target.value)} placeholder="예: 2.1 (공시가격 알리미)" style={inp}/>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:8}}>
+     <span style={{flex:"none",width:104,fontSize:12,fontWeight:700,color:MUTED}}>월 관리비(만원)</span>
+     <input inputMode="decimal" value={fee} onChange={e=>setFee(e.target.value)} placeholder="예: 15" style={inp}/>
+    </div>
+    <button type="button" onClick={()=>setOneHouse(v=>!v)} className={"tog "+(oneHouse?"on":"")} style={{alignSelf:"flex-start",fontSize:12,padding:"7px 11px"}}>1세대 1주택 {oneHouse?"✓":""}</button>
+   </div>
+   {d&&d.property_tax&&<div style={{fontSize:11,color:MUTED,marginTop:9,lineHeight:1.6}}>
+    재산세 연 {won(d.property_tax.total)} = 본세 {won(d.property_tax.tax)} + 지방교육세 {won(d.property_tax.edu_tax)} + 도시지역분 {won(d.property_tax.city_area_tax)}
+    <br/>과세표준 {won(d.property_tax.tax_base)}(공시가격 × {Math.round(d.property_tax.fair_ratio*100)}%) · {d.property_tax.rate_table}세율 · {d.property_tax.as_of}
+    <br/>{d.property_tax.note}
+   </div>}
+   {d&&d.missing&&d.missing.length>0&&<div style={{fontSize:11,color:MUTED,marginTop:9,lineHeight:1.6}}>
+    아직 반영 못 한 항목: {d.missing.join(" · ")}
+   </div>}
+  </div>
+ </Collapsible>);
+}
 function LoanResult({res}){
  return (<div>
   <Collapsible icon="loan" defaultOpen={true} title="예상 대출 한도">
@@ -5920,6 +6080,17 @@ function LoanResult({res}){
     {res.total_cash_gap>0?`보유 현금 대비 ${eok(res.total_cash_gap)} 부족`:"보유 현금으로 충족 ✓"}</div>}
    </div>
   </Collapsible>
+  {res.stress&&res.stress.length>1&&<Collapsible icon="alerthome" defaultOpen={true} title="금리가 오르면? · 스트레스 테스트">
+   <div style={{padding:"6px 16px 14px"}}>
+    <div style={{fontSize:12,color:MUTED,lineHeight:1.6,marginBottom:8}}>변동금리라면 지금 금리가 계속되진 않아요. <b>같은 대출금·같은 기간</b>에서 금리만 올렸을 때의 월 상환액입니다(예측 아님·산수).</div>
+    {res.stress.map((s,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:i?"1px solid var(--line)":"none"}}>
+     <span style={{fontSize:12.5,fontWeight:i?600:800,color:i?MUTED:INK,minWidth:74}}>{i?`+${s.delta}%p`:"현재"} · {s.rate_pct}%</span>
+     <span className="num" style={{fontWeight:800,fontSize:15}}>{won(s.monthly)}/월</span>
+     {i>0&&<span className="num" style={{marginLeft:"auto",fontWeight:800,fontSize:13,color:UP}}>+{won(s.diff)}</span>}
+    </div>))}
+   </div>
+  </Collapsible>}
+  <MonthlyBurden loanMonthly={(res.simulations&&res.simulations[0]&&res.simulations[0].monthly)||null}/>
   <Collapsible icon="doc" defaultOpen={true} title="매수 부대비용 상세">
    <div style={{padding:"4px 14px"}}>
    <CostRow label={`취득세 (${(res.costs.acq_rate*100).toFixed(2)}%)`} val={res.costs.acquisition_tax} note={res.costs.first_time_credit>0?`생애최초 -${res.costs.first_time_credit}만`:null}/>

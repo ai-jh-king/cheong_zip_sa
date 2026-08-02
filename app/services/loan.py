@@ -168,6 +168,37 @@ def _affordability(price, self_capital, annual_income, limit, rate_pct, years, t
     }
 
 
+def market_rate(products: list[dict] | None) -> dict | None:
+    """은행 상품(실연동)에서 시장 금리 요약 — 기본 금리값 근거. 실데이터 없으면 None(추정 금지)."""
+    if not products:
+        return None
+    banks = [p for p in products if p.get("kind") != "정책"
+             and p.get("rate_min") is not None and p.get("rate_max") is not None
+             and not p.get("is_sample")]
+    if not banks:
+        return None
+    lows = sorted(p["rate_min"] for p in banks)
+    highs = sorted(p["rate_max"] for p in banks)
+    mid = round((lows[len(lows) // 2] + highs[len(highs) // 2]) / 2, 2)
+    return {"min": round(min(lows), 2), "max": round(max(highs), 2),
+            "typical": mid, "count": len(banks),
+            "as_of": next((p.get("as_of") for p in banks if p.get("as_of")), None)}
+
+
+def stress_test(principal: float, rate_pct: float, years: int,
+                deltas: tuple[float, ...] = (1.0, 2.0)) -> list[dict]:
+    """금리 상승 시나리오별 월 상환액 변화(원리금균등) — 변동금리 실수요자의 핵심 리스크.
+    계산식은 공개(pmt), 예측이 아니라 '지금 조건에서 금리만 바꿨을 때'의 산수."""
+    base = pmt(principal, rate_pct, years)
+    out = [{"delta": 0.0, "rate_pct": round(rate_pct, 2),
+            "monthly": round(base), "diff": 0}]
+    for d in deltas:
+        m = pmt(principal, rate_pct + d, years)
+        out.append({"delta": d, "rate_pct": round(rate_pct + d, 2),
+                    "monthly": round(m), "diff": round(m - base)})
+    return out
+
+
 def estimate(*, price: float, consent: bool,
              self_capital: float | None = None,
              annual_income: float | None = None,
@@ -227,6 +258,8 @@ def estimate(*, price: float, consent: bool,
                           _affordability(price, self_capital, annual_income, limit,
                                          rate_pct, years, total_cash_gap)),
         "simulations": simulate(limit, rate_pct, years),
+        "stress": stress_test(limit, rate_pct, years),      # 금리 +1%p/+2%p 월 상환액(산수)
+        "market_rate": market_rate(catalog if rates_live else None),  # 실연동 시에만(예시 금리로 시장 요약 금지)
         "products": prods,
         "rates_live": rates_live,
         "disclaimer": DISCLAIMER,

@@ -139,21 +139,25 @@ def search_by_commute(db: Session, dest_id: int, mode: str, max_minutes: int,
     out.sort(key=lambda r: r["minutes"])
     out = out[:limit]
 
-    # 결과 단지의 최근 N개월 중앙 매매가 결합(있으면) — '시간 + 가격' 의사결정용
+    # 결과 단지의 최근 N개월 중앙 매매가 결합(있으면) — '시간 + 가격' 의사결정용.
+    # ⚠️ 조인 키는 (단지명, lawd_cd) — 수집 파이프라인이 Transaction.complex_id 를 채우지 않아
+    #    FK 기준으로 묶으면 전 건이 매칭 실패해 가격이 전부 '—'로 표시됨(실사고 v1.254).
     if out:
         from statistics import median as _median
         from app.models import Transaction
         from app.services.stats import _cutoff_date
-        ids = [r["complex_id"] for r in out]
-        price_map: dict[int, list[int]] = {}
+        keys = {(r["name"], r["lawd_cd"]) for r in out}
+        names = list({n for n, _ in keys})
+        price_map: dict[tuple, list[int]] = {}
         for t in db.scalars(select(Transaction).where(
-                Transaction.complex_id.in_(ids), Transaction.deal_type == "trade",
+                Transaction.complex_name.in_(names), Transaction.deal_type == "trade",
                 Transaction.is_canceled.isnot(True),
                 Transaction.contract_date >= _cutoff_date())).all():
-            if t.deal_amount:
-                price_map.setdefault(t.complex_id, []).append(t.deal_amount)
+            k = (t.complex_name, t.lawd_cd)
+            if t.deal_amount and k in keys:
+                price_map.setdefault(k, []).append(t.deal_amount)
         for r in out:
-            vals = price_map.get(r["complex_id"])
+            vals = price_map.get((r["name"], r["lawd_cd"]))
             r["price"] = round(_median(vals)) if vals else None
     return {
         "found": True,

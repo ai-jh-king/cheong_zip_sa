@@ -41,3 +41,25 @@ def test_gu_label_is_string():
     assert _gu("43113") == "흥덕구"
     assert isinstance(_gu("43113"), str)
     assert _gu("99999") == ""
+
+
+def test_search_attaches_price_by_name_not_fk(db):
+    """시세 조인은 (단지명, lawd_cd) — Transaction.complex_id 는 수집이 채우지 않아
+    FK 로 묶으면 가격이 전부 None('—')이 되는 실사고(v1.254) 회귀 방지."""
+    from datetime import date
+    from app.models import Complex, CommuteDestination, Transaction
+    db.add(CommuteDestination(id=901, key="t_job", name="테스트직장", category="job",
+                              lat=36.64, lng=127.43, is_active=True, sort_order=1))
+    db.add(Complex(name="통근테스트단지", lawd_cd="43113", property_type="apartment",
+                   dong="가경동", lat=36.641, lng=127.431))
+    for i, amt in enumerate([30000, 32000, 34000]):
+        db.add(Transaction(lawd_cd="43113", property_type="apartment", deal_type="trade",
+                           complex_name="통근테스트단지", exclusive_area=84.9, floor=5,
+                           contract_date=date.today(), deal_amount=amt,
+                           source="TEST", dedup_key=f"ct{i}"))   # complex_id 는 의도적으로 미설정
+    db.commit()
+
+    from app.services import commute
+    r = commute.search_by_commute(db, dest_id=901, mode="car", max_minutes=60)
+    row = next(x for x in r["results"] if x["name"] == "통근테스트단지")
+    assert row["price"] == 32000        # 중앙값 — FK 미설정이어도 붙어야 함

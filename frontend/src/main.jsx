@@ -1910,6 +1910,9 @@ function App(){
  // ⚠️ 선언은 반드시 사용(useEffect·NAV)보다 위 — 아래에 두면 TDZ ReferenceError 로 앱 전체 크래시(실사고)
  const [live,setLive]=useState(null);
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
+ const [mapPreset,setMapPreset]=useState(null);    // 홈에서 지도로 들어올 때의 의도(jeonse_risk 등) — v1.252
+ const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
+ const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
@@ -2124,14 +2127,14 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
     tab==="subscription"?<SubscriptionTab/>:
     tab==="board"?<CommunityTab kind="news" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} section={boardSection} setSection={setBoardSection} onOnboard={()=>setOnbOpen(true)} feed={data.feed} openGuideId={openGuideId} onConsumeGuide={()=>setOpenGuideId(null)} onGoTalk={()=>{setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>:
     tab==="chat"?<CommunityTab kind="talk" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={talkSection} setSection={setTalkSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onGoGuide={(gid)=>{setOpenGuideId(gid);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
-    tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)}/>:
+    tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)} preset={mapPreset} onConsumePreset={()=>setMapPreset(null)}/>:
     tab==="more"?<MoreTab account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
@@ -2164,6 +2167,11 @@ function App(){
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {jeonseOpen&&<Sheet title="🛡 전세 안전 진단" onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
   {checklistOpen&&<Sheet title="📋 계약 전 꼭 확인" onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
+  {bargainOpen&&<Sheet title="📉 급매 포착" onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
+  {recentOpen&&<Sheet title="🕘 최근 본 단지" onClose={()=>setRecentOpen(false)}>
+   {(recents&&recents.length)?<RecentList recents={recents} onOpen={(m)=>{setRecentOpen(false);openComplex(m);}}/>
+    :<div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>아직 본 단지가 없어요. 지도나 검색에서 단지를 열면 여기에 쌓여요.</div>}
+  </Sheet>}
   {auctionOpen&&<Sheet title="⚖️ 경매·공매 알아보기" onClose={()=>setAuctionOpen(false)}><AuctionInfo onGuide={()=>{setAuctionOpen(false);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/></Sheet>}
   {favOpen&&<Sheet title="⭐ 관심 단지" onClose={()=>setFavOpen(false)}>
    <FavList favs={favs} onOpen={(m)=>{setFavOpen(false);openComplex(m);}} onToggleFav={toggleFav} onGu={(g)=>{setFavOpen(false);goGu(g);}} onToggleRegion={toggleRegion}/>
@@ -3181,6 +3189,31 @@ function GuContextBar(){
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>{d.disclaimer}</div>
  </div>);
 }
+/* 급매 목록(v1.252) — 홈 그리드 '급매 신호' 시트 본문. 근거·면책 포함, 판정 없음. */
+function BargainList({onOpen}){
+ const [d,setD]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/pricecheck/bargains`).then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD({items:[]});});
+  return ()=>{on=false;};},[]);
+ if(d===null)return <SkeletonCard lines={4}/>;
+ const items=d.items||[];
+ if(!items.length)return <div style={{fontSize:12.5,color:MUTED,padding:"14px 4px",lineHeight:1.6}}>지금은 포착된 급매 신호가 없어요. 표본이 충분한 단지에서 같은 평형 중앙값보다 크게 낮은 신고가 나오면 여기에 표시됩니다.</div>;
+ return (<div style={{padding:"2px 0 6px"}}>
+  <div style={{fontSize:11.5,color:MUTED,lineHeight:1.6,margin:"0 2px 8px"}}>같은 평형 최근 {d.months||12}개월 중앙값보다 크게 낮게 <b>신고된 실거래</b>예요. 특수거래(직거래·가족 간)일 수 있어 실제 급매가 아닐 수 있습니다 — 판정이 아닌 참고 신호.</div>
+  <div className="card" style={{padding:"2px 14px"}}>
+   {items.map((it,i)=>(<div key={i} onClick={()=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:"apartment",gu:it.gu})}
+     role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpen&&onOpen({complex_name:it.name,lawd_cd:it.lawd_cd,property_type:"apartment",gu:it.gu}))}
+     style={{display:"flex",alignItems:"center",gap:10,padding:"11px 0",borderBottom:i<items.length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+    <div style={{minWidth:0,flex:1}}>
+     <div style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</div>
+     <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{[(it.gu||"").replace("청주시 ",""),it.pyeong?`${it.pyeong}평`:null].filter(Boolean).join(" · ")}</div>
+    </div>
+    <span className="num" style={{color:DOWN,fontWeight:800,fontSize:13,flex:"none"}}>{it.diff_pct}%</span>
+    <span style={{color:MUTED,fontSize:15,flex:"none"}}>›</span>
+   </div>))}
+  </div>
+ </div>);
+}
 function BargainRadar({onOpen}){
  // 급매 신호는 '거래 급상승'과 동일한 압축 티커(TickerBanner) 패턴으로. 한 건 낮은 거래는
  // 특수거래(직거래·가족)일 수 있어 실행 가능성이 제한적 → 큰 카드가 아니라 1줄 티커로 노출.
@@ -3508,7 +3541,7 @@ function GuChips({onGu,compact}){
 /* 홈 상황 선택(v1.250) — 컨셉 "집 사고 팔기 전에 확인하세요".
    사용자가 자기 상황(살 때/팔 때/빌릴 때)을 고르면 그 상황의 확인 도구 4종이 앞줄에 온다.
    선택은 기기에 저장(safeStore)해 다음 방문에도 유지. */
-const SITUATIONS=[["buy","🏠 살 때"],["sell","💰 팔 때"],["rent","🔑 빌릴 때"]];
+const SITUATIONS=[["buy","🏠 살 때"],["sell","💰 팔 때"],["rent","🔑 전월세"]];   // v1.252: "빌릴 때"는 실사용자 말이 아님(전세 세입자는 자기를 빌리는 사람으로 인식 안 함)
 function SituationBar({value,onPick,compact}){
  return (<div style={{display:"flex",gap:6,marginTop:compact?5:8}}>
   {SITUATIONS.map(([k,l])=>{const on=value===k;
@@ -3626,7 +3659,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3641,17 +3674,17 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
   ],
-  sell:[  // 팔 때: 내 집 시세 · 부대비용 · 내놓기 · 동네 시세 비교
+  sell:[  // 팔 때: 내 집 얼마 · 팔면 얼마 남나 · 내놓기 · 급매 신호(내 단지가 눌리고 있나)
    {label:"우리집 시세",icon:"home",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>myHome?(onOpen&&onOpen(myHome)):(onRegisterHome&&onRegisterHome())},
    {label:"세금·중개보수",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
    {label:"매물 내놓기",icon:"listing",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onListing&&onListing()},
-   {label:"시세 비교",icon:"price",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>go&&go("map")},
+   {label:"급매 신호",icon:"bargain",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onBargains&&onBargains()},
   ],
-  rent:[  // 빌릴 때: 보증금 안전 · 전세위험 지도 · 통근 · 도감(전세 편)
+  rent:[  // 전월세: 보증금 안전 · 위험 단지 지도(전세 모드로) · 보증금 대출 · 통근
    {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
-   {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>go&&go("map")},
+   {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onRiskMap&&onRiskMap()},
+   {label:"보증금 대출",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
-   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
   ],
  };
  // 첫 방문 환영 카드 제거(v1.225) — 홈은 히어로+그리드+배너로 한 화면 구성(사용자 결정).
@@ -3702,11 +3735,12 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    집 <b style={{color:INK}}>사고 팔기 전</b>, 여기서 먼저 확인하세요
   </div>}
   <SituationBar value={situation} onPick={pickSituation} compact={compact}/>
+  {/* 공통 줄(v1.252): 하단 네비에 있는 지도·집사 소식은 제외(중복) — 상황 무관 '내 것'과 검증만 */}
   <HomeGrid compact={compact} items={[...SIT_TOOLS[situation],
    {label:"계약전확인",icon:"doc",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onChecklist&&onChecklist()},
-   {label:"지도",icon:"map",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>go&&go("map")},
+   {label:"우리집",icon:"home",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>myHome?(onOpen&&onOpen(myHome)):(onRegisterHome&&onRegisterHome())},
    {label:"관심단지",icon:"star",color:"#C9A227",bg:"rgba(201,162,39,.12)",onClick:()=>onFavs&&onFavs()},
-   {label:"집사도감",icon:"book",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onGuide&&onGuide()},
+   {label:"최근 본 단지",icon:"search",color:"#8A5A2B",bg:"rgba(138,90,43,.10)",onClick:()=>onRecent&&onRecent()},
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
@@ -4178,15 +4212,15 @@ function FilterChips({opts,value,onPick,multi}){
    {ic&&<Icon name={ic} active={on(v)} size={15}/>}{l}</button>)}
  </div>);
 }
-function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onConsumeFocus}){
- const [deal,setDeal]=useState("trade");
+function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onConsumeFocus, preset, onConsumePreset}){
+ const [deal,setDeal]=useState(preset==="jeonse_risk"?"jeonse":"trade");
  const [prop,setProp]=useState("apartment");
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
  const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
  const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
- const [showJr,setShowJr]=useState(false);   // 🏠 전세가율 위험(역전세 유의) 핀
+ const [showJr,setShowJr]=useState(preset==="jeonse_risk");   // 🏠 전세가율 위험(역전세 유의) 핀 — 홈 "전세위험 지도"로 들어오면 켠 채 시작(v1.252)
  // 조건 필터(가격대·연식·평형) — 실사용자 핵심 검색 조건을 지도에 직접
  const [fPrice,setFPrice]=useState("");      // "lo-hi"(만원) 또는 ""
  const [fYear,setFYear]=useState("");        // "5"|"10"|"15"|"old"|""
@@ -4209,6 +4243,10 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [pick,setPick]=useState(null);             // {gu, dong?} — 선택 지역: 그 지역 단지'만' 표시(요청)
  // 구 레벨(z<12)로 축소하면 선택 자동 해제 — 선택 유지 시 다른 구가 전부 '0곳'으로 보이는 모순(실사고 v1.238).
  // pickAt 가드: 구 클릭 직후 fitBounds 애니메이션 중 z<12 가 순간 보고돼 방금 선택이 풀리는 레이스 방지.
+ useEffect(()=>{ if(!preset)return;
+  if(preset==="jeonse_risk"){setDeal("jeonse");setShowJr(true);}
+  onConsumePreset&&onConsumePreset();
+ },[preset]);
  const pickAt=useRef(0);
  useEffect(()=>{ if(pick&&viewport&&viewport.zoom!=null&&viewport.zoom<12&&Date.now()-pickAt.current>800){setPick(null);setRegionSel(null);} },[viewport,pick]);
  // 홈 구별 칩 → 해당 구 선택 + 경계 fit(v1.240). 지도 인스턴스·경계 로드가 끝날 때까지 폴링 후 1회 실행.

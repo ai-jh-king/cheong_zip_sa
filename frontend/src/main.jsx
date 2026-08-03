@@ -1915,6 +1915,7 @@ function App(){
  const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
  const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
  const [rentLoanOpen,setRentLoanOpen]=useState(false); // 전세자금대출 시트(v1.253)
+ const [planOpen,setPlanOpen]=useState(null);          // 전체화면 플랜 페이지(v1.255): {type:"buy"|"jeonse", price?, name?}
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
@@ -2129,7 +2130,7 @@ function App(){
     데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
    </div>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setJeonseOpen(true)} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} onRentLoan={()=>setRentLoanOpen(true)} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setPlanOpen({type:"jeonse"})} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} onRentLoan={()=>setRentLoanOpen(true)} onBuyPlan={()=>setPlanOpen({type:"buy"})} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2167,6 +2168,10 @@ function App(){
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
   {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
+  {planOpen&&planOpen.type==="buy"&&<BuyPlan onClose={()=>setPlanOpen(null)} initialPrice={planOpen.price} complexName={planOpen.name}
+    onBudget={()=>setBudgetOpen(true)} onChecklist={()=>setChecklistOpen(true)}/>}
+  {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)}
+    onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onChecklist={()=>setChecklistOpen(true)}/>}
   {jeonseOpen&&<Sheet title={<React.Fragment><Icon name="shield" active size={16}/> 전세 안전 진단</React.Fragment>} onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
   {checklistOpen&&<Sheet title={<React.Fragment><Icon name="doc" active size={16}/> 계약 전 꼭 확인</React.Fragment>} onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
   {rentLoanOpen&&<Sheet title={<React.Fragment><Icon name="key" active size={16}/> 전세자금대출</React.Fragment>} onClose={()=>setRentLoanOpen(false)}><RentLoan/></Sheet>}
@@ -2193,7 +2198,7 @@ function App(){
     onOpenComplex={it=>{setNotifOpen(false);openComplex(it);window.scrollTo(0,0);}}
     onOpenPost={pid=>{setNotifOpen(false);setOpenPostId(pid);setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>}
   {legalDoc&&<LegalModal doc={legalDoc} onClose={()=>setLegalDoc(null)}/>}
-  {sel&&<DetailSheet sel={sel} mapCfg={mapCfg} onClose={()=>setSel(null)} isFav={isFav} onToggleFav={toggleFav} inCompare={inCompare} onToggleCompare={toggleCompare} onOpen={openComplex}/>}
+  {sel&&<DetailSheet sel={sel} mapCfg={mapCfg} onClose={()=>setSel(null)} isFav={isFav} onToggleFav={toggleFav} inCompare={inCompare} onToggleCompare={toggleCompare} onOpen={openComplex} onPlan={(price,name)=>setPlanOpen({type:"buy",price,name})}/>}
   {commuteOpen&&<CommuteSheet onClose={()=>setCommuteOpen(false)} onOpen={it=>{setCommuteOpen(false);openComplex(it);}} mapCfg={mapCfg}/>}
   {budgetOpen&&<BudgetSheet onClose={()=>setBudgetOpen(false)} onOpen={it=>{setBudgetOpen(false);openComplex(it);}} favs={favs}/>}
   {loanOpen&&<LoanSheet onClose={()=>setLoanOpen(false)} onOpen={it=>{setLoanOpen(false);openComplex(it);}}/>}
@@ -2544,9 +2549,9 @@ function SheetShell({onClose,zIndex=120,header,scrollKey,children}){
    </div>
   </div>, document.body);
 }
-function DetailSheet({sel,mapCfg,onClose,isFav,onToggleFav,inCompare,onToggleCompare,onOpen}){
+function DetailSheet({sel,mapCfg,onClose,isFav,onToggleFav,inCompare,onToggleCompare,onOpen,onPlan}){
  return (<SheetShell onClose={onClose} zIndex={120} scrollKey={sel.name+sel.lawd_cd+sel.property_type}>
-  <Detail sel={sel} mapCfg={mapCfg} onBack={onClose} isFav={isFav} onToggleFav={onToggleFav} inCompare={inCompare} onToggleCompare={onToggleCompare} onOpen={onOpen}/>
+  <Detail sel={sel} mapCfg={mapCfg} onBack={onClose} isFav={isFav} onToggleFav={onToggleFav} inCompare={inCompare} onToggleCompare={onToggleCompare} onOpen={onOpen} onPlan={onPlan}/>
  </SheetShell>);
 }
 function ListingSheet({x,onClose}){
@@ -3668,7 +3673,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent,onRentLoan}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent,onRentLoan,onBuyPlan}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3679,7 +3684,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
  const SIT_TOOLS={
   buy:[   // 살 때: 얼마까지 · 대출 · 통근 · 경매까지 확인
    {label:"예산추천",icon:"won",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>onBudget&&onBudget()},
-   {label:"대출·세금",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
+   {label:"구입 플랜",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onBuyPlan&&onBuyPlan()},   // v1.255: 대출·세금·정책을 한 페이지로
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
   ],
@@ -3690,7 +3695,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
    {label:"급매 신호",icon:"bargain",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onBargains&&onBargains()},
   ],
   rent:[  // 전월세: 보증금 안전 · 위험 단지 지도(전세 모드로) · 보증금 대출 · 통근
-   {label:"전세진단",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
+   {label:"전세 플랜",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},   // v1.255: 진단+보호+대출 한 페이지
    {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onRiskMap&&onRiskMap()},
    {label:"보증금 대출",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onRentLoan&&onRentLoan()},
    {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
@@ -4978,7 +4983,7 @@ function HoodProfile({d}){
   <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>실거래·공공데이터 기반 사실 요약이에요. 직선거리·공개분 기준이며 동네 분위기 등 주관적 평가는 담지 않습니다.</div>
  </div>);
 }
-function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,onOpen}){
+function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,onOpen,onPlan}){
  const unit=useUnit();
  const [d,setD]=useState(null);
  const [loanArea,setLoanArea]=useState(null);
@@ -5119,6 +5124,14 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </Collapsible>}
   <div id="detail-loan"/>
+  {onPlan&&<button onClick={()=>onPlan(loanInit,sel.name)} className="card" style={{width:"100%",padding:"13px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:11,background:"linear-gradient(100deg,rgba(15,118,110,.12),rgba(15,118,110,.03))",border:"none",textAlign:"left"}}>
+   <span style={{flex:"none",lineHeight:0}}><Icon name="loan" active color={TEAL} size={22}/></span>
+   <span style={{minWidth:0,flex:1}}>
+    <span style={{display:"block",fontWeight:800,fontSize:14,color:INK}}>이 단지로 구입 플랜 세우기</span>
+    <span style={{display:"block",fontSize:11.5,color:MUTED,marginTop:2}}>한도·매달 부담·금리 스트레스·정책대출까지 전체화면에서 한 번에</span>
+   </span>
+   <span style={{color:TEAL,fontSize:18,flex:"none"}}>›</span>
+  </button>}
   <Collapsible key={loanArea?("la"+loanArea.area):"none"} icon="loan" defaultOpen={!!loanArea} title={<React.Fragment>대출 계산 <span style={{fontWeight:500,color:MUTED,fontSize:12}}>· 참고용</span></React.Fragment>}>
    <div style={{padding:"6px 14px 10px"}}>
     {useAreas.length>0&&<React.Fragment>
@@ -5909,6 +5922,53 @@ function Loan({initialPrice,onOpen}){
   {res&&res.affordability&&<AffordVerdict a={res.affordability}/>}
   {res&&<LoanResult res={res}/>}
  </div>);
+}
+/* 전체화면 플랜 페이지 셸(v1.255) — 시트(가벼운 조회)와 구분되는 '작업' 문법.
+   입력 여러 개 + 리포트 + 긴 체류 = 페이지(온보딩·도감 오버레이와 동일 패턴, 뒤로가기 연동). */
+function PlanPage({title,icon,onClose,children}){
+ useSheetDismiss(onClose);
+ useEffect(()=>{const o=document.body.style.overflow;document.body.style.overflow="hidden";return ()=>{document.body.style.overflow=o;};},[]);
+ return ReactDOM.createPortal(
+  <div style={{position:"fixed",inset:0,zIndex:130,background:"var(--bg1)",overflowY:"auto",overscrollBehavior:"contain"}}>
+   <div style={{position:"sticky",top:0,zIndex:5,display:"flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderBottom:"1px solid var(--line)",padding:"12px 14px"}}>
+    <button onClick={onClose} aria-label="뒤로" style={{border:"none",background:"none",cursor:"pointer",fontSize:21,lineHeight:1,color:INK,padding:"2px 6px"}}>‹</button>
+    <span style={{fontWeight:800,fontSize:16,display:"inline-flex",alignItems:"center",gap:6,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+     <Icon name={icon} active size={17}/>{title}</span>
+   </div>
+   <div style={{maxWidth:640,margin:"0 auto",padding:"12px 16px 40px"}}>{children}</div>
+  </div>, document.body);
+}
+/* 구입 플랜(v1.255) — 단지·조건 입력 → 한도·월부담·금리스트레스·부대비용·정책대출을 한 문맥에. */
+function BuyPlan({onClose,initialPrice,complexName,onBudget,onChecklist}){
+ return (<PlanPage title={complexName?`구입 플랜 · ${complexName}`:"구입 플랜"} icon="loan" onClose={onClose}>
+  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 10px"}}>
+   {complexName?<><b style={{color:INK}}>{complexName}</b> 기준으로 계산해요. 단지를 바꾸려면 아래에서 다시 검색하세요.</>
+    :<>단지를 고르고 내 조건을 넣으면 <b style={{color:INK}}>한도 → 매달 나가는 돈 → 금리 오르면 → 총 필요현금 → 정책대출</b>까지 한 번에 확인합니다.</>}
+  </div>
+  <Loan initialPrice={initialPrice}/>
+  <PolicyMatch/>
+  <div style={{display:"flex",gap:8,marginTop:14}}>
+   {onBudget&&<button onClick={()=>{onClose();onBudget();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>이 예산으로 가능한 단지 →</button>}
+   {onChecklist&&<button onClick={()=>{onClose();onChecklist();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>계약 전 꼭 확인 →</button>}
+  </div>
+ </PlanPage>);
+}
+/* 전세 플랜(v1.255) — 보증금 안전(진단·최우선변제·HUG) + 전세대출을 한 문맥에. */
+function JeonsePlan({onClose,onRiskMap,onChecklist}){
+ return (<PlanPage title="전세 플랜" icon="shield" onClose={onClose}>
+  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 6px"}}>
+   보증금을 지키는 순서대로 배치했어요 — <b style={{color:INK}}>안전 진단 → 법정 보호(최우선변제) → HUG 요건 → 보증금 대출</b>.
+  </div>
+  <JeonseGuard/>
+  <div style={{margin:"18px 2px 6px"}}>
+   <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="key" active color={INK} size={16}/>보증금 대출</div>
+  </div>
+  <RentLoan/>
+  <div style={{display:"flex",gap:8,marginTop:10}}>
+   {onRiskMap&&<button onClick={()=>{onClose();onRiskMap();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>전세위험 지도 →</button>}
+   {onChecklist&&<button onClick={()=>{onClose();onChecklist();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>계약 전 꼭 확인 →</button>}
+  </div>
+ </PlanPage>);
 }
 /* 단지 검색 → 상세(시세) 콜백. 대출·전세진단 등에서 '손으로 시세 입력'을 없애는 공용 부품(v1.253). */
 function ComplexPicker({label="단지 검색",onPick,note}){

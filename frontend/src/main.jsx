@@ -1902,8 +1902,6 @@ function App(){
  const [homePick,setHomePick]=useState(false);   // 검색 오버레이가 '우리집 등록' 모드인지
  const saveMyHome=useCallback((h)=>{setMyHome(h);try{safeStore.set("cj_myhome",h?JSON.stringify(h):"");}catch(e){}},[]);
  const [onbOpen,setOnbOpen]=useState(false);
- const [guideOpen,setGuideOpen]=useState(false);   // 집사 도감(콘텐츠) 오버레이
- const [jeonseOpen,setJeonseOpen]=useState(false); // 전세 안전 진단 시트(홈 그리드 진입)
  const [favOpen,setFavOpen]=useState(false);       // 관심 단지 시트(더보기 진입 — 홈 무스크롤 개편 v1.232)
  const [auctionOpen,setAuctionOpen]=useState(false); // 경매·공매 안내 시트(더보기 진입 v1.245)
  const [checklistOpen,setChecklistOpen]=useState(false); // 계약 전 꼭 확인(공식 서비스) 시트 — 홈 그리드(v1.249)
@@ -2167,12 +2165,10 @@ function App(){
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
-  {guideOpen&&<GuideBook onClose={()=>setGuideOpen(false)} onOnboard={()=>setOnbOpen(true)}/>}
   {planOpen&&planOpen.type==="buy"&&<BuyPlan onClose={()=>setPlanOpen(null)} initialPrice={planOpen.price} complexName={planOpen.name}
     onBudget={()=>setBudgetOpen(true)} onChecklist={()=>setChecklistOpen(true)}/>}
   {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)}
     onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onChecklist={()=>setChecklistOpen(true)}/>}
-  {jeonseOpen&&<Sheet title={<React.Fragment><Icon name="shield" active size={16}/> 전세 안전 진단</React.Fragment>} onClose={()=>setJeonseOpen(false)}><JeonseGuard embedded/></Sheet>}
   {checklistOpen&&<Sheet title={<React.Fragment><Icon name="doc" active size={16}/> 계약 전 꼭 확인</React.Fragment>} onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
   {rentLoanOpen&&<Sheet title={<React.Fragment><Icon name="key" active size={16}/> 전세자금대출</React.Fragment>} onClose={()=>setRentLoanOpen(false)}><RentLoan/></Sheet>}
   {bargainOpen&&<Sheet title={<React.Fragment><Icon name="bargain" active size={16}/> 급매 포착</React.Fragment>} onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
@@ -2275,7 +2271,7 @@ function TourStop({stop,idx,onOpen}){
 }
 function TourSheet({complexes,onClose,onOpen}){
  const stops=(complexes||[]).map(f=>{const m=f.meta||{};return {id:f.target_id||f.name,name:f.name||m.complex_name,gu:m.gu,dong:m.dong,property_type:m.property_type,it:{complex_name:f.name||m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type,gu:m.gu,dong:m.dong}};});
- const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>🧭 임장 도우미</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
+ const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>🧭 임장 도우미</span></div>);
  return (<SheetShell onClose={onClose} zIndex={120} header={header}>
   <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"2px 2px 4px"}}>관심 단지를 한 번에 둘러볼 <b>임장 코스</b>예요. 단지별 체크리스트와 메모는 이 기기에 저장돼, 현장에서 그대로 확인하며 다닐 수 있어요.</div>
   {stops.length?stops.map((s,i)=><TourStop key={s.id} stop={s} idx={i} onOpen={onOpen}/>):<div className="card" style={{padding:20,marginTop:8}}><Empty>관심 단지를 먼저 ★로 등록하면 임장 코스가 만들어져요.</Empty></div>}
@@ -2513,11 +2509,12 @@ function Sheet({title,info,onClose,children,fill}){
  return ReactDOM.createPortal(
   <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:120,background:"rgba(15,23,30,.45)",display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center"}}>
    <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{width:"100%",maxWidth:480,background:"var(--surface-solid)",borderRadius:"20px 20px 0 0",...(fill?{height:hv}:{maxHeight:hv}),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",transform:dragY>0?`translateY(${dragY}px)`:"none",transition:dragY?"none":"max-height .25s ease, height .25s ease, transform .22s ease"}}>
-    <div style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
+    {/* 닫기 ×는 두지 않는다(v1.256) — 시트는 아래 스와이프·백드롭 탭·기기 뒤로가기로 닫는 가벼운 조회 문법.
+        핸들 자체를 버튼으로 만들어 키보드·스크린리더 접근성은 유지(시각적 노이즈 없이). */}
+    <button type="button" onClick={onClose} aria-label="닫기" style={{padding:"10px 0 2px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab",border:"none",background:"transparent",width:"100%"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></button>
     <div style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px 12px",flex:"none"}}>
      <span style={{fontWeight:800,fontSize:16,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</span>
      {info&&<span style={{flex:"none",display:"inline-flex",alignItems:"center"}}><Info text={info}/></span>}
-     <span onClick={onClose} aria-label="닫기" role="button" tabIndex={0} onKeyDown={onEnter(onClose)} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600,flex:"none"}}>×</span>
     </div>
     <div ref={scRef} style={{overflowX:"hidden",overflowY:"auto",padding:"0 14px 26px",...(fill?{flex:1,minHeight:0}:{})}}>{children}</div>
    </div>
@@ -2543,7 +2540,7 @@ function SheetShell({onClose,zIndex=120,header,scrollKey,children}){
    <div onClick={e=>e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
      style={{width:"100%",maxWidth:480,background:"var(--bg2)",borderRadius:"20px 20px 0 0",height:tall?"90vh":(dragY<0?`calc(70vh + ${-dragY}px)`:"70vh"),display:"flex",flexDirection:"column",boxShadow:"0 -6px 24px rgba(0,0,0,.22)",
        transform:dragY>0?`translateY(${dragY}px)`:"none",transition:dragY?"none":"height .25s ease, transform .22s ease"}}>
-    <div style={{padding:"8px 0 4px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></div>
+    <button type="button" onClick={onClose} aria-label="닫기" style={{padding:"8px 0 4px",display:"flex",justifyContent:"center",flex:"none",cursor:"grab",border:"none",background:"transparent",width:"100%"}}><div style={{width:40,height:5,borderRadius:3,background:"var(--chip)"}}/></button>
     {header}
     <div ref={scRef} style={{overflowX:"hidden",overflowY:"auto",flex:1,padding:"0 14px 26px"}}>{children}</div>
    </div>
@@ -2757,13 +2754,13 @@ function BudgetPicks({onOpen,favs,embedded}){
  </div>);
 }
 function BudgetSheet({onClose,onOpen,favs}){
- const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 예산 맞춤 추천</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
+ const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 예산 맞춤 추천</span></div>);
  return (<SheetShell onClose={onClose} zIndex={118} header={header}>
   <BudgetPicks onOpen={onOpen} favs={favs} embedded={true}/>
  </SheetShell>);
 }
 function LoanSheet({onClose,onOpen}){
- const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 대출 한도 계산</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
+ const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 대출 한도 계산</span></div>);
  return (<SheetShell onClose={onClose} zIndex={118} header={header}>
   <Loan onOpen={onOpen}/>
   <PolicyMatch/>{/* 정책대출 매칭 — 동의 게이트·한도 계산과 무관하게 항상 표시(v1.241) */}
@@ -2811,7 +2808,7 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
  const dealCnt=cnt("deal_type"), guCnt=cnt("gu");
  const active=a.filter(x=>x.status==="active").length;
  const sponsored=a.filter(x=>x.is_sponsored).length;
- const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>중개사 대시보드</span><span onClick={onClose} onKeyDown={onEnter(onClose)} aria-label="닫기" role="button" tabIndex={0} style={{marginLeft:"auto",cursor:"pointer",color:MUTED,fontSize:22,lineHeight:1,fontWeight:600}}>×</span></div>);
+ const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>중개사 대시보드</span></div>);
  return (<SheetShell onClose={onClose} zIndex={119} header={header}>
   {editing?<div style={{padding:"2px 2px 16px"}}><ListingForm account={account} initial={editing} onCancel={()=>setEditing(null)} onCreated={()=>{setEditing(null);load();}}/></div>:
   <div style={{padding:"2px 2px 16px"}}>

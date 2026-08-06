@@ -4032,7 +4032,7 @@ function _inGuPoly(geo,code,lat,lng){
   if(inside)return true;}
  return false;
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onJrKeys, onMapReady, full, onRegionOpen, jrKeys, pickCode, signalOn}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4175,9 +4175,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    // 단지 마커 아이콘(부동산앱 문법 — 사용자 요청): 아파트·오피스텔=빌딩, 빌라=집 모양
    const BLDG='<path d="M4.5 20V6.2L12 3.8v16.2M12 20V9.3l7.5 2.4V20M3.5 20h17"/><path d="M7.8 8.6v.01M7.8 12v.01M7.8 15.4v.01M15.6 14v.01M15.6 17v.01"/>';
    const HOUSE='<path d="M3.5 10.8 12 4l8.5 6.8"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-4.6h4V20"/>';
-   items.forEach(it=>{
-    // 전세위험 핀이 있는 단지는 가격 마커를 생략(같은 자리에 두 핀 = 지도 과밀·혼란, v1.257)
-    if(showJr&&jrKeys&&jrKeys.has(it.complex_name+"|"+it.lawd_cd))return;
+   // 신호 레이어가 켜져 있으면 기본 매물(가격) 핀은 그리지 않는다(v1.260, 사용자 확정).
+   // 겹쳐 그리면 같은 단지에 두 핀이 붙고 화면이 뒤죽박죽 — 신호는 '그 기준만' 보는 독립 모드.
+   (signalOn?[]:items).forEach(it=>{
     // 단지 레벨(z≥15): 영역·클러스터 없이 개별 단지 가격 마커
     const ic=it.property_type==="rowhouse"?HOUSE:BLDG;
     // 평형별 표시(v1.258, 사용자 요청): 전 평형 혼합 중앙값 하나가 아니라 '존재하는 평형'을 전부.
@@ -4206,7 +4206,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     markerObjs.current.push(mk);
    });
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
- },[ready,tick,markers,fitKey,geoTick,showJr,jrKeys,signalOn]);
+ },[ready,tick,markers,fitKey,geoTick,signalOn]);
  // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
  // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
  useEffect(()=>{
@@ -4276,10 +4276,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   if(!ready||!mapObj.current||!window.naver)return;
   const n=window.naver, map=mapObj.current;
   const clearJr=()=>{jrObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});jrObjs.current=[];};
-  if(!showJr){clearJr();if(onJrKeys)onJrKeys(null);return;}
+  if(!showJr){clearJr();return;}
   let alive=true;
   fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{ if(!alive)return; clearJr();
-   if(onJrKeys)onJrKeys(new Set(((j&&j.items)||[]).map(x=>x.name+"|"+x.lawd_cd)));
    ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
     if(pickCode&&J.lawd_cd!==pickCode)return;   // 구 선택 시 그 구만(v1.258)
     const col=J.level==="high"?"#C8322A":"#C77A1A";
@@ -4338,7 +4337,6 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [signal,setSignal]=useState(preset==="jeonse_risk"?"jr":null);   // null | "lm" | "bg" | "jr"
  const pickSignal=(k)=>setSignal(s=>s===k?null:k);
  const showLm=signal==="lm", showBg=signal==="bg", showJr=signal==="jr";
- const [jrKeys,setJrKeys]=useState(null);   // 위험 핀이 찍힌 단지 키 — 같은 단지에 가격 마커까지 겹쳐 찍히는 중복 방지(v1.257)   // 🏠 전세가율 위험(역전세 유의) 핀 — 홈 "전세위험 지도"로 들어오면 켠 채 시작(v1.252)
  // 조건 필터(가격대·연식·평형) — 실사용자 핵심 검색 조건을 지도에 직접
  const [fPrice,setFPrice]=useState("");      // "lo-hi"(만원) 또는 ""
  const [fYear,setFYear]=useState("");        // "5"|"10"|"15"|"old"|""
@@ -4426,7 +4424,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} jrKeys={jrKeys} onJrKeys={setJrKeys} pickCode={pick&&pick.code} signalOn={!!signal} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4466,6 +4464,17 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
      <span style={{fontSize:8.5,fontWeight:800,lineHeight:1}}>{label}</span>
     </button>))}
   </div>
+  {/* 신호 모드 배지(v1.260): 지금 무엇만 보고 있는지 + 한 번에 해제 — 매물 핀이 사라진 이유를 명시 */}
+  {signal&&<div style={{position:"absolute",left:0,right:0,bottom:14,zIndex:6,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
+   <div style={{pointerEvents:"auto",display:"inline-flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderRadius:14,padding:"8px 10px 8px 13px",boxShadow:"0 3px 14px rgba(16,24,32,.22)",maxWidth:"92%"}}>
+    <Icon name={signal==="lm"?"build":signal==="bg"?"bargain":"alerthome"} active color={TEAL} size={15}/>
+    <span style={{fontSize:12,fontWeight:700,color:INK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+     {signal==="lm"?"개발 호재":signal==="bg"?"급매 신호":"전세위험"}만 보는 중
+     <span style={{fontWeight:600,color:MUTED,marginLeft:5}}>· 매물 핀 숨김</span>
+    </span>
+    <button type="button" onClick={()=>setSignal(null)} style={{flex:"none",border:"none",background:"var(--chip)",color:INK,borderRadius:9,padding:"5px 10px",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>해제</button>
+   </div>
+  </div>}
   {filterOpen&&<Sheet title="지도 필터" onClose={()=>setFilterOpen(false)}>
    <div style={{padding:"2px 2px 4px"}}>
     <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:4}}>매물 종류</div>

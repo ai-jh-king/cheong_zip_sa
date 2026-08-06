@@ -101,3 +101,24 @@ def test_bargain_radar_includes_coords_when_geocoded(db):
     r = pc.bargain_radar(db, months=3)
     it = r["items"][0]
     assert it["lat"] == 36.64 and it["lng"] == 127.42
+
+
+def test_jeonse_risk_matches_area_band(db):
+    """전세가율은 같은 평형 안에서 계산해야 한다 — 큰 평형 매매 vs 작은 평형 전세를 섞으면
+    125%·159% 같은 착시가 생김(실사고 v1.257). 평형 매칭 후에는 그런 값이 나오지 않아야."""
+    from app.models import Complex
+    from app.services import pricecheck
+    db.add(Complex(name="평형테스트", lawd_cd="43113", property_type="apartment",
+                   dong="가경동", lat=36.63, lng=127.42))
+    # 큰 평형(84㎡=25평) 매매 5억대 / 작은 평형(39㎡=12평) 전세 2억대 — 섞으면 40%대로 왜곡되고,
+    # 큰 평형 전세 표본이 없으므로 '같은 평형' 규칙에서는 비율을 만들지 않아야 한다.
+    for i, a in enumerate([50000, 51000, 52000]):
+        db.add(_tx("평형테스트", a, f"big{i}"))                      # 84.9㎡ 매매
+    for i, dep in enumerate([20000, 21000, 22000]):
+        db.add(Transaction(lawd_cd="43113", property_type="apartment", deal_type="jeonse",
+                           complex_name="평형테스트", exclusive_area=39.0,
+                           contract_date=date(2026, 5, 1), deposit=dep,
+                           source="TEST", dedup_key=f"small{i}"))
+    db.commit(); cache.bump_data_version()
+    items = pricecheck.jeonse_risk_map(db)["items"]
+    assert not [x for x in items if x["name"] == "평형테스트"]   # 평형 불일치 → 신호 없음

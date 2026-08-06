@@ -422,7 +422,7 @@ function ShareCard({card,onClose}){
    {msg&&<div style={{fontSize:12.5,color:"#fff",textAlign:"center"}}>{msg}</div>}
    <div style={{display:"flex",gap:9,width:"100%",maxWidth:360}}>
     <button onClick={save} style={{flex:1,border:"none",borderRadius:11,padding:"13px 0",fontWeight:800,fontSize:14,cursor:"pointer",background:"#fff",color:"#1B2733"}}>이미지 저장</button>
-    <button onClick={share} className="btn-primary" style={{flex:1,padding:"13px 0"}}>공유하기</button>
+    <button onClick={share} className="btn-outline" style={{flex:1,padding:"13px 0"}}>공유하기</button>
    </div>
    <button onClick={onClose} style={{border:"none",background:"none",color:"#cfd8de",fontSize:13.5,fontWeight:700,cursor:"pointer",padding:"4px 10px"}}>닫기</button>
   </div>
@@ -1513,11 +1513,10 @@ function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onCo
     {renderSub("listing","매물","listing")}
    </React.Fragment>}
   </div>
-  {kind==="news"&&section!=="news"?<React.Fragment>
-   <CityIssues/>{/* '청주는 지금'(개발 이슈) — 홈 무스크롤 개편(v1.232)으로 소식 탭 이동 */}
+  {kind==="news"&&section!=="news"?
    <GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
-    onGoBoard={()=>{setGuideGid(null);onGoTalk&&onGoTalk();}}/></React.Fragment>
-  :kind==="news"?<NewsList feed={feed}/>
+    onGoBoard={()=>{setGuideGid(null);onGoTalk&&onGoTalk();}}/>
+  :kind==="news"?<React.Fragment><CityIssues/><NewsList feed={feed}/></React.Fragment>
   :section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   {latestGuide&&<div onClick={()=>{onGoGuide&&onGoGuide(latestGuide.id);}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{onGoGuide&&onGoGuide(latestGuide.id);})}
     className="card" style={{padding:"11px 14px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
@@ -1912,7 +1911,6 @@ function App(){
  const [mapPreset,setMapPreset]=useState(null);    // 홈에서 지도로 들어올 때의 의도(jeonse_risk 등) — v1.252
  const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
  const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
- const [rentLoanOpen,setRentLoanOpen]=useState(false); // 전세자금대출 시트(v1.253)
  const [planOpen,setPlanOpen]=useState(null);          // 전체화면 플랜 페이지(v1.255): {type:"buy"|"jeonse", price?, name?}
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
@@ -2087,7 +2085,7 @@ function App(){
   </div>}
   <div style={{background:"var(--bg1)",color:INK}}>
    <div className="wrap" style={{paddingBottom:0,display:"flex",alignItems:"center",gap:10,padding:"12px 16px"}}>
-    <span style={{fontWeight:800,fontSize:18,letterSpacing:"-0.02em",flex:"none",color:INK}}>청집사</span>
+    <span onClick={()=>{setTab("home");setSel(null);window.scrollTo(0,0);}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{setTab("home");setSel(null);window.scrollTo(0,0);})} aria-label="홈으로" style={{fontWeight:800,fontSize:18,letterSpacing:"-0.02em",flex:"none",color:INK,cursor:"pointer"}}>청집사</span>
     <div onClick={()=>setSearchOpen(true)} role="button" tabIndex={0} aria-label="단지·지역 검색 열기" onKeyDown={onEnter(()=>setSearchOpen(true))} style={{flex:"0 1 200px",marginLeft:"auto",minWidth:90,display:"flex",alignItems:"center",gap:6,background:"var(--surface-2)",borderRadius:10,padding:"8px 11px",cursor:"text",border:"1px solid var(--line)"}}>
      <Icon name="search" active size={15}/>
      <span style={{color:MUTED,fontSize:12.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>단지·지역 검색</span>
@@ -2123,12 +2121,10 @@ function App(){
        paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}   // 실측 높이 = 페이지 스크롤 0(넘치면 내부 스크롤)
      :{minHeight:"calc(100dvh - 152px)"})}}>
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
-   {tab!=="map"&&!(tab==="home"&&status==="live")&&<Banner status={status} data={data}/>}
-   {tab!=="map"&&!sel&&!commuteOpen&&fresh&&fresh.total_transactions>0&&<div style={{fontSize:11.5,color:fresh.stale?UP:MUTED,margin:"-4px 2px 6px",fontWeight:600}}>
-    데이터 기준 {fresh.data_as_of||"-"} · {fresh.last_collect_age_hours==null?"갱신정보 없음":(fresh.last_collect_age_hours<24?`${Math.round(fresh.last_collect_age_hours)}시간 전 갱신`:`${Math.round(fresh.last_collect_age_hours/24)}일 전 갱신`)}{fresh.stale?" · ⚠ 갱신 지연":""}
-   </div>}
+   {/* 상태·데이터기준 배너 제거(v1.257) — 디버그성 문구는 사용자 화면에 두지 않는다(운영 확인은 /health·/status/data) */}
+   {tab!=="map"&&status==="demo"&&<Banner status={status} data={data}/>}
    {!data?<div style={{marginTop:12}}><SkeletonStat/><SkeletonList rows={5}/></div>:
-    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setPlanOpen({type:"jeonse"})} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} onRentLoan={()=>setRentLoanOpen(true)} onBuyPlan={()=>setPlanOpen({type:"buy"})} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
+    tab==="home"?<Board board={data.board} favs={favs} onOpen={openComplex} onToggleFav={toggleFav} go={setTab} onGu={goGu} myGu={myGu} setMyGu={setMyGu} recents={recents} onToggleRegion={toggleRegion} feed={data.feed} onCommute={()=>{setCommuteOpen(true);window.scrollTo(0,0);}} onLoan={()=>{setLoanOpen(true);window.scrollTo(0,0);}} onBudget={()=>setBudgetOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOnboard={()=>setOnbOpen(true)} onGuide={()=>{setBoardSection("guide");setTab("board");window.scrollTo(0,0);}} onJeonse={()=>setPlanOpen({type:"jeonse"})} onFavs={()=>setFavOpen(true)} onAuction={()=>setAuctionOpen(true)} onChecklist={()=>setChecklistOpen(true)} onListing={()=>{setTalkSection("listing");setTab("chat");window.scrollTo(0,0);}} onBargains={()=>setBargainOpen(true)} onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onRecent={()=>setRecentOpen(true)} onBuyPlan={()=>setPlanOpen({type:"buy"})} onRentMap={()=>{setMapPreset("jeonse");setTab("map");window.scrollTo(0,0);}} live={live} onGuMap={(g)=>{setMapFocusGu(g);setTab("map");}} onNews={()=>{setBoardSection("news");setTab("board");window.scrollTo(0,0);}} compact={!!homeWrapH&&homeWrapH<640}/>:
     tab==="price"?<PriceHub view={priceView} setView={setPriceView}
       tx={data.tx} onOpen={openComplex} initialGu={priceGu} searches={searches} onSave={saveSearch} onDelete={deleteSearch}
       d={data} onType={loadRanking} mapCfg={mapCfg} onGu={goGu} favs={favs} demo={status==="demo"}/>:
@@ -2170,7 +2166,6 @@ function App(){
   {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)}
     onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onChecklist={()=>setChecklistOpen(true)}/>}
   {checklistOpen&&<Sheet title={<React.Fragment><Icon name="doc" active size={16}/> 계약 전 꼭 확인</React.Fragment>} onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
-  {rentLoanOpen&&<Sheet title={<React.Fragment><Icon name="key" active size={16}/> 전세자금대출</React.Fragment>} onClose={()=>setRentLoanOpen(false)}><RentLoan/></Sheet>}
   {bargainOpen&&<Sheet title={<React.Fragment><Icon name="bargain" active size={16}/> 급매 포착</React.Fragment>} onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
   {recentOpen&&<Sheet title={<React.Fragment><Icon name="search" active size={16}/> 최근 본 단지</React.Fragment>} onClose={()=>setRecentOpen(false)}>
    {(recents&&recents.length)?<RecentList recents={recents} onOpen={(m)=>{setRecentOpen(false);openComplex(m);}}/>
@@ -2327,27 +2322,19 @@ function FavList({favs,onOpen,onToggleFav,onGu,onToggleRegion}){
  </React.Fragment>);
 }
 function RecentList({recents,onOpen}){
- const [sheet,setSheet]=useState(false);
+ // v1.257: 최근 5개만·2행 가로 스크롤(시트 안에서 한눈에 — 세로 목록은 스크롤이 길어짐)
  if(!recents||!recents.length)return null;
- const list=recents.slice(0,10);
- const cur=list[0];
- const region=r=>{const m=r.meta||{};return [m.gu?guOf(m.gu):"",m.dong,m.property_type?(TYPE_LABEL[m.property_type]||""):""].filter(Boolean).join(" · ");};
- return (<div className="card" style={{padding:0,marginTop:8,overflow:"hidden"}}>
-  <div onClick={()=>setSheet(true)} tabIndex={0} role="button" onKeyDown={onEnter(()=>setSheet(true))} style={{display:"flex",alignItems:"center",gap:9,padding:"11px 13px",cursor:"pointer"}}>
-   <span className="pill" style={{background:"var(--chip)",color:MUTED,fontWeight:800,fontSize:11.5,flex:"none"}}>🕘 최근 본 단지</span>
-   <span style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,minWidth:0}}>{cur.name}</span>
-   <span style={{flex:"none",display:"flex",alignItems:"center",gap:6,color:MUTED,fontSize:12.5}}>{list.length}곳<span style={{fontSize:15}}>›</span></span>
-  </div>
-  {sheet&&<Sheet title="🕘 최근 본 단지" fill onClose={()=>setSheet(false)}>
-   {list.map((r,i)=>{const m=r.meta||{};const it={complex_name:r.name||m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type,gu:m.gu,dong:m.dong};
-    return (<div key={i} className="txrow" tabIndex={0} role="button" onKeyDown={onEnter(()=>{onOpen&&onOpen(it);setSheet(false);})} style={{cursor:"pointer",padding:"13px 6px"}} onClick={()=>{onOpen&&onOpen(it);setSheet(false);}}>
-     <div style={{minWidth:0,flex:1}}>
-      <div style={{fontWeight:700,fontSize:14.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
-      <div style={{fontSize:12,color:MUTED,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{["청주시",region(r)].filter(Boolean).join(" ")}</div>
-     </div>
-     <span style={{flex:"none",color:MUTED,fontSize:18}}>›</span>
-    </div>);})}
-  </Sheet>}
+ const list=recents.slice(0,5);
+ const region=r=>{const m=r.meta||{};return [m.gu?guOf(m.gu):"",m.dong].filter(Boolean).join(" · ");};
+ const open=(r)=>{const m=r.meta||{};onOpen&&onOpen({complex_name:r.name||m.complex_name,lawd_cd:m.lawd_cd,
+   property_type:m.property_type,gu:m.gu,dong:m.dong});};
+ return (<div style={{display:"grid",gridTemplateRows:"repeat(2,auto)",gridAutoFlow:"column",gridAutoColumns:"minmax(46%,1fr)",
+    gap:8,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch",scrollSnapType:"x proximity"}}>
+  {list.map((r,i)=>(<div key={i} onClick={()=>open(r)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(r))}
+    style={{scrollSnapAlign:"start",background:"var(--surface-2)",borderRadius:12,padding:"11px 12px",cursor:"pointer",minWidth:0}}>
+   <div style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+   <div style={{fontSize:11.5,color:MUTED,marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{region(r)||"청주"}</div>
+  </div>))}
  </div>);
 }
 function TodayInfo({feed,go}){
@@ -3062,35 +3049,89 @@ function AuctionInfo({onGuide}){
  </div>);
 }
 function OfficialLinks({embedded}){
- const LINKS=[
-  ["doc","등기부등본 열람","근저당·가압류 확인 — 대법원 인터넷등기소","https://www.iros.go.kr"],
-  ["gov","법원경매정보","경매 물건·기일 공식 조회 — 대법원","https://www.courtauction.go.kr"],
-  ["build","건축물대장 발급","위반건축물·용도 확인 — 정부24","https://www.gov.kr"],
-  ["rank","실거래가 원본 조회","국토교통부 실거래가 공개시스템","https://rt.molit.go.kr"],
-  ["won","공시가격 알리미","주택 공시가격(보유세 기준) 확인","https://www.realtyprice.kr"],
-  ["shield","전세보증금 반환보증","역전세 대비 보증보험·안심전세 앱 — HUG","https://www.khug.or.kr"],
-  ["won","대출·예금 금리 비교","금융상품 통합비교공시 — 금융감독원","https://finlife.fss.or.kr"],
-  ["doc","임대차(전월세) 신고","부동산거래관리시스템 — 국토교통부","https://rtms.molit.go.kr"],
-  ["loan","취득·양도세 신고","국세청 홈택스","https://www.hometax.go.kr"],
-  ["subscription","청약홈","청약 신청·자격 확인 — 한국부동산원","https://www.applyhome.co.kr"],
-  ["gov","청주시청 부동산 정보","고시·공고·도시계획","https://www.cheongju.go.kr"],
+ // v1.257: 링크만 나열하면 "왜 눌러야 하는지"를 모른다 → 각 항목에 '무엇을 확인하는가 / 안 하면 무엇이 위험한가'.
+ // 그룹으로 묶어 계약 순서대로 읽히게 구성. 링크는 공식 최상위 도메인만(개편에 강함).
+ const GROUPS=[
+  {title:"이 집에 문제가 없는지",desc:"돈을 넣기 전에 '집 자체'를 확인합니다.",items:[
+   ["doc","등기부등본 열람","인터넷등기소 · 700원",
+    "집주인이 진짜 소유자인지, 빚(근저당·압류)이 얼마나 잡혀 있는지 확인합니다.",
+    "안 보면: 보증금보다 앞선 빚이 있어도 모른 채 계약하게 됩니다. 계약 직전·잔금 직전 두 번 떼세요.",
+    "https://www.iros.go.kr"],
+   ["build","건축물대장 발급","정부24 · 무료",
+    "위반건축물인지, 실제 용도가 주택인지 확인합니다.",
+    "안 보면: 근린생활시설을 주택인 줄 알고 계약해 전입신고·대출이 막힐 수 있어요.",
+    "https://www.gov.kr"],
+   ["gov","법원경매정보","대법원 · 무료",
+    "이 집이 경매에 넘어가 있는지, 이 단지 경매 물건이 있는지 봅니다.",
+    "안 보면: 경매 진행 중인 집을 모르고 계약할 수 있습니다.",
+    "https://www.courtauction.go.kr"],
+  ]},
+  {title:"가격이 적정한지",desc:"부르는 값(호가)과 실제 거래된 값은 다릅니다.",items:[
+   ["rank","실거래가 공개시스템","국토교통부 · 무료",
+    "같은 단지·같은 평형이 실제 얼마에 거래됐는지 원본으로 확인합니다.",
+    "청집사 시세도 이 자료 기반이에요. 최종 확인은 원본에서.",
+    "https://rt.molit.go.kr"],
+   ["won","공시가격 알리미","부동산공시가격 · 무료",
+    "재산세·보유세의 기준이 되는 공시가격을 봅니다.",
+    "구입 플랜의 '매달 나가는 돈'에 이 값을 넣으면 재산세가 계산됩니다.",
+    "https://www.realtyprice.kr"],
+  ]},
+  {title:"보증금·돈을 지키려면",desc:"전월세라면 이 세 가지가 보증금을 지킵니다.",items:[
+   ["shield","전세보증금 반환보증","HUG · 유료(보증료)",
+    "집주인이 보증금을 못 돌려줄 때 보증기관이 대신 돌려주는 상품입니다.",
+    "가입 요건(보증금 한도·전세가율·선순위)은 전세 플랜에서 미리 확인할 수 있어요.",
+    "https://www.khug.or.kr"],
+   ["doc","임대차(전월세) 신고","국토교통부 · 무료",
+    "계약 후 30일 내 신고 의무. 신고하면 확정일자가 자동 부여됩니다.",
+    "확정일자는 경매 시 배당 순위를 정하는 핵심이에요.",
+    "https://rtms.molit.go.kr"],
+   ["won","금리 비교공시","금융감독원 · 무료",
+    "은행별 주담대·전세대출 금리를 한 곳에서 비교합니다.",
+    "청집사는 어떤 은행과도 제휴가 없어 여기로 안내만 합니다.",
+    "https://finlife.fss.or.kr"],
+  ]},
+  {title:"세금·청약·지역 정보",desc:"거래 전후로 필요한 공식 창구입니다.",items:[
+   ["loan","홈택스","국세청 · 무료",
+    "취득세 이후의 양도소득세·임대소득 신고를 합니다.",
+    "취득세·중개보수 추정은 구입 플랜에서 미리 볼 수 있어요.",
+    "https://www.hometax.go.kr"],
+   ["subscription","청약홈","한국부동산원 · 무료",
+    "청약 자격·가점·신청을 확인합니다.",
+    "무주택 기간·부양가족 수에 따라 가점이 달라집니다.",
+    "https://www.applyhome.co.kr"],
+   ["gov","청주시청","고시·공고·도시계획",
+    "개발 계획·도시계획 변경 등 지역 공고를 확인합니다.",
+    "'청주는 지금'의 개발 이슈도 여기 공고가 출처입니다.",
+    "https://www.cheongju.go.kr"],
+  ]},
  ];
  return (<div style={{marginTop:embedded?2:16}}>
-  <div style={{margin:"0 2px 6px"}}>
-   {!embedded&&<div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="search" active color={INK} size={16}/>계약 전 꼭 확인 <span style={{fontSize:11.5,color:MUTED,fontWeight:600}}>공식 서비스</span></div>}
-   <div style={{fontSize:12,color:MUTED,marginTop:2}}>청집사가 대신 확인해줄 수 없는 것들이에요. 계약 전 아래 공식 서비스에서 직접 확인하세요.</div>
+  <div style={{margin:"0 2px 10px"}}>
+   {!embedded&&<div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="doc" active color={INK} size={16}/>계약 전 꼭 확인</div>}
+   <div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.6}}>청집사가 대신 확인해줄 수 없는 것들이에요. 아래는 <b>무엇을 왜 확인하는지</b>와 공식 창구입니다.</div>
   </div>
-  <div className="card" style={{padding:"4px 15px"}}>
-   {LINKS.map(([ic,t,d,u],i)=>(<a key={i} href={u} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<LINKS.length-1?"1px solid var(--line)":"none",textDecoration:"none"}}>
-    <span style={{flex:"none",lineHeight:0}}><Icon name={ic} active color={TEAL} size={19}/></span>
-    <span style={{minWidth:0,flex:1}}>
-     <span style={{display:"block",fontWeight:700,fontSize:13.5,color:INK}}>{t}</span>
-     <span style={{display:"block",fontSize:11.5,color:MUTED,marginTop:1}}>{d}</span>
-    </span>
-    <span style={{fontSize:10.5,color:MUTED,flex:"none"}}>{u.replace("https://www.","").replace("https://","")} ↗</span>
-   </a>))}
-  </div>
-  <div style={{fontSize:10.5,color:MUTED,margin:"7px 2px 0",lineHeight:1.5}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
+  {GROUPS.map((g,gi)=>(<div key={gi} style={{marginTop:gi?14:0}}>
+   <div style={{fontWeight:800,fontSize:13.5,margin:"0 2px 2px"}}>{g.title}</div>
+   <div style={{fontSize:11.5,color:MUTED,margin:"0 2px 7px"}}>{g.desc}</div>
+   <div className="card" style={{padding:"2px 14px"}}>
+    {g.items.map(([ic,t,meta,what,why,u],i)=>(
+     <a key={i} href={u} target="_blank" rel="noopener noreferrer"
+       style={{display:"block",padding:"12px 0",borderBottom:i<g.items.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9}}>
+       <span style={{flex:"none",width:30,height:30,borderRadius:9,background:"rgba(15,118,110,.09)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Icon name={ic} active color={TEAL} size={16}/></span>
+       <span style={{minWidth:0,flex:1}}>
+        <span style={{display:"block",fontWeight:800,fontSize:13.5,color:INK}}>{t}</span>
+        <span style={{display:"block",fontSize:10.5,color:MUTED,marginTop:1}}>{meta}</span>
+       </span>
+       <span style={{fontSize:11,color:MUTED,flex:"none"}}>↗</span>
+      </div>
+      <div style={{fontSize:12,color:INK,marginTop:6,lineHeight:1.55}}>{what}</div>
+      <div style={{fontSize:11.5,color:MUTED,marginTop:3,lineHeight:1.55}}>{why}</div>
+     </a>))}
+   </div>
+  </div>))}
+  <div style={{fontSize:10.5,color:MUTED,margin:"10px 2px 0",lineHeight:1.55}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
 function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onBoard,onNotif,unread,onFavs}){
@@ -3120,7 +3161,7 @@ function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogi
    ):(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
      <div style={{fontSize:12.5,color:MUTED,flex:1}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 볼 수 있어요.</div>
-     <button onClick={onRegisterHome} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>등록</button>
+     <button onClick={onRegisterHome} className="btn-outline" style={{flex:"none",fontSize:13,padding:"8px 14px"}}>등록</button>
     </div>
    )}
   </div>
@@ -3142,7 +3183,7 @@ function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogi
    <div style={{fontWeight:800,fontSize:13.5}}>청집사는 <span style={{color:TEAL}}>계약 전에 확인하는 앱</span>이에요</div>
    <div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.6}}>매물을 팔지 않습니다. 중개·광고 수익이 0이라 <b>거래를 말리는 정보</b>(급매·전세위험·주의 신호)도 그대로 보여드려요.</div>
   </div>
-  <OfficialLinks/>
+  {/* 계약 전 꼭 확인은 홈 그리드에 있어 더보기에서는 제거(v1.257 중첩 정리) */}
   <button onClick={()=>{const t=`🏠 청집사 — 계약 전에 확인하는 청주 부동산. 전세 안전 진단·실거래 시세·급매 신호를 중개·광고 없이.
 ${location.origin}`;
     if(navigator.share){navigator.share({title:"청집사",text:t,url:location.origin}).catch(()=>{});}
@@ -3382,7 +3423,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
     <div className="num" style={{fontSize:11.5,color:MUTED,marginBottom:10}}>{fmtDate(gData.guide.published_at)} · 조회 {gData.guide.view_count||0}</div>
     {renderMd(gData.guide.body_md)}
     {onOnboard&&/청주가 처음|전입|출퇴근|통근/.test(gData.guide.body_md||"")&&
-     <button onClick={()=>{if(inline){setGid(null);setGData(null);}else{onClose&&onClose();}onOnboard();}} className="btn-primary" style={{width:"100%",marginTop:16,padding:"13px"}}>🧭 내 조건으로 다시 계산해보기 (3분)</button>}
+     <button onClick={()=>{if(inline){setGid(null);setGData(null);}else{onClose&&onClose();}onOnboard();}} className="btn-outline" style={{width:"100%",marginTop:16,padding:"13px"}}>내 조건으로 다시 계산해보기 (3분)</button>}
     {onGoBoard&&<button onClick={()=>{if(inline){setGid(null);setGData(null);}onGoBoard();}} className="btn-ghost" style={{width:"100%",marginTop:10,padding:"12px"}}>💬 이 주제, 게시판에서 얘기 나누기</button>}
     <div style={{background:"var(--surface-2)",borderRadius:11,padding:"11px 13px",fontSize:11.5,color:MUTED,lineHeight:1.6,marginTop:16}}>{gData.notice||"청집사는 중개·광고 수익이 없어 특정 매물을 권유하지 않습니다."}</div>
    </div>
@@ -3453,7 +3494,7 @@ function MyHomeCard({home,onOpen,onRegister}){
     <div style={{fontWeight:800,fontSize:14.5}}>우리집 등록하기</div>
     <div style={{fontSize:12,color:MUTED,marginTop:2}}>내 아파트를 등록하면 시세·주변 정보를 홈에서 바로 봐요</div>
    </div>
-   <button onClick={onRegister} className="btn-primary" style={{flex:"none",fontSize:13,padding:"9px 15px"}}>등록</button>
+   <button onClick={onRegister} className="btn-outline" style={{flex:"none",fontSize:13,padding:"8px 14px"}}>등록</button>
   </div>);
  let mom=null;
  if(d&&d.timeseries&&d.timeseries.length>=2){const ts=d.timeseries,a=ts[ts.length-2].avg,b=ts[ts.length-1].avg;if(a&&b)mom=Math.round((b-a)/a*1000)/10;}
@@ -3511,6 +3552,55 @@ function CityIssues(){
    </div>);
   }}/>
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
+ </div>);
+}
+/* 홈 랭킹 슬라이드(v1.257) — '구별 평균'은 평형·연식이 섞인 값이라 오해 소지가 커 제거하고,
+   실제 판단에 쓰이는 순위(거래 활발·대장 아파트)를 세로로 넘기는 슬라이드로 대체.
+   탭하면 하단 시트에 10위까지 목록. 데이터는 이미 로드된 board(추가 요청 0). */
+function RankSlides({board,onOpen}){
+ const b=board||{};
+ const trending=((b.trending&&b.trending.items)||[]).slice(0,10)
+   .map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));
+ const landmark=(b.landmark||[]).slice().sort((x,y)=>(y.price||0)-(x.price||0)).slice(0,10)
+   .map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));
+ const decks=[];
+ if(trending.length)decks.push({key:"trending",icon:"flame",color:UP,label:b.trending&&b.trending.basis==="surge"?"거래 급상승":"거래 활발",
+   info:"최근 90일 거래 신고가 직전 90일보다 늘어난 단지 순입니다. 조회수가 아니라 실제 거래 건수 기준이며, 신고 지연·정정이 반영될 수 있어요.",
+   items:trending,metric:it=>it.delta>0?`▲${it.delta}건`:`${it.recent_count}건`});
+ if(landmark.length)decks.push({key:"landmark",icon:"crown",color:"#9A6B00",label:"대장 아파트",
+   info:"단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요.",
+   items:landmark,metric:it=>eok(it.price)});
+ const [di,setDi]=useState(0);       // 어느 덱(거래활발/대장)
+ const [ri,setRi]=useState(0);       // 덱 안에서 몇 위를 보여줄지(세로 회전)
+ const [sheet,setSheet]=useState(null);
+ useEffect(()=>{ if(!decks.length)return;
+  const t=setInterval(()=>{ setRi(p=>{ const cur=decks[di]; const n=(p+1)%Math.max(cur.items.length,1);
+   if(n===0)setDi(d=>(d+1)%decks.length);   // 한 바퀴 돌면 다음 덱으로
+   return n; }); },2600);
+  return ()=>clearInterval(t);
+ },[di,decks.length]);
+ if(!decks.length)return null;
+ const deck=decks[Math.min(di,decks.length-1)];
+ const it=deck.items[Math.min(ri,deck.items.length-1)];
+ return (<div className="card" style={{padding:"10px 13px",marginTop:10,overflow:"hidden",cursor:"pointer"}}
+   onClick={()=>setSheet(deck)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setSheet(deck))}>
+  <div style={{display:"flex",alignItems:"center",gap:6}}>
+   <span style={{display:"inline-flex",alignItems:"center",gap:5,fontWeight:800,fontSize:12.5,color:deck.color}}>
+    <Icon name={deck.icon} active color={deck.color} size={14}/>{deck.label}</span>
+   <span style={{fontSize:10.5,color:MUTED}}>TOP {deck.items.length}</span>
+   <span style={{marginLeft:"auto",fontSize:11,color:TEAL,fontWeight:700}}>전체 보기 ›</span>
+  </div>
+  <div style={{height:34,overflow:"hidden",marginTop:5,position:"relative"}}>
+   <div key={deck.key+ri} style={{display:"flex",alignItems:"center",gap:8,height:34,animation:"rankup .42s ease"}}>
+    <span className="num" style={{fontWeight:800,fontSize:13,color:deck.color,minWidth:16,textAlign:"center"}}>{it.rank}</span>
+    <span style={{fontWeight:700,fontSize:14,minWidth:0,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
+    <span className="num" style={{fontWeight:800,fontSize:13.5,flex:"none"}}>{deck.metric(it)}</span>
+   </div>
+  </div>
+  {sheet&&<RankSheet title={sheet.label} items={sheet.items} info={sheet.info}
+    metric={x=><span className="num" style={{fontWeight:800,fontSize:13,color:sheet.key==="trending"?UP:INK}}>{sheet.metric(x)}</span>}
+    onItem={x=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:x.property_type||"apartment"})}
+    onClose={()=>setSheet(null)}/>}
  </div>);
 }
 /* 홈 구별 시세 4칩(v1.240) — '청주 평균'보다 구간 비교가 실사용 정보. 탭=지도 해당 구 초점. */
@@ -3670,7 +3760,7 @@ function HomeTicker({feed,go,onOpen,board,onNews,compact,live}){
     onClose={()=>setListSheet(null)}/>}
  </div>);
 }
-function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent,onRentLoan,onBuyPlan}){
+function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onToggleRegion,feed,onCommute,onLoan,onBudget,myHome,onRegisterHome,onClearHome,onOnboard,onGuide,onJeonse,onFavs,onGuMap,onNews,compact,onAuction,live,onChecklist,onListing,onBargains,onRiskMap,onRecent,onBuyPlan,onRentMap}){
  const b=board||{}, gt=b.gu_trend||{months:[],series:[]}, vol=b.volume||{};
  const city=b.city||{};
  const unit=useUnit();
@@ -3678,24 +3768,26 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
  // 상황별 확인 도구(v1.250) — 앞줄 4칸. 뒷줄은 상황 무관 공통(계약전확인·지도·관심단지·도감).
  const [situation,setSituation]=useState(()=>safeStore.get("cj_situation")||"buy");
  const pickSituation=(k)=>{setSituation(k);try{safeStore.set("cj_situation",k);}catch(e){}};
+ // 상황별 확인 도구(v1.257 재정리) — 원칙: ①상황에 정말 필요한 것만 ②같은 화면을 이름만 바꿔 넣지 않기
+ //  ③하단 네비·공통 줄과 겹치지 않기. 공통 줄(계약전확인·우리집·관심단지·최근본)은 상황 무관.
  const SIT_TOOLS={
-  buy:[   // 살 때: 얼마까지 · 대출 · 통근 · 경매까지 확인
-   {label:"예산추천",icon:"won",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>onBudget&&onBudget()},
-   {label:"구입 플랜",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onBuyPlan&&onBuyPlan()},   // v1.255: 대출·세금·정책을 한 페이지로
-   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+  buy:[   // 살 때: 얼마까지 살 수 있나 → 어떻게 조달하나 → 어디가 맞나 → 싸게 살 길
+   {label:"예산 찾기",icon:"won",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>onBudget&&onBudget()},
+   {label:"구입 플랜",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onBuyPlan&&onBuyPlan()},
+   {label:"통근 검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
    {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
   ],
-  sell:[  // 팔 때: 내 집 얼마 · 팔면 얼마 남나 · 내놓기 · 급매 신호(내 단지가 눌리고 있나)
+  sell:[  // 팔 때: 내 집 얼마 → 팔면 얼마 남나 → 내 단지 분위기 → 내놓기
    {label:"우리집 시세",icon:"home",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>myHome?(onOpen&&onOpen(myHome)):(onRegisterHome&&onRegisterHome())},
-   {label:"세금·중개보수",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onLoan&&onLoan()},
-   {label:"매물 내놓기",icon:"listing",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onListing&&onListing()},
-   {label:"급매 신호",icon:"bargain",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onBargains&&onBargains()},
+   {label:"세금·중개보수",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onBuyPlan&&onBuyPlan()},
+   {label:"급매 신호",icon:"bargain",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onBargains&&onBargains()},
+   {label:"매물 내놓기",icon:"listing",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onListing&&onListing()},
   ],
-  rent:[  // 전월세: 보증금 안전 · 위험 단지 지도(전세 모드로) · 보증금 대출 · 통근
-   {label:"전세 플랜",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},   // v1.255: 진단+보호+대출 한 페이지
+  rent:[  // 전월세: 보증금 안전(진단+대출 한 페이지) → 위험 단지 → 통근 → 시세 확인
+   {label:"전세 플랜",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
    {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onRiskMap&&onRiskMap()},
-   {label:"보증금 대출",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onRentLoan&&onRentLoan()},
-   {label:"통근검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+   {label:"통근 검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
+   {label:"전월세 시세",icon:"price",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onRentMap&&onRentMap()},
   ],
  };
  // 첫 방문 환영 카드 제거(v1.225) — 홈은 히어로+그리드+배너로 한 화면 구성(사용자 결정).
@@ -3755,7 +3847,7 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}
-  <GuChips onGu={onGuMap} compact={compact}/>
+  <RankSlides board={b} onOpen={onOpen}/>
 
   {/* 무스크롤 한 화면(v1.232): 관심단지 → 더보기 '관심 단지' 시트, 청주는 지금 → 소식 탭 도감 상단으로 이동 */}
  </div>);
@@ -3959,7 +4051,7 @@ function useNaver(clientId,enabled){
 }
 // 청주 4개 구 행정경계(공식 행정동 경계 병합·간소화, 14KB) — 모듈 캐시(1회 로드)
 const _guGeo={data:null,loading:false};
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onJrKeys, onMapReady, full, onRegionOpen, jrKeys}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4102,6 +4194,8 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    const BLDG='<path d="M4.5 20V6.2L12 3.8v16.2M12 20V9.3l7.5 2.4V20M3.5 20h17"/><path d="M7.8 8.6v.01M7.8 12v.01M7.8 15.4v.01M15.6 14v.01M15.6 17v.01"/>';
    const HOUSE='<path d="M3.5 10.8 12 4l8.5 6.8"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-4.6h4V20"/>';
    items.forEach(it=>{
+    // 전세위험 핀이 있는 단지는 가격 마커를 생략(같은 자리에 두 핀 = 지도 과밀·혼란, v1.257)
+    if(showJr&&jrKeys&&jrKeys.has(it.complex_name+"|"+it.lawd_cd))return;
     // 단지 레벨(z≥15): 영역·클러스터 없이 개별 단지 가격 마커
     const ic=it.property_type==="rowhouse"?HOUSE:BLDG;
     const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))"><div style="display:flex;align-items:center;gap:4px;background:${colorFor(it.value)};color:#fff;font-weight:800;font-size:11.5px;line-height:1;padding:5px 9px 5px 7px;border-radius:12px;white-space:nowrap;border:1.5px solid #fff"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>${mlabel(it)}</div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:${colorFor(it.value)};border-right:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:translateX(-50%) rotate(45deg)"></div></div>`;
@@ -4112,7 +4206,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     markerObjs.current.push(mk);
    });
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
- },[ready,tick,markers,fitKey,geoTick]);
+ },[ready,tick,markers,fitKey,geoTick,showJr,jrKeys]);
  // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
  // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
  useEffect(()=>{
@@ -4174,9 +4268,10 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   if(!ready||!mapObj.current||!window.naver)return;
   const n=window.naver, map=mapObj.current;
   const clearJr=()=>{jrObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});jrObjs.current=[];};
-  if(!showJr){clearJr();return;}
+  if(!showJr){clearJr();if(onJrKeys)onJrKeys(null);return;}
   let alive=true;
   fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{ if(!alive)return; clearJr();
+   if(onJrKeys)onJrKeys(new Set(((j&&j.items)||[]).map(x=>x.name+"|"+x.lawd_cd)));
    ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
     const col=J.level==="high"?"#C8322A":"#C77A1A";
     const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${col};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 5l8 6"/><path d="M6 10v9h12v-9"/></svg>${J.ratio}%</div>`;
@@ -4231,7 +4326,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
  const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
  const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
- const [showJr,setShowJr]=useState(preset==="jeonse_risk");   // 🏠 전세가율 위험(역전세 유의) 핀 — 홈 "전세위험 지도"로 들어오면 켠 채 시작(v1.252)
+ const [showJr,setShowJr]=useState(preset==="jeonse_risk");
+ const [jrKeys,setJrKeys]=useState(null);   // 위험 핀이 찍힌 단지 키 — 같은 단지에 가격 마커까지 겹쳐 찍히는 중복 방지(v1.257)   // 🏠 전세가율 위험(역전세 유의) 핀 — 홈 "전세위험 지도"로 들어오면 켠 채 시작(v1.252)
  // 조건 필터(가격대·연식·평형) — 실사용자 핵심 검색 조건을 지도에 직접
  const [fPrice,setFPrice]=useState("");      // "lo-hi"(만원) 또는 ""
  const [fYear,setFYear]=useState("");        // "5"|"10"|"15"|"old"|""
@@ -4256,6 +4352,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  // pickAt 가드: 구 클릭 직후 fitBounds 애니메이션 중 z<12 가 순간 보고돼 방금 선택이 풀리는 레이스 방지.
  useEffect(()=>{ if(!preset)return;
   if(preset==="jeonse_risk"){setDeal("jeonse");setShowJr(true);}
+  else if(preset==="jeonse"){setDeal("jeonse");setShowJr(false);}
   onConsumePreset&&onConsumePreset();
  },[preset]);
  const pickAt=useRef(0);
@@ -4318,7 +4415,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} jrKeys={jrKeys} onJrKeys={setJrKeys} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4329,16 +4426,34 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
   {pick&&<button onClick={()=>{setPick(null);setRegionSel(null);}} style={{position:"absolute",top:60,left:"50%",transform:"translateX(-50%)",zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"rgba(200,50,42,.95)",color:"#fff",border:"none",borderRadius:20,padding:"8px 14px",fontWeight:800,fontSize:12.5,boxShadow:"0 3px 12px rgba(0,0,0,.25)",cursor:"pointer"}}>
    📍 {pick.name} · {pMarkers.length}곳 <span style={{opacity:.85}}>✕ 해제</span>
   </button>}
-  {/* 상단 최소화(사용자 확정): [필터 N] + 매매/전세/월세 세그먼트만. 종류·가격대·연식·평형은 필터 시트로. */}
+  {/* 지도 상단(v1.257): 자주 쓰는 조건을 가로 스크롤로 바로 — [필터 N] 매매/전세/월세 · 종류 · 가격대 · 평형 */}
   <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
-   <div style={{display:"flex",gap:6,pointerEvents:"auto"}}>
-    <button onClick={()=>setFilterOpen(true)} style={{flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"0 14px",height:42,fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
+   <div style={{display:"flex",gap:6,overflowX:"auto",pointerEvents:"auto",paddingBottom:3,WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>
+    <button onClick={()=>setFilterOpen(true)} style={{flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"0 13px",height:40,fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
      <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
     </button>
-    <div style={{display:"inline-flex",alignItems:"center",background:"var(--surface-solid)",borderRadius:11,padding:3,height:42,boxSizing:"border-box",boxShadow:"0 2px 10px rgba(16,24,32,.16)"}}>
+    <div style={{flex:"none",display:"inline-flex",alignItems:"center",background:"var(--surface-solid)",borderRadius:11,padding:3,height:40,boxSizing:"border-box",boxShadow:"0 2px 10px rgba(16,24,32,.16)"}}>
      {DEALS.map(([k,l])=><button key={k} type="button" onClick={()=>setDeal(k)} style={chip(deal===k)}>{l}</button>)}
     </div>
+    <Dropdown value={prop} set={setProp} opts={PROPS} style={{width:92,flex:"none",height:40,boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={fPrice} set={setFPrice} ph={deal==="trade"?"가격대":"보증금"} opts={PRICE_OPTS} style={{width:98,flex:"none",height:40,boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
+    <Dropdown value={fBand} set={setFBand} ph="평형" opts={BAND_OPTS} style={{width:108,flex:"none",height:40,boxShadow:"0 2px 10px rgba(16,24,32,.16)",borderRadius:11}}/>
    </div>
+  </div>
+  {/* 오른쪽 세로 토글(v1.257): 지도 신호·주변 시설 — 지도를 가리지 않게 우측에 아이콘 스택 */}
+  <div style={{position:"absolute",right:10,top:58,zIndex:6,display:"flex",flexDirection:"column",gap:6}}>
+   {[["lm","build","호재",showLm,()=>setShowLm(v=>!v)],
+     ["bg","bargain","급매",showBg,()=>setShowBg(v=>!v)],
+     ["jr","alerthome","전세위험",showJr,()=>setShowJr(v=>!v)],
+     ["edu","academy","학원",poiCats.includes("education"),()=>togglePoi("education")],
+     ["spo","sports","체육",poiCats.includes("sports"),()=>togglePoi("sports")],
+     ["liv","store","생활",poiCats.includes("living"),()=>togglePoi("living")]].map(([k,ic,label,on,fn])=>(
+    <button key={k} type="button" onClick={fn} aria-label={label} title={label}
+      style={{width:42,height:42,borderRadius:12,border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+        background:on?"var(--teal)":"var(--surface-solid)",color:on?"#fff":INK,boxShadow:"0 2px 10px rgba(16,24,32,.18)"}}>
+     <Icon name={ic} active color={on?"#fff":INK} size={16}/>
+     <span style={{fontSize:8.5,fontWeight:800,lineHeight:1}}>{label}</span>
+    </button>))}
   </div>
   {filterOpen&&<Sheet title="지도 필터" onClose={()=>setFilterOpen(false)}>
    <div style={{padding:"2px 2px 4px"}}>

@@ -181,43 +181,57 @@ def jeonse_risk_map(db: Session, months: int | None = None, min_ratio: float = 7
     since = date.today() - timedelta(days=months * 31)
     rows = db.execute(select(Transaction.complex_name, Transaction.lawd_cd,
                              Transaction.deal_type, Transaction.deal_amount,
-                             Transaction.deposit).where(
+                             Transaction.deposit, Transaction.exclusive_area).where(
         Transaction.property_type == "apartment", Transaction.is_canceled.isnot(True),
         Transaction.complex_name.isnot(None), Transaction.contract_date >= since)).all()
-    agg: dict = {}
-    for nm, lawd, dt, amt, dep in rows:
-        if not nm:
+    # ⚠️ 평형을 맞춰 비교한다(v1.257 교정). 단지 전체를 한 덩어리로 묶으면 매매는 큰 평형·전세는 작은 평형이
+    #    섞여 전세가율 125%·159% 같은 착시가 나온다(실사고: 지도 위험 핀 200개 중 다수가 이 유형).
+    #    같은 평형(round(평)) 안에서 매매·전세 표본이 모두 있는 경우만 비율을 만든다.
+    def _py(area):
+        return None if not area else int(round(float(area) / 3.3058))
+    band_agg: dict = {}
+    for nm, lawd, dt, amt, dep, area in rows:
+        py = _py(area)
+        if not nm or py is None:
             continue
-        g = agg.setdefault((nm, lawd), {"sale": [], "jeonse": []})
+        g = band_agg.setdefault((nm, lawd, py), {"sale": [], "jeonse": []})
         if dt == "trade" and amt:
             g["sale"].append(amt)
         elif dt == "jeonse" and dep:
             g["jeonse"].append(dep)
+    # 평형별 비율 → 단지 대표값(표본이 가장 두꺼운 평형)
+    agg: dict = {}
+    for (nm, lawd, py), g in band_agg.items():
+        if len(g["sale"]) < min_sample or len(g["jeonse"]) < min_sample:
+            continue
+        sm = median(g["sale"])
+        if not sm:
+            continue
+        r = median(g["jeonse"]) / sm * 100
+        n = len(g["sale"]) + len(g["jeonse"])
+        cur = agg.get((nm, lawd))
+        if not cur or n > cur["n"]:
+            agg[(nm, lawd)] = {"ratio": round(r, 1), "pyeong": py, "n": n,
+                               "sale": g["sale"], "jeonse": g["jeonse"]}
     # 지오코딩된 단지만 좌표 부여 → 없으면 핀 제외(왜곡 없음)
     from app.models import Complex
     coord = {(cx.name, cx.lawd_cd): (cx.lat, cx.lng)
              for cx in db.scalars(select(Complex).where(Complex.lat.isnot(None)))}
     items = []
     for (nm, lawd), g in agg.items():
-        # 매매·전세 둘 다 표본이 충분할 때만(얇은 표본으로 역전세 위험을 단정하지 않기 위해)
-        if len(g["sale"]) < min_sample or len(g["jeonse"]) < min_sample:
-            continue
         ll = coord.get((nm, lawd))
         if not ll or ll[0] is None:
             continue
-        sale_med = median(g["sale"])
-        if not sale_med:
-            continue
-        ratio = round(median(g["jeonse"]) / sale_med * 100, 1)
+        ratio = g["ratio"]
         if ratio < min_ratio:
             continue
         items.append({"name": nm, "gu": _gu_name(lawd), "lawd_cd": lawd,
-                      "lat": ll[0], "lng": ll[1], "ratio": ratio,
+                      "lat": ll[0], "lng": ll[1], "ratio": ratio, "pyeong": g["pyeong"],
                       "level": "high" if ratio >= 85 else "elevated",
                       "sale_count": len(g["sale"]), "jeonse_count": len(g["jeonse"])})
     items.sort(key=lambda x: -x["ratio"])
     items = items[:limit]
     return {"months": months, "min_ratio": min_ratio, "items": items,
-            "disclaimer": ("전세보증금 중앙값 ÷ 매매가 중앙값(최근 실거래)이 높은 단지 '사실'입니다. "
+            "disclaimer": ("같은 평형 안에서 전세보증금 중앙값 ÷ 매매가 중앙값(최근 실거래)이 높은 단지 '사실'입니다. "
                            "전세가율이 높을수록 시세 하락 시 보증금 회수가 어려워질 수 있으나, 실제 위험은 "
                            "등기부·선순위 채권·개별 계약으로 달라지며 역전세를 단정하지 않습니다.")}

@@ -2155,7 +2155,7 @@ function App(){
   </div></div>}
   {planOpen&&planOpen.type==="buy"&&<BuyPlan onClose={()=>setPlanOpen(null)} initialPrice={planOpen.price} complexName={planOpen.name}
     onBudget={()=>setBudgetOpen(true)} onChecklist={()=>setChecklistOpen(true)}/>}
-  {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)}
+  {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)} initialCx={planOpen.cx}
     onRiskMap={()=>{setMapPreset("jeonse_risk");setTab("map");window.scrollTo(0,0);}} onChecklist={()=>setChecklistOpen(true)}/>}
   {checklistOpen&&<Sheet title={<React.Fragment><Icon name="doc" active size={16}/> 계약 전 꼭 확인</React.Fragment>} onClose={()=>setChecklistOpen(false)}><OfficialLinks embedded/></Sheet>}
   {bargainOpen&&<Sheet title={<React.Fragment><Icon name="bargain" active size={16}/> 급매 포착</React.Fragment>} onClose={()=>setBargainOpen(false)}><BargainList onOpen={(m)=>{setBargainOpen(false);openComplex(m);}}/></Sheet>}
@@ -2181,7 +2181,7 @@ function App(){
     onOpenComplex={it=>{setNotifOpen(false);openComplex(it);window.scrollTo(0,0);}}
     onOpenPost={pid=>{setNotifOpen(false);setOpenPostId(pid);setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>}
   {legalDoc&&<LegalModal doc={legalDoc} onClose={()=>setLegalDoc(null)}/>}
-  {sel&&<DetailSheet sel={sel} mapCfg={mapCfg} onClose={()=>setSel(null)} isFav={isFav} onToggleFav={toggleFav} inCompare={inCompare} onToggleCompare={toggleCompare} onOpen={openComplex} onPlan={(price,name)=>setPlanOpen({type:"buy",price,name})}/>}
+  {sel&&<DetailSheet sel={sel} mapCfg={mapCfg} onClose={()=>setSel(null)} isFav={isFav} onToggleFav={toggleFav} inCompare={inCompare} onToggleCompare={toggleCompare} onOpen={openComplex} onPlan={(price,name,kind)=>setPlanOpen(kind==="jeonse"?{type:"jeonse",cx:{complex_name:sel.complex_name||name,lawd_cd:sel.lawd_cd,property_type:sel.property_type||"apartment"}}:{type:"buy",price,name})}/>}
   {commuteOpen&&<CommuteSheet onClose={()=>setCommuteOpen(false)} onOpen={it=>{setCommuteOpen(false);openComplex(it);}} mapCfg={mapCfg}/>}
   {budgetOpen&&<BudgetSheet onClose={()=>setBudgetOpen(false)} onOpen={it=>{setBudgetOpen(false);openComplex(it);}} favs={favs}/>}
   {loanOpen&&<LoanSheet onClose={()=>setLoanOpen(false)} onOpen={it=>{setLoanOpen(false);openComplex(it);}}/>}
@@ -2858,8 +2858,9 @@ function AgentDashboard({onClose,account,onGoListings,onOpenListing}){
   </div>}
  </SheetShell>);
 }
-function JeonseGuard({embedded}){
+function JeonseGuard({embedded,extCx,extDetail}){
  // embedded=true: 홈 그리드 → 시트 안에서 표시(시트가 제목을 그리므로 자체 헤더 생략)
+ // extCx/extDetail: 전세 플랜이 페이지 상단에서 이미 고른 단지(v1.259) — 내부 검색은 숨기고 그 값으로 채운다.
  const [price,setPrice]=useState(""),[dep,setDep]=useState(""),[lien,setLien]=useState("");
  const [open,setOpen]=useState(false);
  // ── v1.241 확장: 단지 연동(시세 자동)·최우선변제·HUG 요건·을구 위험신호 ──
@@ -2873,6 +2874,13 @@ function JeonseGuard({embedded}){
   const t=setTimeout(()=>{fetch(`${API}/search?q=${encodeURIComponent(q)}`).then(r=>r.json())
    .then(j=>setResults((j.complexes||[]).slice(0,5))).catch(()=>setResults([]));},300);
   return ()=>clearTimeout(t);},[q,cx]);
+ useEffect(()=>{ if(!extCx||!extDetail)return;   // 플랜에서 고른 단지 반영
+  setCx({complex_name:extCx.complex_name,lawd_cd:extCx.lawd_cd,property_type:extCx.property_type});
+  setCxd({jeonse_ratio:extDetail.jeonse_ratio,price_median:extDetail.price_median,trade_count:extDetail.trade_count});
+  if(extDetail.price_median)setPrice(String(Math.round(extDetail.price_median/1000)/10));
+  if(extDetail.price_median&&extDetail.jeonse_ratio!=null)
+   setDep(String(Math.round(extDetail.price_median*extDetail.jeonse_ratio/100/1000)/10));
+ },[extCx,extDetail]);
  const pickCx=(c)=>{ setCx(c); setQ(c.complex_name); setResults([]); setCxd(null);
   const qs=`name=${encodeURIComponent(c.complex_name)}&lawd_cd=${c.lawd_cd}&property_type=${c.property_type||"apartment"}`;
   fetch(`${API}/complex/detail?${qs}`).then(r=>r.json()).then(j=>{ if(!j||!j.found)return;
@@ -2899,8 +2907,9 @@ function JeonseGuard({embedded}){
    <div style={{fontSize:12,color:MUTED,marginTop:2}}>등기부등본의 숫자를 넣으면, 경매 시 보증금 회수 여유를 계산해드려요.</div>
   </div>
   <div className="card" style={{padding:"14px 15px"}}>
-   {/* 단지 연동(v1.241): 단지를 고르면 매매 중앙값 자동 입력 + 그 단지 전세가율 표시 */}
-   <div style={{position:"relative",marginBottom:10}}>
+   {/* 단지 연동(v1.241): 단지를 고르면 매매 중앙값 자동 입력 + 그 단지 전세가율 표시.
+       전세 플랜(v1.259)에서는 페이지 상단 검색이 대신하므로 내부 검색은 숨긴다(중복 입력 방지). */}
+   <div style={{position:"relative",marginBottom:10,display:extCx?"none":"block"}}>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
      <span style={{flex:"none",width:118,fontSize:12.5,fontWeight:700,color:MUTED}}>단지로 채우기</span>
      <input value={q} onChange={e=>{setQ(e.target.value);if(cx)setCx(null);}} placeholder="단지명 검색(선택)" style={inp}/>
@@ -4023,7 +4032,7 @@ function _inGuPoly(geo,code,lat,lng){
   if(inside)return true;}
  return false;
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onJrKeys, onMapReady, full, onRegionOpen, jrKeys, pickCode}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onJrKeys, onMapReady, full, onRegionOpen, jrKeys, pickCode, signalOn}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4088,8 +4097,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     items:vis.slice().sort((a,b)=>b.value-a.value).slice(0,300)});}
   // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~14) → 개별 단지 마커(z≥15).
   // 단지 핀 시작 줌을 네이버부동산·호갱노노와 동일한 z15로(z14는 여러 동이 한 화면 = 핀 수백 개 과밀, 실사고 스크린샷).
-  const guView=z<12;
-  const dongView=!guView&&z<15;
+  // 신호(호재·급매·전세위험) 켜짐 = '신호 기준 하나로' — 동 요약 버블은 끄고 단지 핀만(v1.259)
+  const guView=z<12&&!signalOn;
+  const dongView=!guView&&z<15&&!signalOn;
   const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
   // 구 라벨 카운트는 전체 마커 기준 — 뷰포트 기준이면 지도를 조금만 움직여도 곳수가 널뜀(실사고 163≠178)
   const guGroups={};
@@ -4178,7 +4188,17 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
       ? shown.map(p=>`<div style="display:flex;align-items:baseline;gap:5px;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:#69737D">${p.py}평</span><span style="font-weight:800;font-size:11.5px;color:#1A2430">${money(p.price)}</span></div>`).join("")
         +(extra>0?`<div style="font-size:9.5px;font-weight:700;color:#8A94A0">외 ${extra}평형</div>`:"")
       : `<div style="font-weight:800;font-size:11.5px;color:#1A2430;white-space:nowrap">${mlabel(it)}</div>`;
-    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 5px rgba(16,24,32,.28))"><div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid rgba(16,24,32,.10);padding:5px 8px;border-radius:11px"><span style="flex:none;width:22px;height:22px;border-radius:7px;background:${colorFor(it.value)};display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ic}</svg></span><span style="display:flex;flex-direction:column;gap:1px">${rows}</span></div><div style="position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:#fff;border-right:1.5px solid rgba(16,24,32,.10);border-bottom:1.5px solid rgba(16,24,32,.10);transform:translateX(-50%) rotate(45deg)"></div></div>`;
+    // 말풍선 = '집 모양'(v1.259, 사용자 요청): 지붕(삼각) + 몸통(카드) + 바닥 꼬리.
+    // 지붕은 가격대 색으로 칠해 색 정보를 유지하고, 유형 아이콘은 지붕 안에 흰색으로.
+    const col=colorFor(it.value);
+    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 3px 6px rgba(16,24,32,.30))">`
+     +`<svg width="100%" height="15" viewBox="0 0 100 15" preserveAspectRatio="none" style="display:block;margin-bottom:-1px"><polygon points="50,0 100,15 0,15" fill="${col}"/></svg>`
+     +`<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid ${col};border-top:none;padding:5px 9px 6px;border-radius:0 0 10px 10px">`
+      +`<span style="flex:none;width:20px;height:20px;border-radius:6px;background:${col}1F;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ic}</svg></span>`
+      +`<span style="display:flex;flex-direction:column;gap:1px">${rows}</span>`
+     +`</div>`
+     +`<div style="position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#fff;border-right:1.5px solid ${col};border-bottom:1.5px solid ${col};transform:translateX(-50%) rotate(45deg)"></div>`
+     +`</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{
      onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
@@ -4186,7 +4206,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     markerObjs.current.push(mk);
    });
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
- },[ready,tick,markers,fitKey,geoTick,showJr,jrKeys]);
+ },[ready,tick,markers,fitKey,geoTick,showJr,jrKeys,signalOn]);
  // 시설(POI) 레이어 — 확대(zoom≥15) + 선택 카테고리일 때 현재 화면 범위의 시설을 표출.
  // 데이터가 없으면 아무것도 안 뜸(구조만 존재 → 시설 데이터 적재 시 자동 작동).
  useEffect(()=>{
@@ -4313,9 +4333,11 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
- const [showLm,setShowLm]=useState(false);   // 개발 호재 핀 표시
- const [showBg,setShowBg]=useState(false);   // 📉 급매(낮은가격 거래) 핀
- const [showJr,setShowJr]=useState(preset==="jeonse_risk");
+ // 신호 레이어(v1.259, 사용자 확정): 호재·급매·전세위험은 '하나만' 켜진다(동시에 켜면 지도가 뒤죽박죽).
+ // 신호가 켜지면 동 요약 버블도 끄고 신호 핀 기준으로만 본다(signal !== null → 단지/신호 레벨).
+ const [signal,setSignal]=useState(preset==="jeonse_risk"?"jr":null);   // null | "lm" | "bg" | "jr"
+ const pickSignal=(k)=>setSignal(s=>s===k?null:k);
+ const showLm=signal==="lm", showBg=signal==="bg", showJr=signal==="jr";
  const [jrKeys,setJrKeys]=useState(null);   // 위험 핀이 찍힌 단지 키 — 같은 단지에 가격 마커까지 겹쳐 찍히는 중복 방지(v1.257)   // 🏠 전세가율 위험(역전세 유의) 핀 — 홈 "전세위험 지도"로 들어오면 켠 채 시작(v1.252)
  // 조건 필터(가격대·연식·평형) — 실사용자 핵심 검색 조건을 지도에 직접
  const [fPrice,setFPrice]=useState("");      // "lo-hi"(만원) 또는 ""
@@ -4340,8 +4362,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  // 구 레벨(z<12)로 축소하면 선택 자동 해제 — 선택 유지 시 다른 구가 전부 '0곳'으로 보이는 모순(실사고 v1.238).
  // pickAt 가드: 구 클릭 직후 fitBounds 애니메이션 중 z<12 가 순간 보고돼 방금 선택이 풀리는 레이스 방지.
  useEffect(()=>{ if(!preset)return;
-  if(preset==="jeonse_risk"){setDeal("jeonse");setShowJr(true);}
-  else if(preset==="jeonse"){setDeal("jeonse");setShowJr(false);}
+  if(preset==="jeonse_risk"){setDeal("jeonse");setSignal("jr");}
+  else if(preset==="jeonse"){setDeal("jeonse");setSignal(null);}
   onConsumePreset&&onConsumePreset();
  },[preset]);
  const pickAt=useRef(0);
@@ -4394,7 +4416,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const filterOn=!!(fPrice||fYear||fBand);
  // 시트에 모은 상세 조건의 활성 개수(필터 버튼 배지) + 일괄 초기화
  const activeCount=(fPrice?1:0)+(fYear?1:0)+(fBand?1:0)+poiCats.length+(showLm?1:0)+(showBg?1:0)+(showJr?1:0)+(prop!=="apartment"?1:0);
- const resetAll=()=>{setFPrice("");setFYear("");setFBand("");setPoiCats([]);setShowLm(false);setShowBg(false);setShowJr(false);setProp("apartment");};
+ const resetAll=()=>{setFPrice("");setFYear("");setFBand("");setPoiCats([]);setSignal(null);setProp("apartment");};
  const PRICE_OPTS=[["0-10000","1억 미만"],["10000-20000","1~2억"],["20000-30000","2~3억"],["30000-50000","3~5억"],["50000-","5억 이상"]];
  const YEAR_OPTS=[["5","5년 이내"],["10","10년 이내"],["15","15년 이내"],["old","15년 초과"]];
  const BAND_OPTS=[["small","소형 ~60㎡"],["medium","중형 60~85㎡"],["large","대형 85㎡~"]];
@@ -4404,7 +4426,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} jrKeys={jrKeys} onJrKeys={setJrKeys} pickCode={pick&&pick.code} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} jrKeys={jrKeys} onJrKeys={setJrKeys} pickCode={pick&&pick.code} signalOn={!!signal} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4431,9 +4453,9 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
   </div>
   {/* 오른쪽 세로 토글(v1.257): 지도 신호·주변 시설 — 지도를 가리지 않게 우측에 아이콘 스택 */}
   <div style={{position:"absolute",right:10,top:58,zIndex:6,display:"flex",flexDirection:"column",gap:6}}>
-   {[["lm","build","호재",showLm,()=>setShowLm(v=>!v)],
-     ["bg","bargain","급매",showBg,()=>setShowBg(v=>!v)],
-     ["jr","alerthome","전세위험",showJr,()=>setShowJr(v=>!v)],
+   {[["lm","build","호재",showLm,()=>pickSignal("lm")],
+     ["bg","bargain","급매",showBg,()=>pickSignal("bg")],
+     ["jr","alerthome","전세위험",showJr,()=>pickSignal("jr")],
      ["edu","academy","학원",poiCats.includes("education"),()=>togglePoi("education")],
      ["spo","sports","체육",poiCats.includes("sports"),()=>togglePoi("sports")],
      ["liv","store","생활",poiCats.includes("living"),()=>togglePoi("living")]].map(([k,ic,label,on,fn])=>(
@@ -4456,11 +4478,11 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
     <FilterChips opts={BAND_OPTS} value={fBand} onPick={v=>setFBand(fBand===v?"":v)}/>
     <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>주변 시설 <span style={{fontWeight:500,fontSize:11}}>· 확대 시 표시</span></div>
     <FilterChips multi opts={[["education","학원","academy"],["sports","체육","sports"],["living","생활","store"]]} value={poiCats} onPick={togglePoi}/>
-    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>지도 신호 <span style={{fontWeight:500,fontSize:11}}>· 참고·근거 표기, 판정 아님</span></div>
+    <div style={{fontSize:12.5,fontWeight:800,color:MUTED,marginTop:18}}>지도 신호 <span style={{fontWeight:500,fontSize:11}}>· 하나만 선택 · 참고·근거 표기, 판정 아님</span></div>
     <div style={{display:"flex",flexWrap:"wrap",gap:7,marginTop:7}}>
-     <button type="button" onClick={()=>setShowLm(v=>!v)} className={"tog "+(showLm?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="build" active={showLm} size={15}/>개발 호재</button>
-     <button type="button" onClick={()=>setShowBg(v=>!v)} className={"tog "+(showBg?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="bargain" active={showBg} size={15}/>급매</button>
-     <button type="button" onClick={()=>setShowJr(v=>!v)} className={"tog "+(showJr?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="alerthome" active={showJr} size={15}/>전세위험</button>
+     <button type="button" onClick={()=>pickSignal("lm")} className={"tog "+(showLm?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="build" active={showLm} size={15}/>개발 호재</button>
+     <button type="button" onClick={()=>pickSignal("bg")} className={"tog "+(showBg?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="bargain" active={showBg} size={15}/>급매</button>
+     <button type="button" onClick={()=>pickSignal("jr")} className={"tog "+(showJr?"on":"")} style={{fontSize:13,padding:"9px 13px",display:"inline-flex",alignItems:"center",gap:5}}><Icon name="alerthome" active={showJr} size={15}/>전세위험</button>
     </div>
     {fYear&&<div style={{fontSize:11,color:MUTED,marginTop:14,lineHeight:1.5}}>※ 연식 정보가 없는 단지는 결과에서 제외됩니다(왜곡 방지).</div>}
     <div style={{display:"flex",gap:8,marginTop:20}}>
@@ -5225,6 +5247,15 @@ function Detail({sel,mapCfg,onBack,isFav,onToggleFav,inCompare,onToggleCompare,o
    </div>
   </Collapsible>}
   <div id="detail-loan"/>
+  {onPlan&&<div style={{display:"flex",gap:8,marginTop:10}}>
+   <button onClick={()=>onPlan(loanInit,sel.name,"jeonse")} className="card" style={{flex:1,padding:"11px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,background:"rgba(29,107,58,.07)",border:"none",textAlign:"left"}}>
+    <span style={{flex:"none",lineHeight:0}}><Icon name="shield" active color="#1d6b3a" size={19}/></span>
+    <span style={{minWidth:0,flex:1}}>
+     <span style={{display:"block",fontWeight:800,fontSize:13,color:INK}}>전세 플랜</span>
+     <span style={{display:"block",fontSize:10.5,color:MUTED,marginTop:1}}>보증금 안전·대출</span>
+    </span>
+   </button>
+  </div>}
   {onPlan&&<button onClick={()=>onPlan(loanInit,sel.name)} className="card" style={{width:"100%",padding:"13px 15px",marginTop:10,cursor:"pointer",display:"flex",alignItems:"center",gap:11,background:"linear-gradient(100deg,rgba(15,118,110,.12),rgba(15,118,110,.03))",border:"none",textAlign:"left"}}>
    <span style={{flex:"none",lineHeight:0}}><Icon name="loan" active color={TEAL} size={22}/></span>
    <span style={{minWidth:0,flex:1}}>
@@ -6055,16 +6086,22 @@ function BuyPlan({onClose,initialPrice,complexName,onBudget,onChecklist}){
  </PlanPage>);
 }
 /* 전세 플랜(v1.255) — 보증금 안전(진단·최우선변제·HUG) + 전세대출을 한 문맥에. */
-function JeonsePlan({onClose,onRiskMap,onChecklist}){
- return (<PlanPage title="전세 플랜" icon="shield" onClose={onClose}>
-  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 6px"}}>
+function JeonsePlan({onClose,onRiskMap,onChecklist,initialCx}){
+ // v1.259: 단지를 한 번 검색하면 안전 진단(매매 시세)과 보증금 대출(보증금)이 함께 채워진다.
+ const [cx,setCx]=useState(initialCx||null),[det,setDet]=useState(null);
+ const dep=(det&&det.price_median&&det.jeonse_ratio!=null)
+   ? Math.round(det.price_median*det.jeonse_ratio/100/1000)/10 : null;   // 전세 중앙값(억) = 매매중앙값×전세가율
+ return (<PlanPage title={cx?`전세 플랜 · ${cx.complex_name}`:"전세 플랜"} icon="shield" onClose={onClose}>
+  <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 8px"}}>
    보증금을 지키는 순서대로 배치했어요 — <b style={{color:INK}}>안전 진단 → 법정 보호(최우선변제) → HUG 요건 → 보증금 대출</b>.
   </div>
-  <JeonseGuard/>
+  <ComplexPicker label="단지 검색" note="단지를 고르면 매매 시세·전세 중앙값이 아래 계산에 자동으로 채워져요(수정 가능)."
+    onPick={(c,d)=>{setCx(c);setDet(d);}}/>
+  <JeonseGuard extCx={cx} extDetail={det}/>
   <div style={{margin:"18px 2px 6px"}}>
    <div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="key" active color={INK} size={16}/>보증금 대출</div>
   </div>
-  <RentLoan/>
+  <RentLoan initialDeposit={dep}/>
   <div style={{display:"flex",gap:8,marginTop:10}}>
    {onRiskMap&&<button onClick={()=>{onClose();onRiskMap();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>전세위험 지도 →</button>}
    {onChecklist&&<button onClick={()=>{onClose();onChecklist();}} className="btn-ghost" style={{flex:1,padding:"12px"}}>계약 전 꼭 확인 →</button>}
@@ -6103,8 +6140,11 @@ function ComplexPicker({label="단지 검색",onPick,note}){
  </div>);
 }
 /* 전세자금대출(v1.253) — 매매 대출과 구조가 달라 별도. 보증금 기준 한도 + 정책상품 요건. */
-function RentLoan(){
- const [dep,setDep]=useState(""),[cash,setCash]=useState(""),[income,setIncome]=useState("");
+function RentLoan({initialDeposit,depositNote}){
+ // initialDeposit: 전세 플랜에서 고른 단지의 전세 중앙값(억) — 자동 입력 후 수정 가능(v1.259)
+ const [dep,setDep]=useState(initialDeposit!=null?String(initialDeposit):"");
+ const [cash,setCash]=useState(""),[income,setIncome]=useState("");
+ useEffect(()=>{ if(initialDeposit!=null)setDep(String(initialDeposit)); },[initialDeposit]);
  const [fl,setFl]=useState({homeless:true,newlywed:false,kids2:false,newborn:false});
  const [d,setD]=useState(null),[busy,setBusy]=useState(false);
  const run=()=>{ if(!dep)return; setBusy(true);

@@ -809,6 +809,16 @@ def map_markers(db: Session, deal_type: str = "trade", property_type: str = "apa
              "build_year": max(set(bys), key=bys.count) if bys else None,   # 최빈 건축년도
              "area_bands": sorted({b for b in (_bucket(x.exclusive_area) for x in rs) if b}),
              "is_sample": any(getattr(x, "is_sample", False) for x in rs)}
+        # 평형별 그룹(v1.258, 사용자 요청): 전 평형 혼합 중앙값 하나가 아니라 존재하는 평형(round(평))별
+        # 중앙값을 함께 제공 — 지도 핀이 "25평 3.2억 · 34평 4.5억"처럼 실제 존재하는 평형을 보여준다.
+        pygrp: dict[int, list] = {}
+        for x in rs:
+            v = x.deal_amount if dt == "trade" else x.deposit
+            if not v or not x.exclusive_area:
+                continue
+            pygrp.setdefault(int(round(x.exclusive_area / 3.3058)), []).append(v)
+        m["pyeongs"] = [{"py": k, "price": round(median(vs)), "n": len(vs)}
+                        for k, vs in sorted(pygrp.items())]
         if dt == "trade":
             pys = [_pyeong_unit(x.deal_amount, x.exclusive_area)
                    for x in rs if x.deal_amount and x.exclusive_area]

@@ -1424,12 +1424,12 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
 /* 한 화면 페이징(v1.261, 사용자 확정: 아래로 길게 스크롤 금지) — 뉴스·도감 공용 */
 function PageNav({page,total,onPage}){
  if(total<=1)return null;
- return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:10}}>
+ return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:6}}>
   <button type="button" disabled={page<=0} onClick={()=>onPage(page-1)} className="btn-ghost"
-    style={{padding:"8px 18px",fontSize:13,opacity:page<=0?.35:1}}>‹ 이전</button>
-  <span className="num" style={{fontSize:12.5,fontWeight:800,color:MUTED}}>{page+1} / {total}</span>
+    style={{padding:"6px 16px",fontSize:12.5,opacity:page<=0?.35:1}}>‹ 이전</button>
+  <span className="num" style={{fontSize:12,fontWeight:800,color:MUTED}}>{page+1} / {total}</span>
   <button type="button" disabled={page>=total-1} onClick={()=>onPage(page+1)} className="btn-ghost"
-    style={{padding:"8px 18px",fontSize:13,opacity:page>=total-1?.35:1}}>다음 ›</button>
+    style={{padding:"6px 16px",fontSize:12.5,opacity:page>=total-1?.35:1}}>다음 ›</button>
  </div>);
 }
 function NewsList({feed}){
@@ -1443,23 +1443,23 @@ function NewsList({feed}){
  const [pg,setPg]=useState(0);
  const totalPg=Math.max(1,Math.ceil(news.length/PER));
  const cur=news.slice(pg*PER,pg*PER+PER);
- return (<div style={{marginTop:2}}>
+ return (<div style={{marginTop:14}}>{/* 청주는 지금 카드와의 간격(v1.263, 사용자 지적: 너무 붙음) */}
   {news.length===0?<div className="card" style={{padding:20}}><Empty>최근 7일 뉴스가 없어요.</Empty></div>:
    <div className="card" style={{padding:"2px 14px"}}>
    {cur.map((n,i)=>{const inner=(<React.Fragment>
      <div style={{minWidth:0,flex:1}}>
-      <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
+      <div style={{fontWeight:700,fontSize:13.5,lineHeight:1.38}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
       {n.summary&&<div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
       <div className="num" style={{fontSize:11,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")}</div>
      </div>
      <span style={{marginLeft:8,color:MUTED,fontSize:16,flex:"none"}}>↗</span>
     </React.Fragment>);
     return (n.url&&n.url!=="#")
-     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
-     :<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
+     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"8px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
+     :<div key={i} style={{display:"flex",alignItems:"center",padding:"8px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
    </div>}
   <PageNav page={pg} total={totalPg} onPage={setPg}/>
-  <div style={{fontSize:10.5,color:MUTED,margin:"8px 2px 0",lineHeight:1.5}}>최근 7일 · 제목을 누르면 언론사 원문으로 이동 · 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
+  <div style={{fontSize:10,color:MUTED,margin:"4px 2px 0",lineHeight:1.4}}>최근 7일 · 제목을 누르면 언론사 원문으로 이동 · 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
  </div>);
 }
 function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen,onOnboard,feed,onGoTalk,onGoGuide,openGuideId,onConsumeGuide}){
@@ -3408,6 +3408,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
  const autoRoot=!!(series&&series.length===1);
  useEffect(()=>{if(autoRoot&&!sKey&&!gid)setSKey(series[0].key);},[autoRoot,series,sKey,gid]);
  const [gpg,setGpg]=useState(0);                        // 편 목록 페이지(v1.261)
+ const GPER=(typeof window!=="undefined"&&window.innerHeight<720)?4:5;   // 작은 폰=4편(스크롤 0, v1.263)
  useEffect(()=>{setGpg(0);},[sKey]);
  useEffect(()=>{if(!sKey){setSData(null);return;}let on=true;setSData(null);
   fetch(`${API}/guides/series/${sKey}`).then(r=>r.json()).then(j=>{if(on)setSData(j);}).catch(()=>{if(on)setSData({guides:[]});});
@@ -3474,7 +3475,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
       {/* 뉴스 리스트와 동일한 단일 카드+구분선 행 스타일 + 한 화면 페이징(v1.261) */}
       {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
        <div className="card" style={{padding:"2px 14px"}}>
-       {(sData.guides||[]).slice(gpg*5,gpg*5+5).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+       {(sData.guides||[]).slice(gpg*GPER,gpg*GPER+GPER).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
         <span style={{fontSize:20,flex:"none"}}>{g.cover_emoji||"📄"}</span>
         <div style={{minWidth:0,flex:1}}>
          <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{g.title}</div>
@@ -3483,7 +3484,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
         <span style={{color:TEAL,fontSize:16,flex:"none"}}>›</span>
        </div>))}
        </div>}
-      <PageNav page={gpg} total={Math.max(1,Math.ceil(((sData.guides||[]).length)/5))} onPage={setGpg}/>
+      <PageNav page={gpg} total={Math.max(1,Math.ceil(((sData.guides||[]).length)/GPER))} onPage={setGpg}/>
      </React.Fragment>)}
     {gid&&!inline&&articleContent}
    </div>

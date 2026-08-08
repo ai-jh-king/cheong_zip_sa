@@ -4061,7 +4061,7 @@ function _inGuPoly(geo,code,lat,lng){
   if(inside)return true;}
  return false;
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn, onQuickPin}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn, onQuickPin, onMapTap}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4190,7 +4190,8 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      if(bounds&&!inB({lat:la,lng:ln}))return;   // 화면 밖 버블은 생략(위치·갯수는 전체 기준 고정)
      const amts=arr.map(m=>deal==="trade"?m.median_amount:m.value).filter(v=>v!=null).sort((a,b)=>a-b);
      const med=amts.length?amts[Math.floor(amts.length/2)]:null;   // 소속 단지 대표가의 중앙값(참고용)
-     const html=`<div style="transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(15,118,110,.25);border-radius:12px;padding:5px 10px;box-shadow:0 2px 6px rgba(16,24,32,.14);white-space:nowrap;line-height:1.15"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/></svg><span style="text-align:left"><span style="display:block;font-weight:800;font-size:12px;color:#1A2430">${g.name}</span><span style="display:block;font-weight:800;font-size:11px;color:#0F766E">${med!=null?money(med):"—"}<span style="font-weight:600;color:#8A94A0;margin-left:4px">${arr.length}곳</span></span></span></div>`;
+     // 동 버블(v1.270): 가격은 빼고 '동명 + N곳'만 — 동 단계는 분포 파악용, 가격은 단지 핀이 담당(사용자 확정)
+     const html=`<div style="transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(15,118,110,.25);border-radius:12px;padding:6px 11px;box-shadow:0 2px 6px rgba(16,24,32,.14);white-space:nowrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/></svg><span style="font-weight:800;font-size:12px;color:#1A2430">${g.name}</span><span style="font-weight:800;font-size:11.5px;color:#0F766E">${arr.length}곳</span></div>`;
      const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:40});
      n.maps.Event.addListener(mk,"click",()=>{try{
       const b=new n.maps.LatLngBounds(); arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
@@ -4220,20 +4221,17 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     const rep=pys.length?pys.reduce((a,b)=>b.n>a.n?b:a):null;   // 표본 최다 평형 = 대표
     const label=rep?`${rep.py}평 ${money(rep.price)}`:mlabel(it);
     const extra=pys.length>1?` <span style="font-weight:700;font-size:9px;background:rgba(255,255,255,.30);border-radius:6px;padding:1px 4px;vertical-align:1px">+${pys.length-1}</span>`:"";
-    // 핀 = 건물 실루엣 v2(v1.269) — v1.268은 넓적한 사각+탭이라 여전히 말풍선으로 읽힘(사용자 지적).
-    // 교정: ①세로 비율 확대(건물은 '높다') ②빌라=가파른 박공지붕+굴뚝 ③아파트=옥탑 계단 스카이라인+창문 줄
-    // ④지붕/스카이라인 명암 밴드. 아래 꼭짓점이 좌표.
-    const clip=isHouse
-      ?"polygon(50% 0%, 70% 11%, 70% 3%, 82% 3%, 82% 18%, 97% 27%, 97% 78%, 57% 78%, 50% 100%, 43% 78%, 3% 78%, 3% 27%)"
-      :"polygon(5% 24%, 30% 24%, 30% 9%, 45% 9%, 45% 0%, 55% 0%, 55% 9%, 70% 9%, 70% 24%, 95% 24%, 95% 78%, 57% 78%, 50% 100%, 43% 78%, 5% 78%)";
-    const bgs=isHouse
-      ?`linear-gradient(rgba(255,255,255,.24),rgba(255,255,255,.24)) top/100% 27% no-repeat`
-      :`linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22)) top/100% 24% no-repeat,`
-       +`repeating-linear-gradient(90deg, rgba(255,255,255,.38) 0 3px, transparent 3px 9px) 0 31%/100% 4px no-repeat`;
+    // 핀 v3(v1.270, 사용자 레퍼런스 확정): 2줄 컴팩트 집 모양 — 위 작게 '평형(+N)', 아래 크게 '가격'.
+    // 2줄이라 폭이 절반으로 줄어 지도 과밀이 크게 완화. 지붕 큰 삼각(전체 폭) + 몸통 + 아래 꼬리.
+    // 유형 구분은 핀 모양 대신 퀵카드·상세가 담당(레퍼런스와 동일하게 단일 실루엣 = 일관성).
+    const clip="polygon(50% 0%, 97% 30%, 97% 80%, 57% 80%, 50% 95%, 43% 80%, 3% 80%, 3% 30%)";
+    const top=rep?`${rep.py}평${pys.length>1?` +${pys.length-1}`:""}`:(TYPE_LABEL[it.property_type]||"");
+    const main=rep?money(rep.price):mlabel(it);
     const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 3px 6px rgba(16,24,32,.38))">`
-     +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:${bgs},${dealCol};color:#fff;`
-       +`padding:${isHouse?"24px 12px 15px":"25px 12px 15px"};white-space:nowrap;text-align:center">`
-      +`<span style="font-weight:800;font-size:11.5px;line-height:1">${label}${extra}</span>`
+     +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)) top/100% 30% no-repeat,${dealCol};`
+       +`color:#fff;padding:13px 13px 15px;white-space:nowrap;text-align:center;line-height:1">`
+      +`<span style="display:block;font-weight:700;font-size:9.5px;opacity:.92">${top}</span>`
+      +`<span style="display:block;font-weight:800;font-size:14px;margin-top:3px">${main}</span>`
      +`</div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{ onQuickPin&&onQuickPin(it); });
@@ -4324,10 +4322,14 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   }).catch(()=>{});
   return ()=>{alive=false;};
  },[ready,showJr,pickCode]);
+ useEffect(()=>{ if(!ready||!mapObj.current||!window.naver)return;
+  const l=window.naver.maps.Event.addListener(mapObj.current,"click",()=>{onMapTap&&onMapTap();});
+  return ()=>{try{window.naver.maps.Event.removeListener(l);}catch(e){}};
+ },[ready]);
  useEffect(()=>{ if(ready&&mapObj.current&&onMapReady)onMapReady(mapObj.current); },[ready]);
  if(!mapCfg.enabled)return <Notice>지도를 보려면 서버 <b>.env</b> 에 <b>NAVER_MAP_CLIENT_ID</b> 를 넣고 새로고침하세요. (네이버 클라우드 플랫폼 Maps의 Client ID)</Notice>;
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
- return <div ref={ref} style={{width:"100%",height:full?"calc(100dvh - 108px)":"62vh",minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
+ return <div ref={ref} style={{width:"100%",height:full?"calc(100dvh - 68px - 68px - env(safe-area-inset-bottom, 0px))":"62vh",minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
 }
 function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompare,title}){
  const [sort,setSort]=useState("price");
@@ -4364,6 +4366,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [deal,setDeal]=useState(preset==="jeonse_risk"?"jeonse":"trade");
  const [prop,setProp]=useState("apartment");
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
+ const [uiHide,setUiHide]=useState(false);    // 지도 빈 곳 탭 = 컨트롤 숨김(위는 위로·오른쪽은 오른쪽으로, v1.270)
  const [quickPin,setQuickPin]=useState(null); // 단지 핀 탭 → 하단 퀵카드(평형별 가격 전부, v1.261 플로우)
  useEffect(()=>{setQuickPin(null);},[deal,prop]);
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
@@ -4460,7 +4463,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapTap={()=>setUiHide(h=>!h)} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4472,7 +4475,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
    📍 {pick.name} · {pMarkers.length}곳 <span style={{opacity:.85}}>✕ 해제</span>
   </button>}
   {/* 지도 상단(v1.257): 자주 쓰는 조건을 가로 스크롤로 바로 — [필터 N] 매매/전세/월세 · 종류 · 가격대 · 평형 */}
-  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none"}}>
+  <div style={{position:"absolute",top:8,left:0,right:0,zIndex:6,padding:"0 10px",pointerEvents:"none",
+    transform:uiHide?"translateY(-130%)":"none",opacity:uiHide?0:1,transition:"transform .28s ease, opacity .28s ease"}}>
    <div style={{display:"flex",gap:6,overflowX:"auto",pointerEvents:"auto",paddingBottom:3,WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>
     <button onClick={()=>setFilterOpen(true)} style={{flex:"none",display:"inline-flex",alignItems:"center",gap:5,background:activeCount?"var(--teal)":"var(--surface-solid)",color:activeCount?"#fff":INK,border:"none",borderRadius:11,padding:"0 13px",height:40,fontWeight:800,fontSize:12.5,boxShadow:"0 2px 10px rgba(16,24,32,.16)",cursor:"pointer"}}>
      <Icon name="filter" active color={activeCount?"#fff":INK} size={15}/>필터{activeCount?` ${activeCount}`:""}
@@ -4486,7 +4490,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
    </div>
   </div>
   {/* 오른쪽 세로 토글(v1.257): 지도 신호·주변 시설 — 지도를 가리지 않게 우측에 아이콘 스택 */}
-  <div style={{position:"absolute",right:10,top:58,zIndex:6,display:"flex",flexDirection:"column",gap:6}}>
+  <div style={{position:"absolute",right:10,top:64,zIndex:6,display:"flex",flexDirection:"column",gap:8,
+    transform:uiHide?"translateX(140%)":"none",opacity:uiHide?0:1,transition:"transform .28s ease, opacity .28s ease"}}>
    {[["lm","build","호재",showLm,()=>pickSignal("lm")],
      ["bg","bargain","급매",showBg,()=>pickSignal("bg")],
      ["jr","alerthome","전세위험",showJr,()=>pickSignal("jr")],
@@ -4494,10 +4499,10 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
      ["spo","sports","체육",poiCats.includes("sports"),()=>togglePoi("sports")],
      ["liv","store","생활",poiCats.includes("living"),()=>togglePoi("living")]].map(([k,ic,label,on,fn])=>(
     <button key={k} type="button" onClick={fn} aria-label={label} title={label}
-      style={{width:42,height:42,borderRadius:12,border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1,
+      style={{width:55,height:55,borderRadius:15,border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
         background:on?"var(--teal)":"var(--surface-solid)",color:on?"#fff":INK,boxShadow:"0 2px 10px rgba(16,24,32,.18)"}}>
-     <Icon name={ic} active color={on?"#fff":INK} size={16}/>
-     <span style={{fontSize:8.5,fontWeight:800,lineHeight:1}}>{label}</span>
+     <Icon name={ic} active color={on?"#fff":INK} size={21}/>
+     <span style={{fontSize:11,fontWeight:800,lineHeight:1}}>{label}</span>
     </button>))}
   </div>
   {/* 단지 퀵카드(v1.261): 핀 탭 → 평형별 가격 전부 + 상세 진입. 지도 위 말풍선 카드 계열(×가 유일한 닫기) */}
@@ -4558,9 +4563,9 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
     </div>
    </div>
   </Sheet>}
-  <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:86,zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
+  <button onClick={goMyLoc} aria-label="현재 위치로" style={{position:"absolute",right:12,bottom:"calc(78px + env(safe-area-inset-bottom, 0px))",zIndex:6,width:44,height:44,borderRadius:22,border:"1px solid var(--line)",background:"var(--surface-solid)",boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center"}}>{locBusy?"…":<Icon name="locate" active={true} size={22}/>}</button>
   {/* 하단 요약바 제거(요청) — 목록은 컴팩트 플로팅 버튼으로 유지(현위치 옆). */}
-  <button onClick={()=>setListOpen(true)} style={{position:"absolute",left:12,bottom:20,zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:22,padding:"10px 15px",fontWeight:800,fontSize:13,boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",color:INK}}>
+  <button onClick={()=>setListOpen(true)} style={{position:"absolute",left:12,bottom:"calc(16px + env(safe-area-inset-bottom, 0px))",zIndex:6,display:"inline-flex",alignItems:"center",gap:6,background:"var(--surface-solid)",border:"1px solid var(--line)",borderRadius:22,padding:"10px 15px",fontWeight:800,fontSize:13,boxShadow:"0 3px 12px rgba(16,24,32,.22)",cursor:"pointer",color:INK}}>
    <Icon name="rank" active size={16}/>목록{pick?` · ${pick.name} ${pMarkers.length}`:(filterOn?` ${fMarkers.length}`:"")}
   </button>
   {listOpen&&<AreaListSheet items={regionSel?regionSel.items:(viewport&&viewport.items?viewport.items:pMarkers)} title={regionSel?regionSel.title:""} deal={deal} onClose={()=>{setListOpen(false);setRegionSel(null);}} onOpenComplex={(m)=>{setListOpen(false);setRegionSel(null);onOpenComplex&&onOpenComplex(m);}} inCompare={inCompare} onToggleCompare={onToggleCompare}/>}

@@ -3659,10 +3659,12 @@ function GuChips({onGu,compact}){
 const SITUATIONS=[["buy","살 때","home"],["sell","팔 때","won"],["rent","전월세","key"]];
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
 function HomeGrid({items,compact}){
+ // v1.262(사용자 확정): 타일마다 다른 색(금·초록·보라…)이 서로 안 어울림 → 브랜드 톤으로 통일.
+ // 아이콘 = 라이트 틸 / 다크 흰색(--tileic), 배경 = 공용 칩. 항목의 color/bg 필드는 무시(데이터는 잔존).
  return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:compact?"4px 6px":"10px 6px",margin:compact?"5px 0 0":"10px 0 0",padding:"0 2px"}}>
   {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
-   <span style={{width:compact?40:50,height:compact?40:50,borderRadius:compact?14:16,background:it.bg,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
-    <Icon name={it.icon} active color={it.color} size={compact?19:24}/>
+   <span style={{width:compact?40:50,height:compact?40:50,borderRadius:compact?14:16,background:"var(--tilebg)",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
+    <Icon name={it.icon} active color="var(--tileic)" size={compact?19:24}/>
    </span>
    <span style={{fontSize:compact?10.5:11.5,fontWeight:700,color:INK,whiteSpace:"nowrap"}}>{it.label}</span>
   </button>))}

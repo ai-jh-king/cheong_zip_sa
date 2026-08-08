@@ -1421,29 +1421,45 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
  </div>);
 }
 /* 뉴스 리스트(v1.242) — 집사 소식 [뉴스] 서브탭: 피드의 부동산 뉴스 최근 7일. 원문 링크만(요약 왜곡 없음). */
+/* 한 화면 페이징(v1.261, 사용자 확정: 아래로 길게 스크롤 금지) — 뉴스·도감 공용 */
+function PageNav({page,total,onPage}){
+ if(total<=1)return null;
+ return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:10}}>
+  <button type="button" disabled={page<=0} onClick={()=>onPage(page-1)} className="btn-ghost"
+    style={{padding:"8px 18px",fontSize:13,opacity:page<=0?.35:1}}>‹ 이전</button>
+  <span className="num" style={{fontSize:12.5,fontWeight:800,color:MUTED}}>{page+1} / {total}</span>
+  <button type="button" disabled={page>=total-1} onClick={()=>onPage(page+1)} className="btn-ghost"
+    style={{padding:"8px 18px",fontSize:13,opacity:page>=total-1?.35:1}}>다음 ›</button>
+ </div>);
+}
 function NewsList({feed}){
  const news=((feed&&feed.news)||[]).filter(n=>{
   if(!n.date)return true;                       // 날짜 미상은 제외하지 않음(왜곡 방지)
   const d=new Date(String(n.date).replace(/\./g,"-"));
   return isNaN(d.getTime())?true:(Date.now()-d.getTime())<=7*86400000;
  });
+ const vhN=(typeof window!=="undefined")?window.innerHeight:800;
+ const PER=vhN<700?3:vhN<820?4:5;               // 한 화면 페이징(v1.261) — 화면 높이에 맞춰 3~5개(제목 2줄 기준 실측)
+ const [pg,setPg]=useState(0);
+ const totalPg=Math.max(1,Math.ceil(news.length/PER));
+ const cur=news.slice(pg*PER,pg*PER+PER);
  return (<div style={{marginTop:2}}>
-  <div style={{fontSize:12,color:MUTED,margin:"2px 2px 10px"}}>최근 7일 부동산 뉴스예요. 제목을 누르면 언론사 원문으로 이동합니다.</div>
   {news.length===0?<div className="card" style={{padding:20}}><Empty>최근 7일 뉴스가 없어요.</Empty></div>:
    <div className="card" style={{padding:"2px 14px"}}>
-   {news.map((n,i)=>{const inner=(<React.Fragment>
+   {cur.map((n,i)=>{const inner=(<React.Fragment>
      <div style={{minWidth:0,flex:1}}>
       <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
-      {n.summary&&<div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
+      {n.summary&&<div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
       <div className="num" style={{fontSize:11,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")}</div>
      </div>
      <span style={{marginLeft:8,color:MUTED,fontSize:16,flex:"none"}}>↗</span>
     </React.Fragment>);
     return (n.url&&n.url!=="#")
-     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"12px 0",borderBottom:i<news.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
-     :<div key={i} style={{display:"flex",alignItems:"center",padding:"12px 0",borderBottom:i<news.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
+     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
+     :<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
    </div>}
-  <div style={{fontSize:10.5,color:MUTED,margin:"8px 2px 0",lineHeight:1.5}}>네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
+  <PageNav page={pg} total={totalPg} onPage={setPg}/>
+  <div style={{fontSize:10.5,color:MUTED,margin:"8px 2px 0",lineHeight:1.5}}>최근 7일 · 제목을 누르면 언론사 원문으로 이동 · 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
  </div>);
 }
 function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen,onOnboard,feed,onGoTalk,onGoGuide,openGuideId,onConsumeGuide}){
@@ -3391,6 +3407,8 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
  // 시리즈가 1개뿐이면 그리드 건너뛰고 바로 편 리스트로(요청 — 불필요한 한 단계 제거)
  const autoRoot=!!(series&&series.length===1);
  useEffect(()=>{if(autoRoot&&!sKey&&!gid)setSKey(series[0].key);},[autoRoot,series,sKey,gid]);
+ const [gpg,setGpg]=useState(0);                        // 편 목록 페이지(v1.261)
+ useEffect(()=>{setGpg(0);},[sKey]);
  useEffect(()=>{if(!sKey){setSData(null);return;}let on=true;setSData(null);
   fetch(`${API}/guides/series/${sKey}`).then(r=>r.json()).then(j=>{if(on)setSData(j);}).catch(()=>{if(on)setSData({guides:[]});});
   return ()=>{on=false;};},[sKey]);
@@ -3453,10 +3471,10 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
     {sKey&&(!gid||inline)&&(sData===null?<SkeletonCard lines={3}/>:
      <React.Fragment>
       {sData.series&&<div style={{fontSize:12,color:MUTED,margin:"2px 2px 10px",lineHeight:1.6}}>{sData.series.description}</div>}
-      {/* 뉴스 리스트와 동일한 단일 카드+구분선 행 스타일로 통일(v1.244) */}
+      {/* 뉴스 리스트와 동일한 단일 카드+구분선 행 스타일 + 한 화면 페이징(v1.261) */}
       {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
        <div className="card" style={{padding:"2px 14px"}}>
-       {(sData.guides||[]).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+       {(sData.guides||[]).slice(gpg*5,gpg*5+5).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
         <span style={{fontSize:20,flex:"none"}}>{g.cover_emoji||"📄"}</span>
         <div style={{minWidth:0,flex:1}}>
          <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{g.title}</div>
@@ -3465,6 +3483,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
         <span style={{color:TEAL,fontSize:16,flex:"none"}}>›</span>
        </div>))}
        </div>}
+      <PageNav page={gpg} total={Math.max(1,Math.ceil(((sData.guides||[]).length)/5))} onPage={setGpg}/>
      </React.Fragment>)}
     {gid&&!inline&&articleContent}
    </div>
@@ -3534,13 +3553,12 @@ function CityIssues(){
   fetch(`${API}/landmarks`).then(r=>r.json()).then(j=>{if(on)setItems(Array.isArray(j)?j:[]);}).catch(()=>{if(on)setItems([]);});
   return ()=>{on=false;};},[]);
  if(!items||!items.length)return null;   // 데이터 없으면 표시 안 함(왜곡 없음)
- return (<div className="card" style={{padding:"13px 15px",marginTop:8}}>
-  <div style={{display:"flex",alignItems:"center",gap:6}}>
-   <span style={{fontWeight:800,fontSize:15,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="rocket" active color={INK} size={17}/>청주는 지금</span>
-   <span style={{fontSize:11.5,color:MUTED}}>개발 이슈</span>
-  </div>
-  <div style={{fontSize:11.5,color:MUTED,margin:"2px 0 6px"}}>청주 부동산에 영향을 줄 만한 개발 이슈예요. 출처를 함께 확인하세요.</div>
-  <MoreList items={items} initial={3} step={3} render={(L,i)=>{
+ // v1.261: 뉴스 탭 한 화면 원칙 — 기본 접힘(제목 줄만), 펼치면 이슈 목록
+ return (<Collapsible icon="rocket" defaultOpen={false}
+   title={<React.Fragment>청주는 지금 <span style={{fontWeight:500,fontSize:11.5,color:MUTED}}>· 개발 이슈 {items.length}건</span></React.Fragment>}>
+  <div style={{padding:"2px 14px 12px"}}>
+  <div style={{fontSize:11.5,color:MUTED,margin:"0 0 6px"}}>청주 부동산에 영향을 줄 만한 개발 이슈예요. 출처를 함께 확인하세요.</div>
+  <MoreList items={items} initial={2} step={3} render={(L,i)=>{
    const sc=L.status==="confirmed"?TEAL:L.status==="ongoing"?"#C77A1A":MUTED;
    return (<div key={L.id||i} style={{padding:"9px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
     <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
@@ -3553,11 +3571,12 @@ function CityIssues(){
    </div>);
   }}/>
   <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
- </div>);
+  </div>
+ </Collapsible>);
 }
 /* 홈 랭킹(v1.258, 사용자 확정) — 거래 활발·대장 아파트를 '각각의 카드'로 위아래 배치.
    각 카드는 순위가 위로 넘어가는 슬라이드(TOP10), 탭하면 하단 시트에 전체 순위. board 재사용(추가 요청 0). */
-function RankDeck({icon,color,label,info,items,metric,onOpen}){
+function RankDeck({icon,color,label,info,items,metric,metricColor,onOpen}){
  const [ri,setRi]=useState(0);
  const [sheet,setSheet]=useState(false);
  useEffect(()=>{ if(items.length<2)return;
@@ -3575,13 +3594,13 @@ function RankDeck({icon,color,label,info,items,metric,onOpen}){
     <div key={ri} style={{display:"flex",alignItems:"center",gap:7,height:30,animation:"rankup .42s ease"}}>
      <span className="num" style={{fontWeight:800,fontSize:12.5,color,minWidth:15,textAlign:"center"}}>{it.rank}</span>
      <span style={{fontWeight:700,fontSize:13.5,minWidth:0,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</span>
-     <span className="num" style={{fontWeight:800,fontSize:13,flex:"none"}}>{metric(it)}</span>
+     <span className="num" style={{fontWeight:800,fontSize:13,flex:"none",color:metricColor||INK}}>{metric(it)}</span>
     </div>
    </div>
    <span style={{flex:"none",fontSize:11,color:TEAL,fontWeight:700}}>›</span>
   </div>
   {sheet&&<RankSheet title={label} items={items} info={info}
-    metric={x=><span className="num" style={{fontWeight:800,fontSize:13}}>{metric(x)}</span>}
+    metric={x=><span className="num" style={{fontWeight:800,fontSize:13,color:metricColor||INK}}>{metric(x)}</span>}
     onItem={x=>onOpen&&onOpen({complex_name:x.name,lawd_cd:x.lawd_cd,property_type:x.property_type||"apartment"})}
     onClose={()=>setSheet(false)}/>}
  </div>);
@@ -3596,10 +3615,10 @@ function RankSlides({board,onOpen}){
  return (<div>
   <RankDeck icon="flame" color={UP} label={b.trending&&b.trending.basis==="surge"?"거래 급상승":"거래 활발"}
     info="최근 90일 거래 신고가 직전 90일보다 늘어난 단지 순입니다. 조회수가 아니라 실제 거래 건수 기준이며, 신고 지연·정정이 반영될 수 있어요."
-    items={trending} metric={it=>it.delta>0?("▲"+it.delta+"건"):(it.recent_count+"건")} onOpen={onOpen}/>
+    items={trending} metric={it=>it.delta>0?("▲"+it.delta+"건"):(it.recent_count+"건")} metricColor={UP} onOpen={onOpen}/>
   <RankDeck icon="crown" color="#9A6B00" label="대장 아파트"
     info="단지별 대표 매매가(중앙값) 상위입니다. 최고가 1건이 아니라 거래 중앙값 기준이라 이상치에 덜 흔들려요."
-    items={landmark} metric={it=>eok(it.price)} onOpen={onOpen}/>
+    items={landmark} metric={it=>eok(it.price)} metricColor="#B8860B" onOpen={onOpen}/>
  </div>);
 }
 /* 홈 구별 시세 4칩(v1.240) — '청주 평균'보다 구간 비교가 실사용 정보. 탭=지도 해당 구 초점. */
@@ -4032,7 +4051,7 @@ function _inGuPoly(geo,code,lat,lng){
   if(inside)return true;}
  return false;
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn, onQuickPin}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4159,7 +4178,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
      if(bounds&&!inB({lat:la,lng:ln}))return;   // 화면 밖 버블은 생략(위치·갯수는 전체 기준 고정)
      const amts=arr.map(m=>deal==="trade"?m.median_amount:m.value).filter(v=>v!=null).sort((a,b)=>a-b);
      const med=amts.length?amts[Math.floor(amts.length/2)]:null;   // 소속 단지 대표가의 중앙값(참고용)
-     const html=`<div style="transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;background:#fff;border:1.5px solid rgba(15,118,110,.30);border-radius:14px;padding:6px 11px;box-shadow:0 3px 10px rgba(16,24,32,.20);white-space:nowrap;line-height:1.15"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/></svg><span style="text-align:left"><span style="display:block;font-weight:800;font-size:12px;color:#1A2430">${g.name}</span><span style="display:block;font-weight:800;font-size:11px;color:#0F766E">${med!=null?money(med):"—"}<span style="font-weight:600;color:#8A94A0;margin-left:4px">${arr.length}곳</span></span></span></div>`;
+     const html=`<div style="transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;background:#fff;border:1px solid rgba(15,118,110,.25);border-radius:12px;padding:5px 10px;box-shadow:0 2px 6px rgba(16,24,32,.14);white-space:nowrap;line-height:1.15"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/></svg><span style="text-align:left"><span style="display:block;font-weight:800;font-size:12px;color:#1A2430">${g.name}</span><span style="display:block;font-weight:800;font-size:11px;color:#0F766E">${med!=null?money(med):"—"}<span style="font-weight:600;color:#8A94A0;margin-left:4px">${arr.length}곳</span></span></span></div>`;
      const mk=new n.maps.Marker({position:new n.maps.LatLng(la,ln),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:40});
      n.maps.Event.addListener(mk,"click",()=>{try{
       const b=new n.maps.LatLngBounds(); arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
@@ -4177,32 +4196,33 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    const HOUSE='<path d="M3.5 10.8 12 4l8.5 6.8"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-4.6h4V20"/>';
    // 신호 레이어가 켜져 있으면 기본 매물(가격) 핀은 그리지 않는다(v1.260, 사용자 확정).
    // 겹쳐 그리면 같은 단지에 두 핀이 붙고 화면이 뒤죽박죽 — 신호는 '그 기준만' 보는 독립 모드.
+   // ── 단지 핀(v1.261 재설계, 사용자 확정: '체계 있게·이쁘게') ──
+   //  · 색 = 거래유형 하나로 통일(매매 틸·전세 파랑·월세 보라) — 상단 세그먼트와 같은 언어.
+   //    가격대별 무지개색(v1.258 이전)은 정보보다 소음이 컸음.
+   //  · 내용 = 한 줄(대표 평형·가격 + 외N). 평형 전체는 핀을 탭하면 뜨는 퀵카드가 담당(플로우 분리).
+   //  · 모양 = 지붕(빌라 삼각/아파트 옥상단) + 몸통 + 꼬리 — 집 실루엣.
+   const dealCol=deal==="jeonse"?"#2563D8":deal==="wolse"?"#7A5AF8":"#0F766E";
    (signalOn?[]:items).forEach(it=>{
-    // 단지 레벨(z≥15): 영역·클러스터 없이 개별 단지 가격 마커
-    const ic=it.property_type==="rowhouse"?HOUSE:BLDG;
-    // 평형별 표시(v1.258, 사용자 요청): 전 평형 혼합 중앙값 하나가 아니라 '존재하는 평형'을 전부.
-    // 3줄 초과는 '외 N' — 핀 크기 상한(전부는 단지 상세에서). 표본 1~2건 평형도 사실이므로 표시.
+    const isHouse=it.property_type==="rowhouse";
     const pys=(it.pyeongs||[]);
-    const shown=pys.slice(0,3), extra=pys.length-shown.length;
-    const rows=shown.length
-      ? shown.map(p=>`<div style="display:flex;align-items:baseline;gap:5px;white-space:nowrap"><span style="font-weight:700;font-size:10px;color:#69737D">${p.py}평</span><span style="font-weight:800;font-size:11.5px;color:#1A2430">${money(p.price)}</span></div>`).join("")
-        +(extra>0?`<div style="font-size:9.5px;font-weight:700;color:#8A94A0">외 ${extra}평형</div>`:"")
-      : `<div style="font-weight:800;font-size:11.5px;color:#1A2430;white-space:nowrap">${mlabel(it)}</div>`;
-    // 말풍선 = '집 모양'(v1.259, 사용자 요청): 지붕(삼각) + 몸통(카드) + 바닥 꼬리.
-    // 지붕은 가격대 색으로 칠해 색 정보를 유지하고, 유형 아이콘은 지붕 안에 흰색으로.
-    const col=colorFor(it.value);
-    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 3px 6px rgba(16,24,32,.30))">`
-     +`<svg width="100%" height="15" viewBox="0 0 100 15" preserveAspectRatio="none" style="display:block;margin-bottom:-1px"><polygon points="50,0 100,15 0,15" fill="${col}"/></svg>`
-     +`<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1.5px solid ${col};border-top:none;padding:5px 9px 6px;border-radius:0 0 10px 10px">`
-      +`<span style="flex:none;width:20px;height:20px;border-radius:6px;background:${col}1F;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ic}</svg></span>`
-      +`<span style="display:flex;flex-direction:column;gap:1px">${rows}</span>`
+    const rep=pys.length?pys.reduce((a,b)=>b.n>a.n?b:a):null;   // 표본 최다 평형 = 대표
+    const label=rep?`${rep.py}평 ${money(rep.price)}`:mlabel(it);
+    const extra=pys.length>1?` <span style="font-weight:700;font-size:9.5px;background:rgba(255,255,255,.28);border-radius:6px;padding:1px 5px;vertical-align:1px">+${pys.length-1}</span>`:"";
+    const roof=isHouse
+      ?`<svg width="100%" height="12" viewBox="0 0 100 12" preserveAspectRatio="none" style="display:block;margin-bottom:-1px"><polygon points="50,0 100,12 0,12" fill="${dealCol}"/></svg>`
+      :`<div style="height:5px;background:${dealCol};border-radius:4px 4px 0 0;margin:0 7px -1px"></div>`;
+    const icSvg=isHouse
+      ?'<path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/>'
+      :'<path d="M5 20V7l7-2.6V20M12 20V9.5l7 2.2V20M4 20h16"/><path d="M8.3 9.6v.01M8.3 12.8v.01M8.3 16v.01M15.6 14v.01M15.6 17v.01"/>';
+    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 5px rgba(16,24,32,.30))">${roof}`
+     +`<div style="display:flex;align-items:center;gap:5px;background:${dealCol};color:#fff;padding:4px 9px 5px 7px;border-radius:${isHouse?"0 0 10px 10px":"3px 3px 10px 10px"}">`
+      +`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${icSvg}</svg>`
+      +`<span style="font-weight:800;font-size:11.5px;line-height:1;white-space:nowrap">${label}${extra}</span>`
      +`</div>`
-     +`<div style="position:absolute;left:50%;bottom:-5px;width:10px;height:10px;background:#fff;border-right:1.5px solid ${col};border-bottom:1.5px solid ${col};transform:translateX(-50%) rotate(45deg)"></div>`
+     +`<div style="position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:${dealCol};transform:translateX(-50%) rotate(45deg)"></div>`
      +`</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
-    n.maps.Event.addListener(mk,"click",()=>{
-     onOpenComplex&&onOpenComplex({complex_name:it.complex_name,lawd_cd:it.lawd_cd,property_type:it.property_type});
-    });
+    n.maps.Event.addListener(mk,"click",()=>{ onQuickPin&&onQuickPin(it); });
     markerObjs.current.push(mk);
    });
   }catch(e){/* 지도 비정상(도메인 미등록 등) — 마커 렌더 생략, 앱 유지 */}
@@ -4330,6 +4350,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [deal,setDeal]=useState(preset==="jeonse_risk"?"jeonse":"trade");
  const [prop,setProp]=useState("apartment");
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
+ const [quickPin,setQuickPin]=useState(null); // 단지 핀 탭 → 하단 퀵카드(평형별 가격 전부, v1.261 플로우)
+ useEffect(()=>{setQuickPin(null);},[deal,prop]);
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
  const togglePoi=(k)=>setPoiCats(cs=>cs.includes(k)?cs.filter(x=>x!==k):[...cs,k]);
  // 신호 레이어(v1.259, 사용자 확정): 호재·급매·전세위험은 '하나만' 켜진다(동시에 켜면 지도가 뒤죽박죽).
@@ -4424,7 +4446,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4464,6 +4486,28 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
      <span style={{fontSize:8.5,fontWeight:800,lineHeight:1}}>{label}</span>
     </button>))}
   </div>
+  {/* 단지 퀵카드(v1.261): 핀 탭 → 평형별 가격 전부 + 상세 진입. 지도 위 말풍선 카드 계열(×가 유일한 닫기) */}
+  {quickPin&&(()=>{const q=quickPin;const dl=q.deal_type==="jeonse"?"전세":q.deal_type==="wolse"?"월세":"매매";
+   return (<div style={{position:"absolute",left:10,right:10,bottom:14,zIndex:7,display:"flex",justifyContent:"center"}}>
+   <div className="card" style={{width:"100%",maxWidth:430,padding:"12px 14px",boxShadow:"0 8px 28px rgba(16,24,32,.28)"}}>
+    <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+     <div style={{minWidth:0,flex:1}}>
+      <div style={{fontWeight:800,fontSize:14.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.complex_name} {q.is_sample&&<ExBadge/>}</div>
+      <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{[(q.gu||"").replace("청주시 ",""),q.dong,TYPE_LABEL[q.property_type]].filter(Boolean).join(" · ")} · 최근 {q.count}건</div>
+     </div>
+     <span onClick={()=>setQuickPin(null)} aria-label="닫기" role="button" tabIndex={0} onKeyDown={onEnter(()=>setQuickPin(null))} style={{cursor:"pointer",color:MUTED,fontSize:20,lineHeight:1,fontWeight:600,flex:"none"}}>×</span>
+    </div>
+    {(q.pyeongs||[]).length>0&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(96px,1fr))",gap:6,marginTop:9}}>
+     {q.pyeongs.map((p,i)=>(<div key={i} style={{background:"var(--surface-2)",borderRadius:9,padding:"7px 9px",textAlign:"center"}}>
+      <div style={{fontSize:10.5,fontWeight:700,color:MUTED}}>{p.py}평 <span style={{fontWeight:600}}>· {p.n}건</span></div>
+      <div className="num" style={{fontWeight:800,fontSize:13,marginTop:1}}>{eok(p.price)}</div>
+     </div>))}
+    </div>}
+    <div style={{fontSize:10.5,color:MUTED,marginTop:7}}>{dl} 실거래 중앙값(최근 {AGG_MONTHS}개월) · 평형은 전용면적 환산</div>
+    <button onClick={()=>{const t=q;setQuickPin(null);onOpenComplex&&onOpenComplex({complex_name:t.complex_name,lawd_cd:t.lawd_cd,property_type:t.property_type});}}
+      className="btn-primary" style={{width:"100%",marginTop:9,padding:"11px"}}>단지 상세 보기</button>
+   </div>
+  </div>);})()}
   {/* 신호 모드 배지(v1.260): 지금 무엇만 보고 있는지 + 한 번에 해제 — 매물 핀이 사라진 이유를 명시 */}
   {signal&&<div style={{position:"absolute",left:0,right:0,bottom:14,zIndex:6,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
    <div style={{pointerEvents:"auto",display:"inline-flex",alignItems:"center",gap:8,background:"var(--surface-solid)",borderRadius:14,padding:"8px 10px 8px 13px",boxShadow:"0 3px 14px rgba(16,24,32,.22)",maxWidth:"92%"}}>

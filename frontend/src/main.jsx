@@ -4219,20 +4219,20 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     const pys=(it.pyeongs||[]);
     const rep=pys.length?pys.reduce((a,b)=>b.n>a.n?b:a):null;   // 표본 최다 평형 = 대표
     const label=rep?`${rep.py}평 ${money(rep.price)}`:mlabel(it);
-    const extra=pys.length>1?` <span style="font-weight:700;font-size:9.5px;background:rgba(255,255,255,.28);border-radius:6px;padding:1px 5px;vertical-align:1px">+${pys.length-1}</span>`:"";
-    const roof=isHouse
-      ?`<svg width="100%" height="12" viewBox="0 0 100 12" preserveAspectRatio="none" style="display:block;margin-bottom:-1px"><polygon points="50,0 100,12 0,12" fill="${dealCol}"/></svg>`
-      :`<div style="height:5px;background:${dealCol};border-radius:4px 4px 0 0;margin:0 7px -1px"></div>`;
-    const icSvg=isHouse
-      ?'<path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/>'
-      :'<path d="M5 20V7l7-2.6V20M12 20V9.5l7 2.2V20M4 20h16"/><path d="M8.3 9.6v.01M8.3 12.8v.01M8.3 16v.01M15.6 14v.01M15.6 17v.01"/>';
-    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 2px 5px rgba(16,24,32,.30))">${roof}`
-     +`<div style="display:flex;align-items:center;gap:5px;background:${dealCol};color:#fff;padding:4px 9px 5px 7px;border-radius:${isHouse?"0 0 10px 10px":"3px 3px 10px 10px"}">`
-      +`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${icSvg}</svg>`
-      +`<span style="font-weight:800;font-size:11.5px;line-height:1;white-space:nowrap">${label}${extra}</span>`
-     +`</div>`
-     +`<div style="position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:${dealCol};transform:translateX(-50%) rotate(45deg)"></div>`
-     +`</div>`;
+    const extra=pys.length>1?` <span style="font-weight:700;font-size:9px;background:rgba(255,255,255,.30);border-radius:6px;padding:1px 4px;vertical-align:1px">+${pys.length-1}</span>`:"";
+    // 핀 = '통째로 집/빌딩 실루엣'(v1.268, 사용자 요청: 말풍선이 아니라 건물 모양 그 자체).
+    // clip-path 로 몸통을 자름 — 빌라=박공지붕 오각형, 아파트=중앙 옥탑이 솟은 빌딩. 아래 꼭짓점이 좌표를 가리킨다.
+    // 창문 느낌은 상단 반투명 밴드로 은은하게. 모양이 유형을 말하므로 내부 아이콘은 제거(핀 폭 절약).
+    const clip=isHouse
+      ?"polygon(50% 0, 97% 30%, 97% 80%, 57% 80%, 50% 100%, 43% 80%, 3% 80%, 3% 30%)"
+      :"polygon(4% 20%, 36% 20%, 36% 4%, 64% 4%, 64% 20%, 96% 20%, 96% 80%, 57% 80%, 50% 100%, 43% 80%, 4% 80%)";
+    const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 3px 6px rgba(16,24,32,.35))">`
+     +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:${dealCol};color:#fff;`
+       +`padding:${isHouse?"17px 15px 13px":"15px 14px 13px"};white-space:nowrap;text-align:center;`
+       +`background-image:linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22));background-repeat:no-repeat;`
+       +`background-size:100% ${isHouse?"30%":"20%"};background-position:top">`
+      +`<span style="font-weight:800;font-size:11.5px;line-height:1">${label}${extra}</span>`
+     +`</div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{ onQuickPin&&onQuickPin(it); });
     markerObjs.current.push(mk);

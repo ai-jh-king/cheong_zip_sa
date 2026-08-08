@@ -1441,34 +1441,35 @@ function CityNow({feed}){
  const LM_BADGE={confirmed:{t:"확정",c:TEAL,bg:"rgba(15,118,110,.12)"},
                  ongoing:{t:"추진",c:"#C77A1A",bg:"rgba(199,122,26,.14)"},
                  planned:{t:"계획",c:MUTED,bg:"var(--chip)"}};
- const badge=(t,col,bg)=>`<span>`;   // (사용 안 함 — JSX 로 렌더)
- const Badge=({t,col,bg})=>(<span style={{flex:"none",fontSize:10,fontWeight:800,color:col,background:bg,borderRadius:6,padding:"2px 7px"}}>{t}</span>);
+ // 배지는 '왼쪽 고정폭 열'에 세로 정렬(v1.274) — 제목 길이와 무관하게 위치가 일정.
+ const Badge=({t,col,bg})=>(<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:"100%",fontSize:10,fontWeight:800,color:col,background:bg,borderRadius:6,padding:"3px 0"}}>{t}</span>);
+ const ROW={display:"grid",gridTemplateColumns:"42px 1fr",gap:9,alignItems:"start"};
  const row=(it,i)=>{
   if(it.kind==="lm"){
    const L=it.L, b=LM_BADGE[L.status]||LM_BADGE.planned;
-   return (<div key={"l"+(L.id||i)} style={{padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
-    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-     <Badge t={L.status_label||b.t} col={b.c} bg={b.bg}/>
-     <span style={{fontWeight:800,fontSize:13.5,minWidth:0}}>{L.name}</span>
-     <span style={{fontSize:11,color:MUTED}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}</span>
+   return (<div key={"l"+(L.id||i)} style={{...ROW,padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
+    <Badge t={L.status_label||b.t} col={b.c} bg={b.bg}/>
+    <div style={{minWidth:0}}>
+     <div style={{fontWeight:800,fontSize:13.5,lineHeight:1.4}}>{L.name}</div>
+     <div style={{fontSize:11,color:MUTED,marginTop:2}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}</div>
+     {L.summary&&<div style={{fontSize:12,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
+     {L.source_name&&<div style={{fontSize:10.5,color:MUTED,marginTop:3}}>출처: {L.source_url
+       ?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:TEAL}}>{L.source_name}</a>:L.source_name}</div>}
     </div>
-    {L.summary&&<div style={{fontSize:12,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
-    {L.source_name&&<div style={{fontSize:10.5,color:MUTED,marginTop:3}}>출처: {L.source_url
-      ?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:TEAL}}>{L.source_name}</a>:L.source_name}</div>}
    </div>);
   }
   const n=it.n;
   const inner=(<React.Fragment>
-   <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-    <Badge t="뉴스" col="#2563D8" bg="rgba(37,99,216,.12)"/>
-    <span style={{fontWeight:700,fontSize:13.5,lineHeight:1.4,minWidth:0}}>{n.title} {n.is_sample&&<ExBadge/>}</span>
+   <Badge t="뉴스" col="#2563D8" bg="rgba(37,99,216,.12)"/>
+   <div style={{minWidth:0}}>
+    <div style={{fontWeight:700,fontSize:13.5,lineHeight:1.4}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
+    {n.summary&&<div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
+    <div className="num" style={{fontSize:10.5,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")} ↗</div>
    </div>
-   {n.summary&&<div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
-   <div className="num" style={{fontSize:10.5,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")} ↗</div>
   </React.Fragment>);
   return (n.url&&n.url!=="#")
-   ? <a key={"n"+i} href={n.url} target="_blank" rel="noreferrer" style={{display:"block",padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
-   : <div key={"n"+i} style={{padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>{inner}</div>;
+   ? <a key={"n"+i} href={n.url} target="_blank" rel="noreferrer" style={{...ROW,padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
+   : <div key={"n"+i} style={{...ROW,padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>{inner}</div>;
  };
  return (<div style={{marginTop:2}}>
   <div style={{display:"flex",alignItems:"center",gap:6,margin:"2px 2px 3px"}}>

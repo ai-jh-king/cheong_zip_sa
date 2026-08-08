@@ -1421,47 +1421,66 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
  </div>);
 }
 /* 뉴스 리스트(v1.242) — 집사 소식 [뉴스] 서브탭: 피드의 부동산 뉴스 최근 7일. 원문 링크만(요약 왜곡 없음). */
-/* 한 화면 페이징(v1.261, 사용자 확정: 아래로 길게 스크롤 금지) — 뉴스·도감 공용 */
-function PageNav({page,total,onPage}){
- if(total<=1)return null;
- return (<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:6}}>
-  <button type="button" disabled={page<=0} onClick={()=>onPage(page-1)} className="btn-ghost"
-    style={{padding:"6px 16px",fontSize:12.5,opacity:page<=0?.35:1}}>‹ 이전</button>
-  <span className="num" style={{fontSize:12,fontWeight:800,color:MUTED}}>{page+1} / {total}</span>
-  <button type="button" disabled={page>=total-1} onClick={()=>onPage(page+1)} className="btn-ghost"
-    style={{padding:"6px 16px",fontSize:12.5,opacity:page>=total-1?.35:1}}>다음 ›</button>
- </div>);
-}
-function NewsList({feed}){
+function CityNow({feed}){
+ // v1.271(사용자 확정): '청주는 지금' 하나로 통합 — 개발 호재(추진/확정)와 부동산 뉴스를 같은 리스트에,
+ // 성격은 배지로 구분(추진·확정·완료 / 뉴스). 소식 탭은 '읽는 화면'이므로 페이징 대신 더보기+내부 스크롤.
+ const [lms,setLms]=useState(null);
+ useEffect(()=>{let on=true;
+  fetch(`${API}/landmarks`).then(r=>r.json()).then(j=>{if(on)setLms(Array.isArray(j)?j:[]);}).catch(()=>{if(on)setLms([]);});
+  return ()=>{on=false;};},[]);
  const news=((feed&&feed.news)||[]).filter(n=>{
   if(!n.date)return true;                       // 날짜 미상은 제외하지 않음(왜곡 방지)
   const d=new Date(String(n.date).replace(/\./g,"-"));
   return isNaN(d.getTime())?true:(Date.now()-d.getTime())<=7*86400000;
  });
- const vhN=(typeof window!=="undefined")?window.innerHeight:800;
- const PER=vhN<700?3:vhN<820?4:5;               // 한 화면 페이징(v1.261) — 화면 높이에 맞춰 3~5개(제목 2줄 기준 실측)
- const [pg,setPg]=useState(0);
- const totalPg=Math.max(1,Math.ceil(news.length/PER));
- const cur=news.slice(pg*PER,pg*PER+PER);
- return (<div style={{marginTop:14}}>{/* 청주는 지금 카드와의 간격(v1.263, 사용자 지적: 너무 붙음) */}
-  {news.length===0?<div className="card" style={{padding:20}}><Empty>최근 7일 뉴스가 없어요.</Empty></div>:
-   <div className="card" style={{padding:"2px 14px"}}>
-   {cur.map((n,i)=>{const inner=(<React.Fragment>
-     <div style={{minWidth:0,flex:1}}>
-      <div style={{fontWeight:700,fontSize:13.5,lineHeight:1.38}}>{n.title} {n.is_sample&&<ExBadge/>}</div>
-      {n.summary&&<div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
-      <div className="num" style={{fontSize:11,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")}</div>
-     </div>
-     <span style={{marginLeft:8,color:MUTED,fontSize:16,flex:"none"}}>↗</span>
-    </React.Fragment>);
-    return (n.url&&n.url!=="#")
-     ?<a key={i} href={n.url} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",padding:"8px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
-     :<div key={i} style={{display:"flex",alignItems:"center",padding:"8px 0",borderBottom:i<cur.length-1?"1px solid var(--line)":"none"}}>{inner}</div>;})}
-   </div>}
-  <PageNav page={pg} total={totalPg} onPage={setPg}/>
-  <div style={{fontSize:10,color:MUTED,margin:"4px 2px 0",lineHeight:1.4}}>최근 7일 · 제목을 누르면 언론사 원문으로 이동 · 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다. 청집사는 원문 링크만 제공해요.</div>
+ // 호재(고정 정보) 먼저, 그 다음 최근 7일 뉴스 — 성격이 다르므로 시간축으로 억지 정렬하지 않는다.
+ const items=[
+  ...((lms||[]).map(L=>({kind:"lm",L}))),
+  ...(news.map(n=>({kind:"news",n}))),
+ ];
+ const LM_BADGE={confirmed:{t:"확정",c:TEAL,bg:"rgba(15,118,110,.12)"},
+                 ongoing:{t:"추진",c:"#C77A1A",bg:"rgba(199,122,26,.14)"},
+                 planned:{t:"계획",c:MUTED,bg:"var(--chip)"}};
+ const badge=(t,col,bg)=>`<span>`;   // (사용 안 함 — JSX 로 렌더)
+ const Badge=({t,col,bg})=>(<span style={{flex:"none",fontSize:10,fontWeight:800,color:col,background:bg,borderRadius:6,padding:"2px 7px"}}>{t}</span>);
+ const row=(it,i)=>{
+  if(it.kind==="lm"){
+   const L=it.L, b=LM_BADGE[L.status]||LM_BADGE.planned;
+   return (<div key={"l"+(L.id||i)} style={{padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+     <Badge t={L.status_label||b.t} col={b.c} bg={b.bg}/>
+     <span style={{fontWeight:800,fontSize:13.5,minWidth:0}}>{L.name}</span>
+     <span style={{fontSize:11,color:MUTED}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}</span>
+    </div>
+    {L.summary&&<div style={{fontSize:12,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
+    {L.source_name&&<div style={{fontSize:10.5,color:MUTED,marginTop:3}}>출처: {L.source_url
+      ?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:TEAL}}>{L.source_name}</a>:L.source_name}</div>}
+   </div>);
+  }
+  const n=it.n;
+  const inner=(<React.Fragment>
+   <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+    <Badge t="뉴스" col="#2563D8" bg="rgba(37,99,216,.12)"/>
+    <span style={{fontWeight:700,fontSize:13.5,lineHeight:1.4,minWidth:0}}>{n.title} {n.is_sample&&<ExBadge/>}</span>
+   </div>
+   {n.summary&&<div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{n.summary}</div>}
+   <div className="num" style={{fontSize:10.5,color:MUTED,marginTop:3}}>{[n.source,n.date].filter(Boolean).join(" · ")} ↗</div>
+  </React.Fragment>);
+  return (n.url&&n.url!=="#")
+   ? <a key={"n"+i} href={n.url} target="_blank" rel="noreferrer" style={{display:"block",padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>{inner}</a>
+   : <div key={"n"+i} style={{padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>{inner}</div>;
+ };
+ return (<div style={{marginTop:2}}>
+  <div style={{display:"flex",alignItems:"center",gap:6,margin:"2px 2px 3px"}}>
+   <span style={{fontWeight:800,fontSize:16,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="rocket" active color={INK} size={17}/>청주는 지금</span>
+  </div>
+  <div style={{fontSize:11.5,color:MUTED,margin:"0 2px 9px",lineHeight:1.55}}>청주 부동산에 영향을 줄 만한 개발 이슈와 최근 7일 뉴스예요. 출처를 함께 확인하세요.</div>
+  {items.length===0?<div className="card" style={{padding:20}}><Empty>표시할 소식이 없어요.</Empty></div>
+   :<div className="card" style={{padding:"2px 14px"}}><MoreList items={items} initial={6} step={6} render={row}/></div>}
+  <div style={{fontSize:10,color:MUTED,margin:"8px 2px 0",lineHeight:1.45}}>개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보이며 투자 판단·집값 상승을 보장하지 않습니다. 뉴스는 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다.</div>
  </div>);
 }
+
 function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onConsumeOpen,section,setSection,listingOpenId,onConsumeListingOpen,onOnboard,feed,onGoTalk,onGoGuide,openGuideId,onConsumeGuide}){
  // kind="news": 집사 소식(도감|뉴스, 콘텐츠) / kind="talk": 소통(게시판|매물, 커뮤니티) — v1.242 분리
  const [mode,setMode]=useState("list"),[selId,setSelId]=useState(null);
@@ -1516,7 +1535,7 @@ function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onCo
   {kind==="news"&&section!=="news"?
    <GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
     onGoBoard={()=>{setGuideGid(null);onGoTalk&&onGoTalk();}}/>
-  :kind==="news"?<React.Fragment><CityIssues/><NewsList feed={feed}/></React.Fragment>
+  :kind==="news"?<CityNow feed={feed}/>
   :section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   {latestGuide&&<div onClick={()=>{onGoGuide&&onGoGuide(latestGuide.id);}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{onGoGuide&&onGoGuide(latestGuide.id);})}
     className="card" style={{padding:"11px 14px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
@@ -2125,14 +2144,16 @@ function App(){
   {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231).
       홈 탭(v1.232)은 무스크롤 한 화면: 패딩까지 정밀 조정(헤더 68+네비 68+여유 12 → 푸터가 메뉴바 직전). */}
   <div className="wrap" ref={homeWrapRef} style={{display:"flex",flexDirection:"column",
-    ...(tab==="home"||tab==="board"
+    ...(tab==="home"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",overscrollBehavior:"none",
        paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}
-       // 한 화면 고정 탭(홈·집사 소식): 내부 스크롤도 없음 — compact·페이징이 화면 안에 맞춘다.
+       // 홈=한 화면 고정(대시보드). 소식 탭은 '읽는 화면'이라 내부 스크롤 허용(v1.271, 사용자 확정) —
+       // body 는 여전히 잠겨 있어 화면 전체가 끌리지 않는다.
      :tab==="map"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",paddingBottom:0}
      :{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflowY:"auto",
-       WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"})}}>
+       WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",
+       paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"})}}>
        {/* v1.266 앱셸: body 스크롤 전면 금지(index.html) — 스크롤 필요한 탭(소통·더보기·청약)은
            wrap '내부' 스크롤로 전환. body 가 절대 안 움직이므로 몇 px 초과·바운스로 화면이 끌릴 수 없다. */}
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
@@ -3414,9 +3435,6 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
  // 시리즈가 1개뿐이면 그리드 건너뛰고 바로 편 리스트로(요청 — 불필요한 한 단계 제거)
  const autoRoot=!!(series&&series.length===1);
  useEffect(()=>{if(autoRoot&&!sKey&&!gid)setSKey(series[0].key);},[autoRoot,series,sKey,gid]);
- const [gpg,setGpg]=useState(0);                        // 편 목록 페이지(v1.261)
- const GPER=(typeof window!=="undefined"&&window.innerHeight<720)?4:5;   // 작은 폰=4편(스크롤 0, v1.263)
- useEffect(()=>{setGpg(0);},[sKey]);
  useEffect(()=>{if(!sKey){setSData(null);return;}let on=true;setSData(null);
   fetch(`${API}/guides/series/${sKey}`).then(r=>r.json()).then(j=>{if(on)setSData(j);}).catch(()=>{if(on)setSData({guides:[]});});
   return ()=>{on=false;};},[sKey]);
@@ -3482,7 +3500,7 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
       {/* 뉴스 리스트와 동일한 단일 카드+구분선 행 스타일 + 한 화면 페이징(v1.261) */}
       {(sData.guides||[]).length===0?<Empty>이 시리즈의 첫 편을 준비 중이에요.</Empty>:
        <div className="card" style={{padding:"2px 14px"}}>
-       {(sData.guides||[]).slice(gpg*GPER,gpg*GPER+GPER).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+       {(sData.guides||[]).map((g,i)=>(<div key={g.id} onClick={()=>setGid(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>setGid(g.id))} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 0",borderBottom:i<(sData.guides||[]).length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
         <span style={{fontSize:20,flex:"none"}}>{g.cover_emoji||"📄"}</span>
         <div style={{minWidth:0,flex:1}}>
          <div style={{fontWeight:700,fontSize:14,lineHeight:1.45}}>{g.title}</div>
@@ -3491,7 +3509,6 @@ function GuideBook({onClose,onOnboard,inline,initialGid,onGoBoard}){
         <span style={{color:TEAL,fontSize:16,flex:"none"}}>›</span>
        </div>))}
        </div>}
-      <PageNav page={gpg} total={Math.max(1,Math.ceil(((sData.guides||[]).length)/GPER))} onPage={setGpg}/>
      </React.Fragment>)}
     {gid&&!inline&&articleContent}
    </div>
@@ -3555,35 +3572,6 @@ function MyHomeCard({home,onOpen,onRegister}){
    </div>
   </div>);
 }
-function CityIssues(){
- const [items,setItems]=useState(null);
- useEffect(()=>{let on=true;
-  fetch(`${API}/landmarks`).then(r=>r.json()).then(j=>{if(on)setItems(Array.isArray(j)?j:[]);}).catch(()=>{if(on)setItems([]);});
-  return ()=>{on=false;};},[]);
- if(!items||!items.length)return null;   // 데이터 없으면 표시 안 함(왜곡 없음)
- // v1.261: 뉴스 탭 한 화면 원칙 — 기본 접힘(제목 줄만), 펼치면 이슈 목록
- return (<Collapsible icon="rocket" defaultOpen={false}
-   title={<React.Fragment>청주는 지금 <span style={{fontWeight:500,fontSize:11.5,color:MUTED}}>· 개발 이슈 {items.length}건</span></React.Fragment>}>
-  <div style={{padding:"2px 14px 12px"}}>
-  <div style={{fontSize:11.5,color:MUTED,margin:"0 0 6px"}}>청주 부동산에 영향을 줄 만한 개발 이슈예요. 출처를 함께 확인하세요.</div>
-  <MoreList items={items} initial={2} step={3} render={(L,i)=>{
-   const sc=L.status==="confirmed"?TEAL:L.status==="ongoing"?"#C77A1A":MUTED;
-   return (<div key={L.id||i} style={{padding:"9px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>
-    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-     <span style={{fontSize:10.5,fontWeight:800,color:"#fff",background:sc,borderRadius:6,padding:"2px 7px"}}>{L.status_label}</span>
-     <span style={{fontWeight:800,fontSize:14}}>{L.name}</span>
-     <span style={{fontSize:11.5,color:MUTED}}>{L.category_label}{L.expected_year?` · ${L.expected_year}년`:""}</span>
-    </div>
-    {L.summary&&<div style={{fontSize:12.5,color:INK,marginTop:4,lineHeight:1.5}}>{L.summary}</div>}
-    {L.source_name&&<div style={{fontSize:11,color:MUTED,marginTop:3}}>출처: {L.source_url?<a href={L.source_url} target="_blank" rel="noreferrer" style={{color:TEAL}}>{L.source_name}</a>:L.source_name}</div>}
-   </div>);
-  }}/>
-  <div style={{fontSize:10.5,color:MUTED,marginTop:6,lineHeight:1.5}}>※ 개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보입니다. 투자 판단·집값 상승을 보장하지 않습니다.</div>
-  </div>
- </Collapsible>);
-}
-/* 홈 랭킹(v1.258, 사용자 확정) — 거래 활발·대장 아파트를 '각각의 카드'로 위아래 배치.
-   각 카드는 순위가 위로 넘어가는 슬라이드(TOP10), 탭하면 하단 시트에 전체 순위. board 재사용(추가 요청 0). */
 function RankDeck({icon,color,label,info,items,metric,metricColor,onOpen}){
  const [ri,setRi]=useState(0);
  const [sheet,setSheet]=useState(false);

@@ -2918,7 +2918,7 @@ function JeonseGuard({embedded,extCx,extDetail}){
   else if(ratio>=70)band={c:"var(--warn-fg)",t:"주의",m:"여유가 크지 않아요. 근저당 말소 특약, 보증보험 가입을 권해요."};
   else band={c:"var(--teal)",t:"상대적 여유",m:"통상적 기준으로는 여유가 있는 편이에요. 그래도 계약 당일 등기부를 다시 확인하세요."};
  }
- const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 12px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const inp={flex:1,width:"100%",minWidth:0,border:"1.5px solid var(--line)",borderRadius:11,padding:"11px 12px",fontSize:15,fontWeight:700,background:"var(--surface-solid)",color:INK};
  const CHECK=[
   ["계약 전",["등기부등본 열람 — 소유자가 임대인과 일치하는지, 근저당·가압류가 있는지(을구의 채권최고액을 아래 진단에 입력)","건축물대장 — 위반건축물 여부(정부24)","이 앱에서 단지 전세가율 확인 — 매매가 대비 보증금이 과한지","임대인 국세·지방세 체납 열람 신청(계약 전 임대인 동의로 가능)"]],
   ["계약일",["등기부등본 당일 재발급 — 계약 직전 변동 확인","임대인 본인 확인(신분증) · 계약금은 임대인 명의 계좌로","특약 예: '잔금일까지 근저당 말소', '전입·확정일자 전 추가 담보 설정 금지'"]],
@@ -4127,7 +4127,9 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   // 3단계 계단식(일반인 한눈에 — 사용자 확정): 구 영역(z<12) → 동 요약 버블(z12~14) → 개별 단지 마커(z≥15).
   // 단지 핀 시작 줌을 네이버부동산·호갱노노와 동일한 z15로(z14는 여러 동이 한 화면 = 핀 수백 개 과밀, 실사고 스크린샷).
   // 신호(호재·급매·전세위험) 켜짐 = '신호 기준 하나로' — 동 요약 버블은 끄고 단지 핀만(v1.259)
-  const guView=z<12&&!signalOn;
+  // 단계 임계(v1.267, 사용자 확정): 동이 너무 일찍·한꺼번에 나와 어지러움 → 구를 z12까지 유지,
+  // 한 단계 더 확대(z13~14)해야 동, 또 확대(z15+)해야 단지.
+  const guView=z<13&&!signalOn;
   const dongView=!guView&&z<15&&!signalOn;
   const items=(guView||dongView)?[]:vis.map(m=>({t:"s",...m}));
   // 구 라벨 카운트는 전체 마커 기준 — 뷰포트 기준이면 지도를 조금만 움직여도 곳수가 널뜀(실사고 163≠178)
@@ -4170,7 +4172,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
        else paths.flat().forEach(p=>b.extend(p));   // 단지 없는 구는 경계 폴백
        map.fitBounds(b);
        const z2=map.getZoom();
-       if(z2<12)map.setZoom(12); else if(z2>13)map.setZoom(13);
+       if(z2<13)map.setZoom(13); else if(z2>14)map.setZoom(14);   // 착지=동 요약 단계(v1.267)
       }catch(e){}
       onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
@@ -4397,7 +4399,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
   onConsumePreset&&onConsumePreset();
  },[preset]);
  const pickAt=useRef(0);
- useEffect(()=>{ if(pick&&viewport&&viewport.zoom!=null&&viewport.zoom<12&&Date.now()-pickAt.current>800){setPick(null);setRegionSel(null);} },[viewport,pick]);
+ useEffect(()=>{ if(pick&&viewport&&viewport.zoom!=null&&viewport.zoom<13&&Date.now()-pickAt.current>800){setPick(null);setRegionSel(null);} },[viewport,pick]);
  // 홈 구별 칩 → 해당 구 선택 + 경계 fit(v1.240). 지도 인스턴스·경계 로드가 끝날 때까지 폴링 후 1회 실행.
  useEffect(()=>{ if(!focusGu)return;
   pickAt.current=Date.now();
@@ -6008,7 +6010,7 @@ function PolicyMatch(){
    body:JSON.stringify({purpose,income:income?Math.round(+income):null,amount:amount?Math.round(parseFloat(amount)*10000):null,
     newlywed:fl.newlywed,kids2:fl.kids2,newborn:fl.newborn,homeless:fl.homeless})})
    .then(r=>r.json()).then(setRes).catch(()=>setRes(null)).finally(()=>setBusy(false)); };
- const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const inp={flex:1,width:"100%",minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
  const OV={pass:["요건 충족 가능성","var(--ok-bg)","var(--ok-fg)"],maybe:["일부 확인 필요","var(--info-bg)","var(--info-fg)"],fail:["요건 미충족","var(--neutral-bg)",MUTED]};
  return (<Collapsible icon="won" defaultOpen={false} title="정책대출 해당되나 보기 (기금·HF)">
   <div style={{padding:"4px 14px 12px"}}>
@@ -6183,7 +6185,7 @@ function ComplexPicker({label="단지 검색",onPick,note}){
   fetch(`${API}/complex/detail?${qs}`).then(r=>r.json()).then(j=>{ if(!j||!j.found)return;
    setInfo({price_median:j.price_median,latest:j.latest_amount,count:j.trade_count});
    onPick&&onPick(c,j);}).catch(()=>{});};
- const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const inp={flex:1,width:"100%",minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
  return (<div style={{position:"relative",marginBottom:10}}>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <span style={{flex:"none",width:104,fontSize:12,fontWeight:700,color:MUTED}}>{label}</span>
@@ -6217,7 +6219,7 @@ function RentLoan({initialDeposit,depositNote}){
     income:income?Math.round(+income):null,homeless:fl.homeless,
     newlywed:fl.newlywed,kids2:fl.kids2,newborn:fl.newborn})})
    .then(r=>r.json()).then(setD).catch(()=>setD(null)).finally(()=>setBusy(false));};
- const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const inp={flex:1,width:"100%",minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
  const OV={pass:["요건 충족 가능성","var(--ok-bg)","var(--ok-fg)"],maybe:["일부 확인 필요","var(--info-bg)","var(--info-fg)"],fail:["요건 미충족","var(--neutral-bg)",MUTED]};
  return (<div style={{padding:"2px 2px 12px"}}>
   <div style={{fontSize:12.5,color:MUTED,lineHeight:1.6,margin:"0 2px 10px"}}>전세대출은 매매 대출과 구조가 달라요 — 보증금 기준으로 한도가 정해지고, 보통 <b>이자만</b> 냅니다.</div>
@@ -6286,7 +6288,7 @@ function MonthlyBurden({loanMonthly}){
    .then(r=>r.json()).then(j=>{if(on)setD(j);}).catch(()=>{if(on)setD(null);});
   return ()=>{on=false;};
  },[loanMonthly,official,fee,oneHouse]);
- const inp={flex:1,minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
+ const inp={flex:1,width:"100%",minWidth:0,border:"1.5px solid var(--line)",borderRadius:10,padding:"9px 11px",fontSize:14,fontWeight:700,background:"var(--surface-solid)",color:INK};
  return (<Collapsible icon="won" defaultOpen={true} title="매달 나가는 돈">
   <div style={{padding:"6px 16px 14px"}}>
    <div style={{fontSize:12,color:MUTED,lineHeight:1.6,marginBottom:9}}>대출 원리금만 보면 실제 부담을 놓쳐요. 재산세·관리비까지 합쳐서 봅니다.</div>

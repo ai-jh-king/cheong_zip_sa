@@ -2124,13 +2124,14 @@ function App(){
   {/* 콘텐츠가 짧아도 푸터(면책·약관)가 하단 메뉴바 바로 위까지 내려가도록 화면 높이를 채움(v1.231).
       홈 탭(v1.232)은 무스크롤 한 화면: 패딩까지 정밀 조정(헤더 68+네비 68+여유 12 → 푸터가 메뉴바 직전). */}
   <div className="wrap" ref={homeWrapRef} style={{display:"flex",flexDirection:"column",
-    ...(tab==="home"
-     ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflowY:"auto",overscrollBehavior:"contain",
-       paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}   // 실측 높이 = 페이지 스크롤 0(넘치면 내부 스크롤)
+    ...(tab==="home"||tab==="board"
+     ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",overscrollBehavior:"none",
+       paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}
+       // 홈·집사 소식(v1.265, 사용자 확정): 한 화면 고정 탭은 스크롤을 '구조적으로' 잠근다(overflow hidden).
+       // 콘텐츠는 compact 모드·페이징이 화면 안에 맞추는 책임을 진다(도감 본문·게시판은 시트/소통 탭이라 무관).
      :tab==="map"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",paddingBottom:0}
        // 지도(v1.264): 전체화면 지도 + .wrap 기본 하단패딩 96px 이 합쳐져 ~56px 페이지 스크롤 발생(실사고)
-       // → 높이 고정·overflow hidden 으로 구조적으로 잠금(지도 조작은 지도 내부 제스처만)
      :{minHeight:"calc(100dvh - 152px)"})}}>
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
    {/* 상태·데이터기준 배너 제거(v1.257) — 디버그성 문구는 사용자 화면에 두지 않는다(운영 확인은 /health·/status/data) */}

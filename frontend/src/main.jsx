@@ -4217,17 +4217,27 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     const rep=pys.length?pys.reduce((a,b)=>b.n>a.n?b:a):null;   // 표본 최다 평형 = 대표
     const label=rep?`${rep.py}평 ${money(rep.price)}`:mlabel(it);
     const extra=pys.length>1?` <span style="font-weight:700;font-size:9px;background:rgba(255,255,255,.30);border-radius:6px;padding:1px 4px;vertical-align:1px">+${pys.length-1}</span>`:"";
-    // 핀 v3(v1.270, 사용자 레퍼런스 확정): 2줄 컴팩트 집 모양 — 위 작게 '평형(+N)', 아래 크게 '가격'.
-    // 2줄이라 폭이 절반으로 줄어 지도 과밀이 크게 완화. 지붕 큰 삼각(전체 폭) + 몸통 + 아래 꼬리.
-    // 유형 구분은 핀 모양 대신 퀵카드·상세가 담당(레퍼런스와 동일하게 단일 실루엣 = 일관성).
+    // 핀 v4(v1.273, 사용자 확정): 평형이 여러 개면 '+N' 으로 숨기지 말고 핀을 키워 **최대 2개까지 나열**.
+    // 1개 = 평형 작게/가격 크게(2줄) · 2개 이상 = 평형별 한 줄씩(평형 + 가격) · 3개 이상은 나머지만 '+N'.
+    // 지도 과밀은 표본 많은 평형 2개로 제한 + 폰트 축소로 관리(정보를 감추기보다 크기를 조금 키우는 쪽).
     const clip="polygon(50% 0%, 97% 30%, 97% 80%, 57% 80%, 50% 95%, 43% 80%, 3% 80%, 3% 30%)";
-    const top=rep?`${rep.py}평${pys.length>1?` +${pys.length-1}`:""}`:(TYPE_LABEL[it.property_type]||"");
-    const main=rep?money(rep.price):mlabel(it);
+    const byN=pys.slice().sort((a,b)=>b.n-a.n).slice(0,2).sort((a,b)=>a.py-b.py);   // 표본 많은 2개(평형 오름차순)
+    const restN=pys.length-byN.length;
+    let inner;
+    if(pys.length<=1){
+     const top=rep?`${rep.py}평`:(TYPE_LABEL[it.property_type]||"");
+     inner=`<span style="display:block;font-weight:700;font-size:9.5px;opacity:.92">${top}</span>`
+       +`<span style="display:block;font-weight:800;font-size:14px;margin-top:3px">${rep?money(rep.price):mlabel(it)}</span>`;
+    }else{
+     inner=byN.map(p=>`<span style="display:flex;align-items:baseline;gap:5px;justify-content:center">`
+        +`<span style="font-weight:700;font-size:9.5px;opacity:.9">${p.py}평</span>`
+        +`<span style="font-weight:800;font-size:12.5px">${money(p.price)}</span></span>`).join(`<span style="display:block;height:3px"></span>`)
+       +(restN>0?`<span style="display:block;font-weight:700;font-size:9px;opacity:.85;margin-top:2px">+${restN}평형</span>`:"");
+    }
     const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 3px 6px rgba(16,24,32,.38))">`
      +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)) top/100% 30% no-repeat,${dealCol};`
-       +`color:#fff;padding:13px 13px 15px;white-space:nowrap;text-align:center;line-height:1">`
-      +`<span style="display:block;font-weight:700;font-size:9.5px;opacity:.92">${top}</span>`
-      +`<span style="display:block;font-weight:800;font-size:14px;margin-top:3px">${main}</span>`
+       +`color:#fff;padding:${pys.length>1?"15px 14px 16px":"13px 13px 15px"};white-space:nowrap;text-align:center;line-height:1">`
+      +inner
      +`</div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{ onQuickPin&&onQuickPin(it); });

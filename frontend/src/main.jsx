@@ -4224,23 +4224,23 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     const clip="polygon(50% 0%, 97% 30%, 97% 80%, 57% 80%, 50% 95%, 43% 80%, 3% 80%, 3% 30%)";
     const byN=pys.slice().sort((a,b)=>b.n-a.n).slice(0,2).sort((a,b)=>a.py-b.py);   // 표본 많은 2개(평형 오름차순)
     const restN=pys.length-byN.length;
-    const line=(py,price)=>`<span style="display:flex;align-items:baseline;gap:5px;justify-content:center">`
-      +`<span style="font-weight:700;font-size:10px;opacity:.92">${py}평</span>`
-      +`<span style="font-weight:800;font-size:13px">${price}</span></span>`;
+    // 평형 오름차순 + 2열 그리드(평수 | 가격)로 **왼쪽 정렬** — 줄마다 평수 폭이 달라도 가격 시작점이 맞는다(v1.276)
+    const cells=(rows)=>rows.map(p=>
+      `<span style="font-weight:700;font-size:10px;opacity:.92;text-align:left">${p.py}평</span>`
+      +`<span style="font-weight:800;font-size:13px;text-align:left">${money(p.price)}</span>`).join("");
     let inner;
     if(!pys.length){
-     inner=`<span style="font-weight:800;font-size:13px">${mlabel(it)}</span>`;
-    }else if(pys.length===1){
-     inner=line(pys[0].py, money(pys[0].price));
+     inner=`<span style="grid-column:1/-1;font-weight:800;font-size:13px;text-align:left">${mlabel(it)}</span>`;
     }else{
-     inner=byN.map(p=>line(p.py, money(p.price))).join(`<span style="display:block;height:3px"></span>`)
-       +(restN>0?`<span style="display:block;font-weight:700;font-size:9px;opacity:.85;margin-top:2px">+${restN}평형</span>`:"");
+     inner=cells(pys.length===1?pys:byN)
+       +((pys.length>1&&restN>0)?`<span style="grid-column:1/-1;font-weight:700;font-size:9px;opacity:.85;text-align:left">+${restN}평형</span>`:"");
     }
     const pad=pys.length>1?"14px 13px 15px":"13px 13px 15px";
     const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 3px 7px rgba(16,24,32,.42))">`
      +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:#fff;padding:2.5px">`   // 흰 테두리(바깥 도형)
       +`<div style="clip-path:${clip};-webkit-clip-path:${clip};background:${dealCol};color:#fff;`
-        +`padding:${pad};white-space:nowrap;text-align:center;line-height:1">${inner}</div>`
+        +`padding:${pad};white-space:nowrap;line-height:1;display:grid;grid-template-columns:auto auto;`
+        +`column-gap:6px;row-gap:4px;justify-content:start;align-items:baseline">${inner}</div>`
      +`</div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(it.lat,it.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:10});
     n.maps.Event.addListener(mk,"click",()=>{ onQuickPin&&onQuickPin(it); });

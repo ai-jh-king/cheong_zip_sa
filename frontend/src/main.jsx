@@ -2127,6 +2127,10 @@ function App(){
     ...(tab==="home"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflowY:"auto",overscrollBehavior:"contain",
        paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}   // 실측 높이 = 페이지 스크롤 0(넘치면 내부 스크롤)
+     :tab==="map"
+     ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",paddingBottom:0}
+       // 지도(v1.264): 전체화면 지도 + .wrap 기본 하단패딩 96px 이 합쳐져 ~56px 페이지 스크롤 발생(실사고)
+       // → 높이 고정·overflow hidden 으로 구조적으로 잠금(지도 조작은 지도 내부 제스처만)
      :{minHeight:"calc(100dvh - 152px)"})}}>
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
    {/* 상태·데이터기준 배너 제거(v1.257) — 디버그성 문구는 사용자 화면에 두지 않는다(운영 확인은 /health·/status/data) */}

@@ -2202,7 +2202,7 @@ function App(){
     <span onClick={dismissNudge} role="button" tabIndex={0} onKeyDown={onEnter(dismissNudge)} aria-label="닫기" style={{flex:"none",cursor:"pointer",color:MUTED,fontSize:19,lineHeight:1,fontWeight:600,padding:"0 2px"}}>×</span>
    </div>
   </div>}
-  {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" ref={navRef} role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
+  {!sel&&!loanOpen&&!agentOpen && <div className="nav" ref={navRef} role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
@@ -2594,9 +2594,11 @@ function PostSheet({id,account,onNeedLogin,onClose,onChanged,onOpenComplex,onEdi
  </SheetShell>);
 }
 function CommuteSheet({onClose,onOpen,mapCfg}){
- return (<SheetShell onClose={onClose} zIndex={118}>
+ // v1.277(사용자 확정): 통근 검색은 전략 창끝(전입자) — 시트가 아니라 '작업 페이지' 문법으로 승격.
+ // (기존에도 네비를 숨겨 사실상 전체화면이었음 — 문법만 시트라 가벼워 보이던 불일치 해소)
+ return (<PlanPage title="통근 검색" icon="train" onClose={onClose}>
   <CommuteSearch onClose={onClose} onOpen={onOpen} mapCfg={mapCfg}/>
- </SheetShell>);
+ </PlanPage>);
 }
 function RankSheet({title,items,metric,onItem,onClose,info}){
  const medal=r=>r===1?"🥇":r===2?"🥈":r===3?"🥉":null;
@@ -2786,11 +2788,12 @@ function BudgetPicks({onOpen,favs,embedded}){
  </div>);
 }
 function BudgetSheet({onClose,onOpen,favs}){
- const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 예산 맞춤 추천</span></div>);
- return (<SheetShell onClose={onClose} zIndex={118} header={header}>
+ // v1.277: 예산 찾기도 입력→리포트형 '작업'이라 페이지 문법으로 승격
+ return (<PlanPage title="내 예산 맞춤 추천" icon="won" onClose={onClose}>
   <BudgetPicks onOpen={onOpen} favs={favs} embedded={true}/>
- </SheetShell>);
+ </PlanPage>);
 }
+
 function LoanSheet({onClose,onOpen}){
  const header=(<div style={{display:"flex",alignItems:"center",padding:"6px 16px 4px",flex:"none"}}><span style={{fontWeight:800,fontSize:16}}>내 대출 한도 계산</span></div>);
  return (<SheetShell onClose={onClose} zIndex={118} header={header}>
@@ -3663,10 +3666,10 @@ function GuChips({onGu,compact}){
 // v1.253: 이모지 → SVG Icon 통일(기기·폰트별 렌더 차이 제거, 테마 색 대응)
 const SITUATIONS=[["buy","살 때","home"],["sell","팔 때","won"],["rent","전월세","key"]];
 /* 홈 아이콘 그리드(2×4) — 기능 발견성. 쿠팡식 위계를 가져오되 톤은 토스식(파스텔 타일+기존 SVG 아이콘) 유지. */
-function HomeGrid({items,compact}){
+function HomeGrid({items,compact,cols=4}){
  // v1.262(사용자 확정): 타일마다 다른 색(금·초록·보라…)이 서로 안 어울림 → 브랜드 톤으로 통일.
  // 아이콘 = 라이트 틸 / 다크 흰색(--tileic), 배경 = 공용 칩. 항목의 color/bg 필드는 무시(데이터는 잔존).
- return (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:compact?"4px 6px":"10px 6px",margin:compact?"5px 0 0":"10px 0 0",padding:"0 2px"}}>
+ return (<div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap:compact?"4px 6px":"10px 6px",margin:compact?"5px 0 0":"10px 0 0",padding:"0 2px"}}>
   {items.map(it=>(<button key={it.label} type="button" onClick={it.onClick} aria-label={it.label} style={{border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:0}}>
    <span style={{width:compact?40:50,height:compact?40:50,borderRadius:compact?14:16,background:"var(--tilebg)",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:0}}>
     <Icon name={it.icon} active color="var(--tileic)" size={compact?19:24}/>
@@ -3827,17 +3830,28 @@ function Board({board,favs,onOpen,onToggleFav,go,onGu,myGu,setMyGu,recents,onTog
   {!compact&&<div style={{fontSize:12.5,color:MUTED,fontWeight:600,margin:"4px 2px 0"}}>
    집 <b style={{color:INK}}>사고 팔기 전</b>, 여기서 먼저 확인하세요
   </div>}
-  {/* 도구 그리드(v1.258, 사용자 확정): 살때/팔때 구분 제거 — 꼭 필요한 8개만 한 판.
-      제외: 우리집(MyHomeCard 존재)·매물 내놓기(소통 탭)·전월세 시세(지도 중복)·최근 본(검색 오버레이로 이동) */}
-  <HomeGrid compact={compact} items={[
-   {label:"구입 플랜",icon:"loan",color:"#9A6B00",bg:"rgba(154,107,0,.10)",onClick:()=>onBuyPlan&&onBuyPlan()},
-   {label:"전세 플랜",icon:"shield",color:"#1d6b3a",bg:"rgba(29,107,58,.10)",onClick:()=>onJeonse&&onJeonse()},
-   {label:"예산 찾기",icon:"won",color:"#0E7C71",bg:"rgba(15,118,110,.10)",onClick:()=>onBudget&&onBudget()},
-   {label:"통근 검색",icon:"train",color:"#C77A1A",bg:"rgba(199,122,26,.10)",onClick:()=>onCommute&&onCommute()},
-   {label:"급매 신호",icon:"bargain",color:"#2563D8",bg:"rgba(37,99,216,.10)",onClick:()=>onBargains&&onBargains()},
-   {label:"전세위험 지도",icon:"alerthome",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onRiskMap&&onRiskMap()},
-   {label:"경매·공매",icon:"gov",color:"#7A5AF8",bg:"rgba(122,90,248,.10)",onClick:()=>onAuction&&onAuction()},
-   {label:"계약전확인",icon:"doc",color:"#C8322A",bg:"rgba(200,50,42,.08)",onClick:()=>onChecklist&&onChecklist()},
+  {/* 위계(v1.277, 사용자 확정): 중심 작업(구입·전세 플랜)은 히어로 카드로 한 급 위,
+      나머지 6개 도구는 3열 그리드 — 화면이 '무엇이 중심인지' 말하게 한다 */}
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,margin:compact?"6px 2px 0":"10px 2px 0"}}>
+   {[["구입 플랜","한도·월부담·정책대출까지","loan",()=>onBuyPlan&&onBuyPlan()],
+     ["전세 플랜","보증금 안전·전세대출까지","shield",()=>onJeonse&&onJeonse()]].map(([t,sub,ic,fn])=>(
+    <button key={t} onClick={fn} aria-label={t} style={{border:"none",cursor:"pointer",textAlign:"left",borderRadius:14,
+      padding:compact?"10px 12px":"13px 14px",background:"linear-gradient(115deg, rgba(15,118,110,.16), rgba(15,118,110,.05))",
+      display:"flex",alignItems:"center",gap:9}}>
+     <span style={{flex:"none",lineHeight:0}}><Icon name={ic} active color="var(--tileic)" size={compact?19:22}/></span>
+     <span style={{minWidth:0}}>
+      <span style={{display:"block",fontWeight:800,fontSize:compact?13:14,color:INK}}>{t}</span>
+      {!compact&&<span style={{display:"block",fontSize:10.5,color:MUTED,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sub}</span>}
+     </span>
+    </button>))}
+  </div>
+  <HomeGrid compact={compact} cols={3} items={[
+   {label:"예산 찾기",icon:"won",onClick:()=>onBudget&&onBudget()},
+   {label:"통근 검색",icon:"train",onClick:()=>onCommute&&onCommute()},
+   {label:"급매 신호",icon:"bargain",onClick:()=>onBargains&&onBargains()},
+   {label:"전세위험 지도",icon:"alerthome",onClick:()=>onRiskMap&&onRiskMap()},
+   {label:"경매·공매",icon:"gov",onClick:()=>onAuction&&onAuction()},
+   {label:"계약전확인",icon:"doc",onClick:()=>onChecklist&&onChecklist()},
   ]}/>
 
   {/* 구별 시세 4칩(v1.240, 사용자 선택) — '청주 아파트 지금' 평균 카드 대체. 탭=지도 해당 구 초점 */}

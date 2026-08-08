@@ -1934,6 +1934,13 @@ function App(){
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
+ const navRef=useRef(null);
+ const [navH,setNavH]=useState(68);   // 네비 실측 높이(safe-area 포함) — 고정값 가정 시 지도 하단에 빈 띠(v1.272)
+ useEffect(()=>{ const m=()=>{try{const el=navRef.current;if(el)setNavH(Math.round(el.getBoundingClientRect().height));}catch(e){}};
+  const r=requestAnimationFrame(m); const t=setTimeout(m,400);
+  window.addEventListener("resize",m); window.addEventListener("orientationchange",m);
+  return ()=>{cancelAnimationFrame(r);clearTimeout(t);window.removeEventListener("resize",m);window.removeEventListener("orientationchange",m);};
+ },[tab]);
  const homeWrapRef=useRef(null);
  useEffect(()=>{try{if(homeWrapRef.current)homeWrapRef.current.scrollTop=0;}catch(e){}},[tab]);   // 탭 전환=내부 스크롤 맨위(v1.266)
  const [homeWrapH,setHomeWrapH]=useState(null);     // compact 판단용(실측 가용 높이)
@@ -2150,7 +2157,8 @@ function App(){
        // 홈=한 화면 고정(대시보드). 소식 탭은 '읽는 화면'이라 내부 스크롤 허용(v1.271, 사용자 확정) —
        // body 는 여전히 잠겨 있어 화면 전체가 끌리지 않는다.
      :tab==="map"
-     ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",paddingBottom:0}
+     ?{height:`calc(100dvh - ${(homeWrapTop!=null?homeWrapTop:68)+navH}px)`,overflow:"hidden",paddingBottom:0}
+       // 지도 탭: 헤더+네비(실측 navH)를 뺀 나머지를 지도가 '가득' 채운다(빈 띠 없음, v1.272)
      :{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflowY:"auto",
        WebkitOverflowScrolling:"touch",overscrollBehavior:"contain",
        paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"})}}>
@@ -2193,7 +2201,7 @@ function App(){
     <span onClick={dismissNudge} role="button" tabIndex={0} onKeyDown={onEnter(dismissNudge)} aria-label="닫기" style={{flex:"none",cursor:"pointer",color:MUTED,fontSize:19,lineHeight:1,fontWeight:600,padding:"0 2px"}}>×</span>
    </div>
   </div>}
-  {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
+  {!sel&&!commuteOpen&&!budgetOpen&&!loanOpen&&!agentOpen && <div className="nav" ref={navRef} role="navigation" aria-label="주요 메뉴"><div className="nav-inner">
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
@@ -4317,7 +4325,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
  useEffect(()=>{ if(ready&&mapObj.current&&onMapReady)onMapReady(mapObj.current); },[ready]);
  if(!mapCfg.enabled)return <Notice>지도를 보려면 서버 <b>.env</b> 에 <b>NAVER_MAP_CLIENT_ID</b> 를 넣고 새로고침하세요. (네이버 클라우드 플랫폼 Maps의 Client ID)</Notice>;
  if(err)return <Notice>네이버 지도 인증에 실패했습니다. 클라이언트 ID와 ‘Web 서비스 URL(도메인)’ 등록을 확인하세요.</Notice>;
- return <div ref={ref} style={{width:"100%",height:full?"calc(100dvh - 68px - 68px - env(safe-area-inset-bottom, 0px))":"62vh",minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
+ return <div ref={ref} style={{width:"100%",...(full?{flex:1,minHeight:0}:{height:"62vh"}),minHeight:full?400:undefined,borderRadius:full?0:14,overflow:"hidden",background:"var(--chip)"}}/>;
 }
 function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompare,title}){
  const [sort,setSort]=useState("price");
@@ -4450,7 +4458,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const fmtV=(v)=>v==null?"—":(deal==="trade"?`${Number(v).toLocaleString()}만원/평`:eok(v));
  const vc=viewport?viewport.count:(filterOn?fMarkers.length:(gsum?gsum.count:markers.length));
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
- return (<div style={{margin:"0 -16px -96px",position:"relative"}}>
+ return (<div style={{margin:"0 -16px",position:"relative",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
+  {/* v1.272: 루트가 wrap 을 꽉 채우고(flex:1), 지도 div 가 100% 로 그 안을 채운다 — 하단 빈 띠 제거 */}
   <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapTap={()=>setUiHide(h=>!h)} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신

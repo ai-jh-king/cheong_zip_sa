@@ -41,6 +41,10 @@
   [data-theme=dark] .cat-info{color:#A78BFA}[data-theme=dark] .cat-deal{color:#FF6F62}
   [data-theme=dark] .cat-local{color:#4FC3DD}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;} html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+  /* 앱셸 고정(v1.266): body 는 어떤 경우에도 스크롤하지 않는다 — 스크롤은 항상 탭 내부 컨테이너.
+     body 스크롤이 살아 있으면 몇 px 초과·iOS 바운스로 화면이 끌리는 문제가 탭마다 재발(실사고 다수). */
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  #root{height:100%;}
   html,body{overscroll-behavior:none;}  /* 당겨서 새로고침·바운스 제거(앱 느낌) */
   body{margin:0;color:var(--ink);font-family:Pretendard,system-ui,-apple-system,sans-serif;min-height:100vh;background:var(--bg1);}
   .wrap{max-width:480px;margin:0 auto;padding:0 16px 96px;}

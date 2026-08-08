@@ -1916,6 +1916,7 @@ function App(){
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
  const homeWrapRef=useRef(null);
+ useEffect(()=>{try{if(homeWrapRef.current)homeWrapRef.current.scrollTop=0;}catch(e){}},[tab]);   // 탭 전환=내부 스크롤 맨위(v1.266)
  const [homeWrapH,setHomeWrapH]=useState(null);     // compact 판단용(실측 가용 높이)
  const [homeWrapTop,setHomeWrapTop]=useState(null); // 높이 자체는 CSS calc(100dvh - top)이 뷰포트 변화에 자동 추종
  useEffect(()=>{ if(tab!=="home")return;
@@ -2127,12 +2128,13 @@ function App(){
     ...(tab==="home"||tab==="board"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",overscrollBehavior:"none",
        paddingBottom:"calc(76px + env(safe-area-inset-bottom, 0px))"}
-       // 홈·집사 소식(v1.265, 사용자 확정): 한 화면 고정 탭은 스크롤을 '구조적으로' 잠근다(overflow hidden).
-       // 콘텐츠는 compact 모드·페이징이 화면 안에 맞추는 책임을 진다(도감 본문·게시판은 시트/소통 탭이라 무관).
+       // 한 화면 고정 탭(홈·집사 소식): 내부 스크롤도 없음 — compact·페이징이 화면 안에 맞춘다.
      :tab==="map"
      ?{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflow:"hidden",paddingBottom:0}
-       // 지도(v1.264): 전체화면 지도 + .wrap 기본 하단패딩 96px 이 합쳐져 ~56px 페이지 스크롤 발생(실사고)
-     :{minHeight:"calc(100dvh - 152px)"})}}>
+     :{height:`calc(100dvh - ${homeWrapTop!=null?homeWrapTop:68}px)`,overflowY:"auto",
+       WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"})}}>
+       {/* v1.266 앱셸: body 스크롤 전면 금지(index.html) — 스크롤 필요한 탭(소통·더보기·청약)은
+           wrap '내부' 스크롤로 전환. body 가 절대 안 움직이므로 몇 px 초과·바운스로 화면이 끌릴 수 없다. */}
    {/* 홈은 무스크롤 예산이 빠듯 — 라이브 정상 상태의 초록 안내 배너는 홈에서 생략(데모/오류 경고는 유지) */}
    {/* 상태·데이터기준 배너 제거(v1.257) — 디버그성 문구는 사용자 화면에 두지 않는다(운영 확인은 /health·/status/data) */}
    {tab!=="map"&&status==="demo"&&<Banner status={status} data={data}/>}

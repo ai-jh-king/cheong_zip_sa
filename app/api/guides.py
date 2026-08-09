@@ -117,6 +117,24 @@ class GuideBody(BaseModel):
     is_published: bool = True
 
 
+@admin_router.get("")
+def admin_list(db: Session = Depends(get_db), x_admin_token: str | None = Header(None)):
+    """관리자 목록 — 미공개 포함 전체(관리 화면용, v1.281). body_md 는 목록에선 제외(용량)."""
+    _require_admin(x_admin_token)
+    rows = db.scalars(select(Guide).order_by(Guide.series_key, Guide.sort_order, Guide.id)).all()
+    return {"items": [{**_guide_row(g), "is_published": g.is_published} for g in rows]}
+
+
+@admin_router.get("/{gid}")
+def admin_get(gid: int, db: Session = Depends(get_db), x_admin_token: str | None = Header(None)):
+    """관리자 단건 — 미공개 포함 + 본문(body_md) 포함(편집용)."""
+    _require_admin(x_admin_token)
+    g = db.get(Guide, gid)
+    if not g:
+        raise HTTPException(status_code=404, detail="글을 찾을 수 없습니다.")
+    return {**_guide_row(g), "body_md": g.body_md, "is_published": g.is_published}
+
+
 @admin_router.post("")
 def create_guide(b: GuideBody, db: Session = Depends(get_db),
                  x_admin_token: str | None = Header(None)):

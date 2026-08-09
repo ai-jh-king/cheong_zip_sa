@@ -1945,7 +1945,8 @@ function App(){
  const [mapPreset,setMapPreset]=useState(null);    // 홈에서 지도로 들어올 때의 의도(jeonse_risk 등) — v1.252
  const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
  const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
- const [planOpen,setPlanOpen]=useState(null);          // 전체화면 플랜 페이지(v1.255): {type:"buy"|"jeonse", price?, name?}
+ const [planOpen,setPlanOpen]=useState(null);
+ const [guideAdminOpen,setGuideAdminOpen]=useState(false);   // 도감 관리자(v1.281)          // 전체화면 플랜 페이지(v1.255): {type:"buy"|"jeonse", price?, name?}
  useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
@@ -2191,7 +2192,7 @@ function App(){
     tab==="board"?<CommunityTab kind="news" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} section={boardSection} setSection={setBoardSection} onOnboard={()=>setOnbOpen(true)} feed={data.feed} openGuideId={openGuideId} onConsumeGuide={()=>setOpenGuideId(null)} onGoTalk={()=>{setTalkSection("board");setTab("chat");window.scrollTo(0,0);}}/>:
     tab==="chat"?<CommunityTab kind="talk" account={account} onNeedLogin={()=>setLoginOpen(true)} onOpenComplex={openComplex} openId={openPostId} onConsumeOpen={()=>setOpenPostId(null)} section={talkSection} setSection={setTalkSection} listingOpenId={openListingId} onConsumeListingOpen={()=>setOpenListingId(null)} onGoGuide={(gid)=>{setOpenGuideId(gid);setBoardSection("guide");setTab("board");window.scrollTo(0,0);}}/>:
     tab==="map"?<MapHub mapCfg={mapCfg} onOpenComplex={openComplex} inCompare={inCompare} onToggleCompare={toggleCompare} focusGu={mapFocusGu} onConsumeFocus={()=>setMapFocusGu(null)} preset={mapPreset} onConsumePreset={()=>setMapPreset(null)}/>:
-    tab==="more"?<MoreTab account={account} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
+    tab==="more"?<MoreTab account={account} onGuideAdmin={()=>setGuideAdminOpen(true)} myHome={myHome} onRegisterHome={openHomePick} onClearHome={()=>saveMyHome(null)} onOpenHome={()=>myHome&&openComplex(myHome)} go={setTab} onLogin={()=>setLoginOpen(true)} onBoard={()=>{setTalkSection("board");setTab("chat");}} onNotif={()=>setNotifOpen(true)} unread={unread} onFavs={()=>setFavOpen(true)}/>:
     null}
    {/* 푸터 압축(v1.233 — 홈 무스크롤 예산): 법적 요지(참고용·법적 효력 없음·출처)는 유지, 설명은 축약 */}
    {tab!=="map"&&<footer style={{marginTop:"auto",paddingTop:(tab==="home"&&homeWrapH&&homeWrapH<640)?8:14,fontSize:10.5,color:MUTED,lineHeight:1.55}}>
@@ -2220,6 +2221,7 @@ function App(){
    {NAV.map(([k,l])=>(<button key={k} className={"nav-btn "+(tab===k?"on":"")} onClick={()=>setTab(k)}>
     <Icon name={k==="board"?"news":k==="chat"?"board":k} active={tab===k} size={24}/>{l}</button>))}
   </div></div>}
+  {guideAdminOpen&&<GuideAdmin onClose={()=>setGuideAdminOpen(false)}/>}
   {planOpen&&planOpen.type==="buy"&&<BuyPlan onClose={()=>setPlanOpen(null)} initialPrice={planOpen.price} complexName={planOpen.name}
     onBudget={()=>setBudgetOpen(true)} onChecklist={()=>setChecklistOpen(true)}/>}
   {planOpen&&planOpen.type==="jeonse"&&<JeonsePlan onClose={()=>setPlanOpen(null)} initialCx={planOpen.cx}
@@ -3205,7 +3207,107 @@ function OfficialLinks({embedded}){
   <div style={{fontSize:10.5,color:MUTED,margin:"10px 2px 0",lineHeight:1.55}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
 }
-function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onBoard,onNotif,unread,onFavs}){
+/* 도감 관리자(v1.281, 사장님 직접 관리) — ADMIN_TOKEN 으로 /admin/guides CRUD.
+   토큰은 기기에만 저장(safeStore). 목록(미공개 포함) → 편집(제목·이모지·순서·공개·마크다운 본문+미리보기) → 저장/삭제. */
+function GuideAdmin({onClose}){
+ const [token,setToken]=useState(()=>safeStore.get("cj_admin_token")||"");
+ const [authed,setAuthed]=useState(false);
+ const [rows,setRows]=useState(null),[series,setSeries]=useState([]);
+ const [edit,setEdit]=useState(null);        // {id?|new, series_key,title,cover_emoji,sort_order,is_published,body_md}
+ const [busy,setBusy]=useState(false),[preview,setPreview]=useState(false);
+ const H=()=>({"Content-Type":"application/json","X-Admin-Token":token});
+ const load=()=>{ if(!token)return;
+  fetch(`${API}/admin/guides`,{headers:{"X-Admin-Token":token}}).then(r=>{
+   if(r.status===401||r.status===403)throw new Error("bad");
+   return r.json();
+  }).then(j=>{setRows(j.items||[]);setAuthed(true);try{safeStore.set("cj_admin_token",token);}catch(e){}})
+   .catch(()=>{setAuthed(false);setRows(null);toast("관리자 토큰이 올바르지 않아요.");});
+  fetch(`${API}/guides/series`).then(r=>r.json()).then(j=>setSeries(j.series||[])).catch(()=>{});
+ };
+ useEffect(()=>{ if(token&&!authed&&rows===null)load(); },[]);   // 저장된 토큰 자동 시도
+ const open=(id)=>{ if(id==null){setEdit({id:null,series_key:(series[0]&&series[0].key)||"cheongju",title:"",cover_emoji:"📄",sort_order:(rows?rows.length+1:1),is_published:false,body_md:""});return;}
+  fetch(`${API}/admin/guides/${id}`,{headers:{"X-Admin-Token":token}}).then(r=>r.json())
+   .then(g=>setEdit({id:g.id,series_key:g.series_key||"cheongju",title:g.title||"",cover_emoji:g.cover_emoji||"📄",
+     sort_order:g.sort_order||1,is_published:!!g.is_published,body_md:g.body_md||""}))
+   .catch(()=>toast("불러오기 실패"));};
+ const save=()=>{ if(!edit.title.trim()||!edit.body_md.trim()){toast("제목·본문을 입력하세요.");return;}
+  setBusy(true);
+  const body=JSON.stringify({series_key:edit.series_key,title:edit.title.trim(),body_md:edit.body_md,
+    cover_emoji:edit.cover_emoji||"📄",sort_order:+edit.sort_order||1,is_published:!!edit.is_published});
+  fetch(`${API}/admin/guides${edit.id?`/${edit.id}`:""}`,{method:edit.id?"PUT":"POST",headers:H(),body})
+   .then(r=>{if(!r.ok)throw new Error();return r.json();})
+   .then(()=>{toast("저장했습니다.");setEdit(null);load();})
+   .catch(()=>toast("저장 실패 — 토큰·입력을 확인하세요.")).finally(()=>setBusy(false));};
+ const del=()=>{ if(!edit.id)return;
+  if(!window.confirm("이 편을 삭제할까요? 되돌릴 수 없습니다."))return;
+  setBusy(true);
+  fetch(`${API}/admin/guides/${edit.id}`,{method:"DELETE",headers:{"X-Admin-Token":token}})
+   .then(r=>{if(!r.ok)throw new Error();toast("삭제했습니다.");setEdit(null);load();})
+   .catch(()=>toast("삭제 실패")).finally(()=>setBusy(false));};
+ const inp={width:"100%",border:"1.5px solid var(--line)",borderRadius:10,padding:"10px 11px",fontSize:14,background:"var(--surface-solid)",color:INK};
+ return (<PlanPage title="도감 관리" icon="doc" onClose={onClose}>
+  {!authed?(
+   <div className="card" style={{padding:"16px 15px"}}>
+    <div style={{fontWeight:800,fontSize:14.5}}>관리자 인증</div>
+    <div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.6}}>서버 .env 의 <b>ADMIN_TOKEN</b> 값을 입력하세요. 이 기기에만 저장됩니다.</div>
+    <input type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="관리자 토큰" style={{...inp,marginTop:10}}/>
+    <button onClick={load} className="btn-primary" style={{width:"100%",marginTop:10,padding:"12px"}}>확인</button>
+   </div>
+  ):edit?(
+   <div>
+    <div style={{display:"flex",gap:8,marginBottom:8}}>
+     <div style={{flex:1}}><div style={{fontSize:11.5,color:MUTED,fontWeight:700,marginBottom:3}}>제목</div>
+      <input value={edit.title} onChange={e=>setEdit({...edit,title:e.target.value})} style={inp}/></div>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:8}}>
+     <div style={{width:70}}><div style={{fontSize:11.5,color:MUTED,fontWeight:700,marginBottom:3}}>이모지</div>
+      <input value={edit.cover_emoji} onChange={e=>setEdit({...edit,cover_emoji:e.target.value})} style={inp}/></div>
+     <div style={{width:70}}><div style={{fontSize:11.5,color:MUTED,fontWeight:700,marginBottom:3}}>순서</div>
+      <input inputMode="numeric" value={edit.sort_order} onChange={e=>setEdit({...edit,sort_order:e.target.value})} style={inp}/></div>
+     <div style={{flex:1,display:"flex",alignItems:"flex-end"}}>
+      <button type="button" onClick={()=>setEdit({...edit,is_published:!edit.is_published})}
+        className={"tog "+(edit.is_published?"on":"")} style={{width:"100%",padding:"10px"}}>{edit.is_published?"공개 중":"비공개(초안)"}</button>
+     </div>
+    </div>
+    <div style={{display:"flex",alignItems:"center",gap:8,margin:"6px 0 4px"}}>
+     <span style={{fontSize:11.5,color:MUTED,fontWeight:700}}>본문(마크다운)</span>
+     <button type="button" onClick={()=>setPreview(p=>!p)} className={"tog "+(preview?"on":"")} style={{marginLeft:"auto",fontSize:12,padding:"6px 12px"}}>{preview?"편집으로":"미리보기"}</button>
+    </div>
+    {preview
+     ?<div className="card" style={{padding:"14px 15px",minHeight:220}}>{renderMd(edit.body_md||"*본문이 비어 있어요*")}</div>
+     :<textarea value={edit.body_md} onChange={e=>setEdit({...edit,body_md:e.target.value})} rows={16}
+        style={{...inp,fontFamily:"ui-monospace,Consolas,monospace",fontSize:13,lineHeight:1.6,resize:"vertical"}}
+        placeholder={"# 제목\n\n본문... (##소제목, **굵게**, - 목록, | 표 | 지원)"}/>}
+    <div style={{display:"flex",gap:8,marginTop:12}}>
+     <button onClick={()=>setEdit(null)} className="btn-ghost" style={{flex:1,padding:"12px"}}>취소</button>
+     {edit.id&&<button onClick={del} disabled={busy} className="btn-ghost" style={{flex:1,padding:"12px",color:UP}}>삭제</button>}
+     <button onClick={save} disabled={busy} className="btn-primary" style={{flex:2,padding:"12px"}}>{busy?"저장 중…":"저장"}</button>
+    </div>
+    <div style={{fontSize:10.5,color:MUTED,marginTop:8,lineHeight:1.5}}>저장 즉시 앱에 반영됩니다(비공개는 목록에서 숨김). 수치·사실은 출처와 함께, 판정·보장 표현은 쓰지 않기(왜곡 없음).</div>
+   </div>
+  ):(
+   <div>
+    <div style={{display:"flex",alignItems:"center",margin:"0 2px 8px"}}>
+     <span style={{fontSize:12.5,color:MUTED}}>총 {rows?rows.length:0}편 · 탭하면 편집</span>
+     <button onClick={()=>open(null)} className="btn-primary" style={{marginLeft:"auto",fontSize:13,padding:"9px 15px"}}>+ 새 편 쓰기</button>
+    </div>
+    <div className="card" style={{padding:"2px 14px"}}>
+     {(rows||[]).map((g,i)=>(<div key={g.id} onClick={()=>open(g.id)} role="button" tabIndex={0} onKeyDown={onEnter(()=>open(g.id))}
+       style={{display:"flex",alignItems:"center",gap:9,padding:"11px 0",borderBottom:i<rows.length-1?"1px solid var(--line)":"none",cursor:"pointer"}}>
+      <span style={{fontSize:18,flex:"none"}}>{g.cover_emoji||"📄"}</span>
+      <div style={{minWidth:0,flex:1}}>
+       <div style={{fontWeight:700,fontSize:13.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.title}</div>
+       <div className="num" style={{fontSize:11,color:MUTED,marginTop:2}}>순서 {g.sort_order} · 조회 {g.view_count||0}</div>
+      </div>
+      {!g.is_published&&<span style={{flex:"none",fontSize:10,fontWeight:800,color:"var(--warn-fg)",background:"var(--callout-bg)",borderRadius:6,padding:"2px 7px"}}>초안</span>}
+      <span style={{flex:"none",color:MUTED}}>›</span>
+     </div>))}
+    </div>
+   </div>
+  )}
+ </PlanPage>);
+}
+function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogin,onBoard,onNotif,unread,onFavs,onGuideAdmin}){
  const nm=account?(account.name||account.nickname||"회원"):"게스트";
  return (<div style={{marginTop:6}}>
   <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:13}}>
@@ -3254,6 +3356,7 @@ function MoreTab({account,myHome,onRegisterHome,onClearHome,onOpenHome,go,onLogi
    <div style={{fontWeight:800,fontSize:13.5}}>청집사는 <span style={{color:TEAL}}>계약 전에 확인하는 앱</span>이에요</div>
    <div style={{fontSize:12,color:MUTED,marginTop:3,lineHeight:1.6}}>매물을 팔지 않습니다. 중개·광고 수익이 0이라 <b>거래를 말리는 정보</b>(급매·전세위험·주의 신호)도 그대로 보여드려요.</div>
   </div>
+  <button onClick={()=>onGuideAdmin&&onGuideAdmin()} style={{display:"block",width:"100%",textAlign:"center",border:"none",background:"none",color:MUTED,fontSize:11.5,padding:"10px 0 0",cursor:"pointer"}}>도감 콘텐츠 관리(관리자)</button>
   {/* 계약 전 꼭 확인은 홈 그리드에 있어 더보기에서는 제거(v1.257 중첩 정리) */}
   <button onClick={()=>{const t=`🏠 청집사 — 계약 전에 확인하는 청주 부동산. 전세 안전 진단·실거래 시세·급매 신호를 중개·광고 없이.
 ${location.origin}`;

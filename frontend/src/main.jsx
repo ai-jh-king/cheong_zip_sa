@@ -585,6 +585,7 @@ function Icon({name,active,size=24,color}){
  if(name==="book")return <svg {...p}><path d="M5 5h10v14H7a2 2 0 0 1-2-2z"/><path d="M8 5v12"/></svg>;
  if(name==="crown")return <svg {...p}><path d="M4 8.5 7.5 15h9L20 8.5l-4.5 3L12 6 8.5 11.5z"/><path d="M6.5 18h11"/></svg>;
  if(name==="key")return <svg {...p}><circle cx="8.5" cy="9.5" r="4"/><path d="M11.4 12.6 20 21"/><path d="M17.2 18.2l2-2M14.6 15.6l2-2"/></svg>;
+ if(name==="trendup")return <svg {...p}><path d="M12 19V6"/><path d="m6 12 6-6 6 6"/></svg>;
  if(name==="flame")return <svg {...p}><path d="M12 3c2.4 3 4.8 5 4.8 8.7A4.8 4.8 0 0 1 12 16.5a4.8 4.8 0 0 1-4.8-4.8c0-2 1-3.5 2.4-5C9.8 8.5 11 6 12 3Z"/></svg>;
  return null;
 }
@@ -1122,7 +1123,7 @@ function SearchHome({board,recents,onComplex,onGu}){
    <RecentList recents={recents} onOpen={onComplex}/>
   </div>}
   <div style={{display:"flex",alignItems:"center",margin:"16px 2px 7px"}}>
-   <span style={{fontSize:13,fontWeight:800,display:"inline-flex",alignItems:"center",gap:5}}><Icon name="flame" active color={UP} size={14}/>거래 급상승</span>
+   <span style={{fontSize:13,fontWeight:800,display:"inline-flex",alignItems:"center",gap:5}}><Icon name="trendup" active color={UP} size={14}/>거래 급상승</span>
    <span style={{marginLeft:"auto",fontSize:11.5,color:MUTED,display:"inline-flex",alignItems:"center"}}>집계기준<Info text="최근 90일 거래 신고 건수가 직전 90일보다 늘어난 단지 순입니다."/></span>
   </div>
   {trending.length?<div className="card" style={{padding:"2px 4px"}}>{trending.map((it,k)=>{const md=medal(it.rank);return (
@@ -3178,15 +3179,26 @@ function OfficialLinks({embedded}){
     "https://www.cheongju.go.kr"],
   ]},
  ];
+ // v1.282(사용자 확정): 주제 4개는 기본 '접힘' — 첫 화면에서 주제가 전부 보이고 스크롤이 없다.
+ // 탭하면 그 주제만 펼침(다시 탭 = 접힘).
+ const [openG,setOpenG]=useState({});
+ const togG=(i)=>setOpenG(o=>({...o,[i]:!o[i]}));
  return (<div style={{marginTop:embedded?2:16}}>
   <div style={{margin:"0 2px 10px"}}>
    {!embedded&&<div style={{fontWeight:800,fontSize:16,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}><Icon name="doc" active color={INK} size={16}/>계약 전 꼭 확인</div>}
-   <div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.6}}>청집사가 대신 확인해줄 수 없는 것들이에요. 아래는 <b>무엇을 왜 확인하는지</b>와 공식 창구입니다.</div>
+   <div style={{fontSize:12.5,color:MUTED,marginTop:2,lineHeight:1.6}}>청집사가 대신 확인해줄 수 없는 것들이에요. 주제를 누르면 <b>무엇을 왜 확인하는지</b>와 공식 창구가 열립니다.</div>
   </div>
-  {GROUPS.map((g,gi)=>(<div key={gi} style={{marginTop:gi?14:0}}>
-   <div style={{fontWeight:800,fontSize:13.5,margin:"0 2px 2px"}}>{g.title}</div>
-   <div style={{fontSize:11.5,color:MUTED,margin:"0 2px 7px"}}>{g.desc}</div>
-   <div className="card" style={{padding:"2px 14px"}}>
+  {GROUPS.map((g,gi)=>(<div key={gi} className="card" style={{marginTop:gi?8:0,padding:0,overflow:"hidden"}}>
+   <div onClick={()=>togG(gi)} role="button" tabIndex={0} onKeyDown={onEnter(()=>togG(gi))}
+     style={{display:"flex",alignItems:"center",gap:8,padding:"13px 15px",cursor:"pointer"}}>
+    <div style={{minWidth:0,flex:1}}>
+     <div style={{fontWeight:800,fontSize:13.5}}>{g.title}</div>
+     <div style={{fontSize:11.5,color:MUTED,marginTop:2}}>{g.desc}</div>
+    </div>
+    <span style={{flex:"none",fontSize:11,color:MUTED,fontWeight:700}}>{g.items.length}곳</span>
+    <span style={{flex:"none",color:MUTED,transform:openG[gi]?"rotate(180deg)":"none",transition:"transform .2s"}}>▾</span>
+   </div>
+   {openG[gi]&&<div style={{padding:"0 15px 4px",borderTop:"1px solid var(--line)"}}>
     {g.items.map(([ic,t,meta,what,why,u],i)=>(
      <a key={i} href={u} target="_blank" rel="noopener noreferrer"
        style={{display:"block",padding:"12px 0",borderBottom:i<g.items.length-1?"1px solid var(--line)":"none",textDecoration:"none",color:"inherit"}}>
@@ -3202,7 +3214,7 @@ function OfficialLinks({embedded}){
       <div style={{fontSize:12,color:INK,marginTop:6,lineHeight:1.55}}>{what}</div>
       <div style={{fontSize:11.5,color:MUTED,marginTop:3,lineHeight:1.55}}>{why}</div>
      </a>))}
-   </div>
+   </div>}
   </div>))}
   <div style={{fontSize:10.5,color:MUTED,margin:"10px 2px 0",lineHeight:1.55}}>외부 공식 사이트로 이동합니다. 청집사는 위 기관과 무관하며 중개·광고 수익이 없습니다.</div>
  </div>);
@@ -3738,7 +3750,7 @@ function RankSlides({board,onOpen}){
    .map((o,i)=>({...o,rank:i+1,lawd_cd:o.lawd_cd||o.code}));
  if(!trending.length&&!landmark.length)return null;
  return (<div>
-  <RankDeck icon="flame" color={UP} label={b.trending&&b.trending.basis==="surge"?"거래 급상승":"거래 활발"}
+  <RankDeck icon="trendup" color={UP} label={b.trending&&b.trending.basis==="surge"?"거래 급상승":"거래 활발"}
     info="최근 90일 거래 신고가 직전 90일보다 늘어난 단지 순입니다. 조회수가 아니라 실제 거래 건수 기준이며, 신고 지연·정정이 반영될 수 있어요."
     items={trending} metric={it=>it.delta>0?("▲"+it.delta+"건"):(it.recent_count+"건")} metricColor={UP} onOpen={onOpen}/>
   <RankDeck icon="crown" color="#9A6B00" label="대장 아파트"

@@ -159,7 +159,15 @@ def search_by_commute(db: Session, dest_id: int, mode: str, max_minutes: int,
         for r in out:
             vals = price_map.get((r["name"], r["lawd_cd"]))
             r["price"] = round(_median(vals)) if vals else None
+        # 시세 표본이 없는 곳은 제외(v1.278, 사용자 확정) — '시간 + 가격' 의사결정 리스트에서
+        # 가격 없는 행은 판단 재료가 없어 소음. 몇 곳을 걸렀는지는 응답에 명시(왜곡 없음).
+        before = len(out)
+        out = [r for r in out if r.get("price")]
+        excluded = before - len(out)
+    else:
+        excluded = 0
     return {
+        "excluded_no_price": excluded,
         "found": True,
         "destination": {"id": dest.id, "name": dest.name, "category": dest.category,
                         "lat": dest.lat, "lng": dest.lng},

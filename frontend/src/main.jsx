@@ -739,6 +739,14 @@ function OptChips({value,set,items}){
   {items.map(it=><button type="button" key={it} className={"tog "+(cur.includes(it)?"on":"")} onClick={()=>toggle(it)}>{it}</button>)}
  </div>);
 }
+/* 건축물대장상 이름이 없는 건물(v1.278): 실거래 원본이 '주건축물제1동(854-0)'처럼 오는 경우 —
+   위치·유형으로 바꿔 보여준다(예: "오송읍 오피스텔 · 이름 미등록"). 데이터는 그대로(표시만 교체). */
+function isNamelessBldg(name){ return /^주건축물제?\d*동?(\(.*\))?$/.test(String(name||"").trim()); }
+function displayBldgName(name,{gu,dong,property_type}={}){
+ if(!isNamelessBldg(name))return name;
+ const loc=(dong||String(gu||"").replace("청주시 ","")||"청주");
+ return `${loc} ${TYPE_LABEL[property_type]||"건물"}`;
+}
 function ListingForm({onCancel,onCreated,account,initial}){
  const I=initial||{}, isEdit=!!(initial&&initial.id);
  const sv=v=>v==null?"":String(v);   // 숫자/널 → 입력용 문자열
@@ -748,7 +756,9 @@ function ListingForm({onCancel,onCreated,account,initial}){
  const [gu,setGu]=useState(I.lawd_cd||"43113"),[dong,setDong]=useState(I.dong_name||""),[cpx,setCpx]=useState(I.complex_name||""),[addr,setAddr]=useState(I.address_detail||"");
  const [area,setArea]=useState(sv(I.exclusive_area)),[sup,setSup]=useState(sv(I.supply_area)),[floor,setFloor]=useState(sv(I.floor)),[tfloor,setTfloor]=useState(sv(I.total_floor));
  const [rooms,setRooms]=useState(sv(I.rooms)),[baths,setBaths]=useState(sv(I.baths)),[dir,setDir]=useState(I.direction||"");
- const [price,setPrice]=useState(sv(I.price)),[dep,setDep]=useState(sv(I.deposit)),[rent,setRent]=useState(sv(I.monthly_rent));
+ // 목돈(매매가·보증금)은 앱 전체 규칙대로 '억' 단위 입력(v1.278) — 저장은 만원(백엔드 불변), 수정 시 역변환
+ const toEok=v=>v==null?"":String(Math.round(v/1000)/10);
+ const [price,setPrice]=useState(toEok(I.price)),[dep,setDep]=useState(toEok(I.deposit)),[rent,setRent]=useState(sv(I.monthly_rent));
  const [mfee,setMfee]=useState(sv(I.maintenance_fee)),[mitems,setMitems]=useState(I.maintenance_items||""),[movein,setMovein]=useState(I.move_in_date||""),[approval,setApproval]=useState(I.approval_date||""),[opts,setOpts]=useState(I.options||"");
  const [desc,setDesc]=useState(I.description||""),[photos,setPhotos]=useState(I.photos||[]),[uploading,setUploading]=useState(false);
  const [office,setOffice]=useState(I.agent_office||""),[aname,setAname]=useState(I.agent_name||""),[areg,setAreg]=useState(I.agent_reg_no||""),[phone,setPhone]=useState(I.agent_phone||""),[aaddr,setAaddr]=useState(I.agent_address||"");
@@ -784,7 +794,9 @@ function ListingForm({onCancel,onCreated,account,initial}){
    dong_name:dong||null,complex_name:cpx||null,address_detail:addr||null,
    exclusive_area:area?+area:null,supply_area:sup?+sup:null,floor:floor?+floor:null,total_floor:tfloor?+tfloor:null,
    rooms:rooms?+rooms:null,baths:baths?+baths:null,direction:dir||null,
-   price:deal!=="wolse"?(price?+price:null):null,deposit:deal==="wolse"?(dep?+dep:null):null,monthly_rent:deal==="wolse"?(rent?+rent:null):null,
+   price:deal!=="wolse"?(price?Math.round(parseFloat(price)*10000):null):null,
+   deposit:deal==="wolse"?(dep?Math.round(parseFloat(dep)*10000):null):null,
+   monthly_rent:deal==="wolse"?(rent?+rent:null):null,
    maintenance_fee:mfee?+mfee:null,maintenance_items:mitems||null,move_in_date:movein||null,approval_date:approval||null,options:opts||null,
    description:desc||null,photos,
    agent_office:office||null,agent_name:aname||null,agent_reg_no:areg||null,agent_phone:phone||null,agent_address:aaddr||null};
@@ -813,10 +825,10 @@ function ListingForm({onCancel,onCreated,account,initial}){
 
    <FormHead>가격</FormHead>
    {deal==="wolse"?<div className="grid2">
-     <LField label="보증금(만원)" req><input style={INP} type="number" value={dep} onChange={e=>setDep(e.target.value)}/></LField>
+     <LField label="보증금(억)" req><input style={INP} type="number" step="0.01" value={dep} onChange={e=>setDep(e.target.value)} placeholder="예: 0.5"/></LField>
      <LField label="월세(만원)" req><input style={INP} type="number" value={rent} onChange={e=>setRent(e.target.value)}/></LField>
     </div>
-    :<LField label={deal==="trade"?"매매가(만원)":"전세 보증금(만원)"} req><input style={INP} type="number" value={price} onChange={e=>setPrice(e.target.value)}/></LField>}
+    :<LField label={deal==="trade"?"매매가(억)":"전세 보증금(억)"} req><input style={INP} type="number" step="0.01" value={price} placeholder="예: 3.2" onChange={e=>setPrice(e.target.value)}/></LField>}
    <LField label="관리비(만원/월)"><input style={INP} type="number" value={mfee} onChange={e=>setMfee(e.target.value)}/></LField>
    <LField label="관리비 포함내역(선택)"><OptChips value={mitems} set={setMitems} items={LP_MAINT}/></LField>
 
@@ -5128,7 +5140,7 @@ function CommuteSearch({onClose,onOpen,mapCfg}){
          <div style={{fontSize:10,color:MUTED}}>분</div>
         </div>
         <div style={{minWidth:0,flex:1}}>
-         <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name} {r.is_sample&&<ExBadge/>}</div>
+         <div style={{fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayBldgName(r.name,r)}{isNamelessBldg(r.name)&&<span style={{fontWeight:500,fontSize:10.5,color:MUTED,marginLeft:5}}>· 이름 미등록</span>} {r.is_sample&&<ExBadge/>}</div>
          <div style={{fontSize:12,color:MUTED,marginTop:1}}>{[r.gu,TYPE_LABEL[r.property_type],r.method==="haversine"?"추정":"실측"].filter(Boolean).join(" · ")}</div>
         </div>
         <div style={{textAlign:"right",flex:"none"}}>

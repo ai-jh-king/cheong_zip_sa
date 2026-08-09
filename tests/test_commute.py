@@ -63,3 +63,29 @@ def test_search_attaches_price_by_name_not_fk(db):
     r = commute.search_by_commute(db, dest_id=901, mode="car", max_minutes=60)
     row = next(x for x in r["results"] if x["name"] == "통근테스트단지")
     assert row["price"] == 32000        # 중앙값 — FK 미설정이어도 붙어야 함
+
+
+def test_search_excludes_no_price(db):
+    """시세 표본 없는 단지는 통근 결과에서 제외(v1.278) — 제외 수는 excluded_no_price 로 명시."""
+    from app.services import commute
+    from app.models import CommuteDestination, Complex
+    dest = CommuteDestination(key="t_job", name="테스트직장", category="job",
+                              lat=36.64, lng=127.44, is_active=True)
+    db.add(dest)
+    # 가격 있는 단지(거래 시드)와 없는 단지
+    db.add(Complex(name="가격있는단지", lawd_cd="43113", property_type="apartment",
+                   lat=36.641, lng=127.441))
+    db.add(Complex(name="가격없는단지", lawd_cd="43113", property_type="apartment",
+                   lat=36.642, lng=127.442))
+    from app.models import Transaction
+    from datetime import date
+    db.add(Transaction(lawd_cd="43113", property_type="apartment", deal_type="trade",
+                       complex_name="가격있는단지", exclusive_area=84.9,
+                       contract_date=date(2026, 6, 1), deal_amount=30000,
+                       source="TEST", dedup_key="cmt-p1"))
+    db.commit()
+    j = commute.search_by_commute(db, dest.id, "car", 60)
+    names = [r["name"] for r in j["results"]]
+    assert "가격있는단지" in names
+    assert "가격없는단지" not in names
+    assert j["excluded_no_price"] >= 1

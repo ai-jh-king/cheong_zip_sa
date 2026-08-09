@@ -285,12 +285,17 @@ def _startup():
             from app.models import Landmark
             from sqlalchemy import select as _sel, func as _fn
             from app.db.session import SessionLocal as _SL
+            from app.services import appmeta
+            _SEED_VER = "landmarks_seed_v2"   # 좌표·내용 수정 시 버전을 올리면 부팅에서 upsert 재실행(v1.279)
             with _SL() as _db:
                 n = _db.scalar(_sel(_fn.count()).select_from(Landmark)) or 0
-            if n == 0:
+                seeded_ver = appmeta.get(_db, "landmarks_seed_ver")
+            if n == 0 or seeded_ver != _SEED_VER:
                 from scripts.seed_landmarks import main as _seed_lm
                 _seed_lm()
-                log.info("개발 호재 자동 시드 완료(0건 → 시드)")
+                with _SL() as _db:
+                    appmeta.set(_db, "landmarks_seed_ver", _SEED_VER)
+                log.info("개발 호재 자동 시드/갱신 완료(%s)", _SEED_VER)
         except Exception as e:  # noqa: BLE001
             log.warning("개발 호재 자동 시드 스킵(무시): %s", e)
     # 에러 모니터링(Sentry) — DSN 설정 시에만. 패키지 없으면 조용히 건너뜀.

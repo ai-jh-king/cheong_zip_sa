@@ -1938,7 +1938,9 @@ function App(){
  const [checklistOpen,setChecklistOpen]=useState(false); // 계약 전 꼭 확인(공식 서비스) 시트 — 홈 그리드(v1.249)
  // 실연동이 확인된 소스만 노출(v1.249) — 예시 화면 차단. null=확인 전(깜빡임 방지로 숨기지 않음)
  // ⚠️ 선언은 반드시 사용(useEffect·NAV)보다 위 — 아래에 두면 TDZ ReferenceError 로 앱 전체 크래시(실사고)
- const [live,setLive]=useState(null);
+ // 청약 탭 깜빡임(v1.279): 초기 live=null 이면 탭이 보였다가 /config 수신 후 숨겨져 '나타났다 사라짐'.
+ // 마지막으로 안 값을 캐시해 첫 페인트부터 확정 상태로 그린다(첫 방문은 숨김, 데모 폴백은 표시).
+ const [live,setLive]=useState(()=>safeStore.get("cj_live")||null);
  const [mapFocusGu,setMapFocusGu]=useState(null);  // 홈 구별 칩 → 지도 해당 구 초점(v1.240)
  const [mapPreset,setMapPreset]=useState(null);    // 홈에서 지도로 들어올 때의 의도(jeonse_risk 등) — v1.252
  const [bargainOpen,setBargainOpen]=useState(false); // 급매 신호 목록 시트(홈 그리드 v1.252)
@@ -2100,7 +2102,7 @@ function App(){
  const [priceView,setPriceView]=useState("list");   // 시세 탭 내부 뷰: list/map/rank
  const goGu=useCallback((guName)=>{ setPriceGu(guName||"전체"); setPriceView("list"); setSel(null); setTab("map"); window.scrollTo(0,0); },[]);
  useEffect(()=>{fetch(`${API}/config`).then(r=>r.json())
-  .then(c=>{setMapCfg({key:c.naver_map_client_id||"",enabled:!!c.map_enabled});if(c.aggregate_months)AGG_MONTHS=c.aggregate_months;if(c.feature_flags)FEATURES={...FEATURES,...c.feature_flags};if(c.live)setLive(c.live);}).catch(()=>{});},[]);
+  .then(c=>{setMapCfg({key:c.naver_map_client_id||"",enabled:!!c.map_enabled});if(c.aggregate_months)AGG_MONTHS=c.aggregate_months;if(c.feature_flags)FEATURES={...FEATURES,...c.feature_flags};if(c.live)setLive(c.live);try{safeStore.set("cj_live",c.live);}catch(e){};}).catch(()=>{});},[]);
 
  const load=useCallback(async()=>{setStatus("loading");
   try{
@@ -2121,7 +2123,7 @@ function App(){
 
  // v1.242: 소통(게시판·매물) 분리, 집사 소식=콘텐츠(도감·뉴스)
  // v1.249: 청약 실연동(applyhome) 전에는 탭 자체를 숨김 — 예시 공고를 보여주지 않기 위해(왜곡 없음)
- const NAV=[["home","홈"],["map","지도"],...((live&&live.subscription!==false)?[["subscription","청약"]]:[]),["board","집사 소식"],["chat","소통"],["more","더보기"]];
+ const NAV=[["home","홈"],["map","지도"],...((live?live.subscription!==false:status==="demo")?[["subscription","청약"]]:[]),["board","집사 소식"],["chat","소통"],["more","더보기"]];
  return (<UnitCtx.Provider value={unit}><div>
   <Splash ready={status!=="loading"}/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
@@ -4190,12 +4192,18 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
       // 초점(v1.244): 구 경계 전체가 아니라 '매물(단지)이 있는 범위'로 — 경계 fit 은 농촌 지역까지 포함돼
       // 화면 대부분이 빈 들판이 되는 실사고. 단지 좌표 fit + 동 요약 단계(z12~13) 클램프.
       try{
-       const b=new n.maps.LatLngBounds();
-       if(arr.length)arr.forEach(m=>b.extend(new n.maps.LatLng(m.lat,m.lng)));
-       else paths.flat().forEach(p=>b.extend(p));   // 단지 없는 구는 경계 폴백
-       map.fitBounds(b);
-       const z2=map.getZoom();
-       if(z2<13)map.setZoom(13); else if(z2>14)map.setZoom(14);   // 착지=동 요약 단계(v1.267)
+       if(arr.length){
+        // fitBounds 는 외곽 1~2건(산지·면 지역)에 끌려 중심이 들판이 됨(실사고: 상당구 → 산).
+        // 매물 '중앙값 좌표' = 밀집 지역(도심)으로 착지(v1.279).
+        const md=xs=>{const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)];};
+        map.setCenter(new n.maps.LatLng(md(arr.map(m=>m.lat)), md(arr.map(m=>m.lng))));
+        map.setZoom(13);
+       }else{
+        const b=new n.maps.LatLngBounds();
+        paths.flat().forEach(p=>b.extend(p));   // 단지 없는 구는 경계 폴백
+        map.fitBounds(b);
+        const z2=map.getZoom(); if(z2<13)map.setZoom(13); else if(z2>14)map.setZoom(14);
+       }
       }catch(e){}
       onRegionOpen&&onRegionOpen(arr,name,"gu",code);   // 선택 구만 표시(pick) + 목록 배지
      };
@@ -4312,10 +4320,16 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    (Array.isArray(list)?list:[]).forEach(L=>{ if(L.lat==null||L.lng==null)return;
     if(pickCode&&!_inGuPoly(_guGeo.data,pickCode,L.lat,L.lng))return;   // 구 선택 시 그 구 호재만(양 조절)
     const th=CAT[L.category]||CAT.public;
-    const sc=th.c;
-    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${sc};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${th.p}</svg>${L.name}</div>`;
+    // 깃발 핀(v1.279, 특색): 깃대 아래 끝 = 위치. 깃발엔 카테고리 아이콘+이름, 제비꼬리 형태.
+    const FLAG="polygon(0 0, 100% 0, 86% 50%, 100% 100%, 0 100%)";
+    const html=`<div style="transform:translate(-4px,-100%);display:flex;align-items:flex-start;filter:drop-shadow(0 2px 6px rgba(16,24,32,.38))">`
+     +`<div style="width:3px;height:44px;background:#fff;border-radius:2px;flex:none"></div>`
+     +`<div style="clip-path:${FLAG};-webkit-clip-path:${FLAG};background:#fff;padding:2px 2px 2px 0;margin-top:2px">`
+      +`<div style="clip-path:${FLAG};-webkit-clip-path:${FLAG};background:${th.c};color:#fff;display:flex;align-items:center;gap:4px;padding:4px 14px 4px 7px;font-weight:800;font-size:11px;white-space:nowrap">`
+       +`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${th.p}</svg>${L.name}`
+      +`</div></div></div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(L.lat,L.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:100});
-    n.maps.Event.addListener(mk,"click",()=>{try{new n.maps.InfoWindow({content:`<div style="padding:9px 12px;max-width:240px;font-size:12px;line-height:1.55"><b>${L.name}</b><br/>${L.summary||""}${L.source_name?`<br/><span style='color:#888'>출처: ${L.source_name}</span>`:""}</div>`,borderWidth:0}).open(map,mk);}catch(e){}});
+    n.maps.Event.addListener(mk,"click",()=>{try{new n.maps.InfoWindow({content:`<div style="padding:9px 12px;max-width:240px;font-size:12px;line-height:1.55"><b>${L.name}</b><span style="color:#888"> · ${L.status_label||""}</span><br/>${L.summary||""}<div style="margin-top:4px;color:#888;font-size:11px">위치는 부지 단위 대략 표시입니다${L.source_name?` · 출처: ${L.source_name}`:""}</div></div>`,borderWidth:0,disableAnchor:false}).open(map,mk);}catch(e){}});
     lmObjs.current.push(mk);
    });
   }).catch(()=>{});
@@ -4349,9 +4363,16 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
     if(pickCode&&J.lawd_cd!==pickCode)return;   // 구 선택 시 그 구만(v1.258)
     const col=J.level==="high"?"#C8322A":"#C77A1A";
-    const html=`<div style="transform:translate(-50%,-100%);display:flex;align-items:center;gap:3px;background:${col};color:#fff;border:2px solid #fff;border-radius:13px;padding:3px 9px;box-shadow:0 2px 7px rgba(0,0,0,.32);white-space:nowrap;font-weight:800;font-size:11px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 5l8 6"/><path d="M6 10v9h12v-9"/></svg>${J.ratio}%</div>`;
-    const mk=new n.maps.Marker({position:new n.maps.LatLng(J.lat,J.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:109});
-    n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment",gu:J.gu}); });
+    // 역삼각 경고 핀(v1.279, 특색): ▽ 꼭짓점 = 단지 위치. 위험 언어(경고 표지) + 전세가율 %.
+    const TRI="polygon(0 0, 100% 0, 50% 100%)";
+    const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 2px 6px rgba(16,24,32,.4))">`
+     +`<div style="clip-path:${TRI};-webkit-clip-path:${TRI};background:#fff;padding:2.5px 2.5px 4px">`
+      +`<div style="clip-path:${TRI};-webkit-clip-path:${TRI};background:${col};color:#fff;text-align:center;padding:5px 10px 16px;line-height:1">`
+       +`<span style="display:block;font-weight:800;font-size:8.5px">전세가율</span>`
+       +`<span style="display:block;font-weight:800;font-size:12px;margin-top:1px">${J.ratio}%</span>`
+      +`</div></div></div>`;
+    const mk=new n.maps.Marker({position:new n.maps.LatLng(J.lat,J.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:90});
+    n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment"}); });
     jrObjs.current.push(mk);
    });
   }).catch(()=>{});

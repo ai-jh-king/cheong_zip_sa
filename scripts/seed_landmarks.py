@@ -35,7 +35,7 @@ LANDMARKS: list[dict] = [
      "source_name": "SK하이닉스 뉴스룸", "source_url": "https://news.skhynix.co.kr/skhynix-chungju-pt7/",
      "sort_order": 1},
     {"name": "다목적 방사광가속기 (오창)", "category": "industry",
-     "status": "ongoing", "lat": 36.7100, "lng": 127.4300, "expected_year": 2028,
+     "status": "ongoing", "lat": 36.7100, "lng": 127.4400, "expected_year": 2028,
      "summary": "오창에 구축 중인 다목적 방사광가속기. 포항에 이은 국내 두 번째로, "
                 "2028년경 본격 가동 목표. 약 6조원 규모의 경제효과가 기대됨.",
      "source_name": "언론보도(inews24)·충북테크노파크", "source_url": "https://m.inews24.com/v/1980077",
@@ -52,7 +52,7 @@ LANDMARKS: list[dict] = [
      "source_name": "청주시·나무위키", "source_url": "https://namu.wiki/w/%EC%B2%AD%EC%A3%BC%EC%8B%9C",
      "sort_order": 4},
     {"name": "청주 OSCO (오송역세권 전시장)", "category": "commercial",
-     "status": "confirmed", "lat": 36.6200, "lng": 127.3280, "expected_year": 2025,
+     "status": "confirmed", "lat": 36.6207, "lng": 127.3271, "expected_year": 2025,
      "summary": "오송역 역세권에 조성된 전시·MICE 시설(청주 OSCO), 2025년 개관. "
                 "전시면적 약 1만㎡, KTX·SRT 오송역과 인접.",
      "source_name": "나무위키(청주시)", "source_url": "https://namu.wiki/w/%EC%B2%AD%EC%A3%BC%EC%8B%9C",

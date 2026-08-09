@@ -4363,14 +4363,15 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
    ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
     if(pickCode&&J.lawd_cd!==pickCode)return;   // 구 선택 시 그 구만(v1.258)
     const col=J.level==="high"?"#C8322A":"#C77A1A";
-    // 역삼각 경고 핀(v1.279, 특색): ▽ 꼭짓점 = 단지 위치. 위험 언어(경고 표지) + 전세가율 %.
-    const TRI="polygon(0 0, 100% 0, 50% 100%)";
-    const html=`<div style="transform:translate(-50%,-100%);filter:drop-shadow(0 2px 6px rgba(16,24,32,.4))">`
-     +`<div style="clip-path:${TRI};-webkit-clip-path:${TRI};background:#fff;padding:2.5px 2.5px 4px">`
-      +`<div style="clip-path:${TRI};-webkit-clip-path:${TRI};background:${col};color:#fff;text-align:center;padding:5px 10px 16px;line-height:1">`
-       +`<span style="display:block;font-weight:800;font-size:8.5px">전세가율</span>`
-       +`<span style="display:block;font-weight:800;font-size:12px;margin-top:1px">${J.ratio}%</span>`
-      +`</div></div></div>`;
+    // 전세위험 핀 v2(v1.280): 역삼각은 글자가 꼭짓점에 몰려 조악(사용자 지적) → 원형 경고 배지.
+    // 흰 링 + 레벨색 원 + 집⚠아이콘 + 전세가율%, 아래 꼬리가 단지를 가리킴. 원형은 어떤 %값에도 안 깨진다.
+    const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 3px 7px rgba(16,24,32,.42))">`
+     +`<div style="width:46px;height:46px;border-radius:50%;background:${col};border:2.5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#fff;line-height:1">`
+      +`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/><path d="M12 12.5v3M12 17.6v.01"/></svg>`
+      +`<span style="font-weight:800;font-size:11.5px">${J.ratio}%</span>`
+     +`</div>`
+     +`<div style="position:absolute;left:50%;bottom:-5px;width:9px;height:9px;background:${col};border-right:2px solid #fff;border-bottom:2px solid #fff;transform:translateX(-50%) rotate(45deg)"></div>`
+     +`</div>`;
     const mk=new n.maps.Marker({position:new n.maps.LatLng(J.lat,J.lng),map,icon:{content:html,anchor:new n.maps.Point(0,0)},zIndex:90});
     n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment"}); });
     jrObjs.current.push(mk);

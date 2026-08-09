@@ -1948,7 +1948,6 @@ function App(){
  const [recentOpen,setRecentOpen]=useState(false);   // 최근 본 단지 시트(홈 그리드 v1.252)
  const [planOpen,setPlanOpen]=useState(null);
  const [guideAdminOpen,setGuideAdminOpen]=useState(false);   // 도감 관리자(v1.281)          // 전체화면 플랜 페이지(v1.255): {type:"buy"|"jeonse", price?, name?}
- useEffect(()=>{ if(live&&live.subscription===false&&tab==="subscription")setTab("home"); },[live,tab]);   // 숨긴 탭에 머물지 않도록
  // 홈 무스크롤(v1.246): 고정 상수(헤더 68px 가정)는 기기 글자크기·헤더 높이에 따라 어긋나 스크롤 재발(실사고).
  // wrap 상단을 실측해 높이를 뷰포트에 정확히 맞추고, 넘치면 페이지가 아니라 wrap 내부만 스크롤.
  const navRef=useRef(null);
@@ -2125,7 +2124,8 @@ function App(){
 
  // v1.242: 소통(게시판·매물) 분리, 집사 소식=콘텐츠(도감·뉴스)
  // v1.249: 청약 실연동(applyhome) 전에는 탭 자체를 숨김 — 예시 공고를 보여주지 않기 위해(왜곡 없음)
- const NAV=[["home","홈"],["map","지도"],...((live?live.subscription!==false:status==="demo")?[["subscription","청약"]]:[]),["board","집사 소식"],["chat","소통"],["more","더보기"]];
+ // 청약 탭 상시 표시(v1.283, 사용자 확정: 중요 정보) — 미연동 시 탭 안에서 정직 안내(예시 명시+청약홈 링크)
+ const NAV=[["home","홈"],["map","지도"],["subscription","청약"],["board","집사 소식"],["chat","소통"],["more","더보기"]];
  return (<UnitCtx.Provider value={unit}><div>
   <Splash ready={status!=="loading"}/>
   {swUpdate&&<div role="status" style={{position:"fixed",left:0,right:0,bottom:0,zIndex:300}}>
@@ -4115,7 +4115,15 @@ function SubscriptionTab(){
    <button onClick={()=>setMtab("cheongyak")} style={seg(mtab==="cheongyak")}>📋 청약 일정{openList.length?` ${openList.length}`:""}</button>
   </div>
   <GuContextBar/>
-  {data.notice&&<div style={{background:"var(--callout-bg)",color:"var(--callout-fg)",borderRadius:10,padding:"9px 13px",fontSize:12.5,fontWeight:600,lineHeight:1.6,marginBottom:8}}>ⓘ {data.notice} <b>예시</b> 배지 항목은 실제 정보가 아닙니다.</div>}
+  {data.notice&&<div className="card" style={{padding:"13px 15px",marginBottom:10}}>
+   <div style={{display:"flex",alignItems:"center",gap:7}}>
+    <Icon name="subscription" active color={TEAL} size={17}/>
+    <span style={{fontWeight:800,fontSize:13.5}}>실제 공고 연동 준비 중</span>
+   </div>
+   <div style={{fontSize:12,color:MUTED,marginTop:4,lineHeight:1.6}}>아래 목록은 화면 구성을 보여주는 <b>예시</b>예요. 실제 청주 분양 공고·일정·경쟁률은 청약홈(한국부동산원)에서 확인하세요. 연동되면 이 자리에 실데이터가 자동으로 표시됩니다.</div>
+   <a href="https://www.applyhome.co.kr" target="_blank" rel="noopener noreferrer" className="btn-primary"
+     style={{display:"block",textAlign:"center",marginTop:10,padding:"11px",textDecoration:"none"}}>청약홈에서 실제 공고 보기 ↗</a>
+  </div>}
   {mtab==="cheongyak"?<React.Fragment>
    <div style={{fontSize:12,color:MUTED,margin:"0 2px 8px",lineHeight:1.5}}>지금 접수 중이거나 곧 시작하는 청약이에요. <b>임박한 순</b>으로 보여드립니다.</div>
    {openList.length?<MoreList items={openList} initial={10} step={10} render={(s,i)=><SubCard key={i} s={s} onOpen={setSel}/>}/>
@@ -4201,7 +4209,7 @@ function _inGuPoly(geo,code,lat,lng){
   if(inside)return true;}
  return false;
 }
-function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn, onQuickPin, onMapTap}){
+function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, onViewport, poiCats, showLm, showBg, showJr, onMapReady, full, onRegionOpen, pickCode, signalOn, onQuickPin, onMapTap, onJrShown}){
  const {ready,err}=useNaver(mapCfg.key,mapCfg.enabled);
  const [geoTick,setGeoTick]=useState(0);   // 경계 로드 완료 시 재렌더 트리거
  useEffect(()=>{
@@ -4217,6 +4225,7 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
  const lmObjs=React.useRef([]);
  const bgObjs=React.useRef([]);   // 급매(낮은가격 거래) 핀
  const jrObjs=React.useRef([]);   // 전세가율 위험(역전세 유의) 핀
+ const jrData=React.useRef(null);  // 전세위험 응답 캐시(줌 이동 시 재fetch 없이 다시 그림, v1.283)
  const fitDone=React.useRef("");
  const [tick,setTick]=useState(0);
  const POI_META={education:{c:"#7A5AF8",e:"🎓"},sports:{c:"#2563D8",e:"🏃"},living:{c:"#0E7C71",e:"🏪"}};
@@ -4472,14 +4481,19 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
   if(!ready||!mapObj.current||!window.naver)return;
   const n=window.naver, map=mapObj.current;
   const clearJr=()=>{jrObjs.current.forEach(mk=>{try{mk.setMap(null);}catch(e){}});jrObjs.current=[];};
-  if(!showJr){clearJr();return;}
+  if(!showJr){clearJr();jrData.current=null;return;}
   let alive=true;
-  fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{ if(!alive)return; clearJr();
-   ((j&&j.items)||[]).forEach(J=>{ if(J.lat==null||J.lng==null)return;
-    if(pickCode&&J.lawd_cd!==pickCode)return;   // 구 선택 시 그 구만(v1.258)
+  const draw=(items)=>{ if(!alive)return; clearJr();
+   const map2=mapObj.current; if(!map2)return;
+   // 과밀 처리(v1.283, 사용자 확정): 도시 전체 뷰(z<14)=위험 상위 30곳만(개관),
+   // 확대(z>=14)=현재 화면 범위 안 전부. 구 선택 시엔 그 구 전체(기존 규칙 유지).
+   let z=13,bd=null; try{z=map2.getZoom();bd=map2.getBounds();}catch(e){}
+   let list=items.filter(J=>J.lat!=null&&J.lng!=null);
+   if(pickCode)list=list.filter(J=>J.lawd_cd===pickCode);
+   else if(z<14)list=list.slice(0,30);                       // API가 ratio 내림차순 정렬 → 앞 30 = 최상위 위험
+   else if(bd)list=list.filter(J=>{try{return bd.hasLatLng(new n.maps.LatLng(J.lat,J.lng));}catch(e){return true;}});
+   list.forEach(J=>{
     const col=J.level==="high"?"#C8322A":"#C77A1A";
-    // 전세위험 핀 v2(v1.280): 역삼각은 글자가 꼭짓점에 몰려 조악(사용자 지적) → 원형 경고 배지.
-    // 흰 링 + 레벨색 원 + 집⚠아이콘 + 전세가율%, 아래 꼬리가 단지를 가리킴. 원형은 어떤 %값에도 안 깨진다.
     const html=`<div style="transform:translate(-50%,-100%);position:relative;filter:drop-shadow(0 3px 7px rgba(16,24,32,.42))">`
      +`<div style="width:46px;height:46px;border-radius:50%;background:${col};border:2.5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#fff;line-height:1">`
       +`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4.5 20 11"/><path d="M6.3 10v9h11.4v-9"/><path d="M12 12.5v3M12 17.6v.01"/></svg>`
@@ -4491,9 +4505,14 @@ function PriceMarkerMap({markers, bands, deal, fitKey, mapCfg, onOpenComplex, on
     n.maps.Event.addListener(mk,"click",()=>{ onOpenComplex&&onOpenComplex({complex_name:J.name,lawd_cd:J.lawd_cd,property_type:"apartment"}); });
     jrObjs.current.push(mk);
    });
+   onJrShown&&onJrShown({shown:list.length,total:items.length,capped:!pickCode&&z<14&&items.length>30});
+  };
+  if(jrData.current){draw(jrData.current);}
+  else fetch(`${API}/pricecheck/jeonse-risk`).then(r=>r.json()).then(j=>{
+   jrData.current=((j&&j.items)||[]); draw(jrData.current);
   }).catch(()=>{});
   return ()=>{alive=false;};
- },[ready,showJr,pickCode]);
+ },[ready,showJr,pickCode,tick]);
  useEffect(()=>{ if(!ready||!mapObj.current||!window.naver)return;
   const l=window.naver.maps.Event.addListener(mapObj.current,"click",()=>{onMapTap&&onMapTap();});
   return ()=>{try{window.naver.maps.Event.removeListener(l);}catch(e){}};
@@ -4511,7 +4530,8 @@ function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompa
   <div style={{display:"flex",gap:6,marginBottom:8}}>
    {[["price","가격순"],["name","이름순"]].map(([k,l])=><button key={k} onClick={()=>setSort(k)} style={{border:"none",cursor:"pointer",fontWeight:700,fontSize:12,padding:"6px 11px",borderRadius:8,background:sort===k?TEAL:"var(--surface-2)",color:sort===k?"#fff":MUTED}}>{l}</button>)}
   </div>
-  {arr.length?<MoreList items={arr} initial={12} step={12} render={(m,i)=>{
+  {/* v1.283: '더보기' 12개 방식 → 전체 스크롤(사용자: 100곳인데 10개만 보임). 상한은 뷰포트 300 이 이미 관리 */}
+  {arr.length?arr.map((m,i)=>{
    const cur=inCompare&&inCompare({complex_name:m.complex_name,lawd_cd:m.lawd_cd,property_type:m.property_type});
    return (<div key={i} className="txrow" style={{display:"flex",alignItems:"center",gap:10}}>
      <div style={{flex:1,minWidth:0,cursor:"pointer"}} role="button" tabIndex={0} onKeyDown={onEnter(()=>onOpenComplex&&onOpenComplex(m))} onClick={()=>onOpenComplex&&onOpenComplex(m)}>
@@ -4521,7 +4541,7 @@ function AreaListSheet({items,deal,onClose,onOpenComplex,inCompare,onToggleCompa
      <div style={{fontWeight:800,fontSize:13,color:TEAL,flex:"none"}}>{fmt(m.value)}</div>
      <button onClick={()=>onToggleCompare&&onToggleCompare(m)} aria-label="비교 담기" style={{flex:"none",border:"1px solid "+(cur?TEAL:"var(--line)"),background:cur?"rgba(15,118,110,.1)":"var(--surface-solid)",color:cur?TEAL:MUTED,fontWeight:700,fontSize:12.5,padding:"6px 10px",borderRadius:8,cursor:"pointer"}}>{cur?"✓":"⊕"}</button>
     </div>);
-  }}/>:<div style={{padding:"30px 0",textAlign:"center",color:MUTED,fontSize:13}}>이 영역에 표시할 단지가 없습니다. 지도를 이동하거나 확대해 보세요.</div>}
+  }):<div style={{padding:"30px 0",textAlign:"center",color:MUTED,fontSize:13}}>이 영역에 표시할 단지가 없습니다. 지도를 이동하거나 확대해 보세요.</div>}
   <div style={{fontSize:11,color:MUTED,marginTop:10,lineHeight:1.6}}>{deal==="trade"?"평단가(만원/평)":"보증금"} 중앙값 기준 · 비교 최대 4개 · 신고 지연·정정·해제로 값이 바뀔 수 있는 참고용.</div>
  </Sheet>);
 }
@@ -4538,7 +4558,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const [deal,setDeal]=useState(preset==="jeonse_risk"?"jeonse":"trade");
  const [prop,setProp]=useState("apartment");
  const [filterOpen,setFilterOpen]=useState(false);   // 상세 조건은 시트로 모음(지도 위 깔끔)
- const [uiHide,setUiHide]=useState(false);    // 지도 빈 곳 탭 = 컨트롤 숨김(위는 위로·오른쪽은 오른쪽으로, v1.270)
+ const [uiHide,setUiHide]=useState(false);
+ const [jrShown,setJrShown]=useState(null);  // 전세위험 표시 수 {shown,total,capped}(v1.283)    // 지도 빈 곳 탭 = 컨트롤 숨김(위는 위로·오른쪽은 오른쪽으로, v1.270)
  const [quickPin,setQuickPin]=useState(null); // 단지 핀 탭 → 하단 퀵카드(평형별 가격 전부, v1.261 플로우)
  useEffect(()=>{setQuickPin(null);},[deal,prop]);
  const [poiCats,setPoiCats]=useState([]);   // 주변시설 레이어(education/sports/living) — 확대 시 표출
@@ -4636,7 +4657,7 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
  const vm=viewport?viewport.median:(gsum&&!filterOn?gsum.median:null);
  return (<div style={{margin:"0 -16px",position:"relative",flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
   {/* v1.272: 루트가 wrap 을 꽉 채우고(flex:1), 지도 div 가 100% 로 그 안을 채운다 — 하단 빈 띠 제거 */}
-  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapTap={()=>setUiHide(h=>!h)} onMapReady={m=>{mapRef.current=m;}} full={true}
+  <PriceMarkerMap markers={pMarkers} bands={bands} deal={deal} fitKey={`${deal}:${prop}`} mapCfg={mapCfg} onOpenComplex={onOpenComplex} onViewport={setViewport} poiCats={poiCats} showLm={showLm} showBg={showBg} showJr={showJr} pickCode={pick&&pick.code} signalOn={!!signal} onQuickPin={m=>setQuickPin(m)} onMapTap={()=>setUiHide(h=>!h)} onJrShown={s=>setJrShown(s)} onMapReady={m=>{mapRef.current=m;}} full={true}
    onRegionOpen={(members,region,level,code)=>{
     // 구 경계 클릭 → 그 구만 표시(pick) + 목록 배지 갱신
     pickAt.current=Date.now();
@@ -4706,7 +4727,8 @@ function MapHub({mapCfg, onOpenComplex, inCompare, onToggleCompare, focusGu, onC
     <Icon name={signal==="lm"?"build":signal==="bg"?"bargain":"alerthome"} active color={TEAL} size={15}/>
     <span style={{fontSize:12,fontWeight:700,color:INK,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
      {signal==="lm"?"개발 호재":signal==="bg"?"급매 신호":"전세위험"}만 보는 중
-     <span style={{fontWeight:600,color:MUTED,marginLeft:5}}>· 매물 핀 숨김</span>
+     <span style={{fontWeight:600,color:MUTED,marginLeft:5}}>
+      {signal==="jr"&&jrShown&&jrShown.capped?`· 위험 상위 ${jrShown.shown}곳 — 확대하면 그 지역 전체`:"· 매물 핀 숨김"}</span>
     </span>
     <button type="button" onClick={()=>setSignal(null)} style={{flex:"none",border:"none",background:"var(--chip)",color:INK,borderRadius:9,padding:"5px 10px",fontSize:11.5,fontWeight:800,cursor:"pointer"}}>해제</button>
    </div>

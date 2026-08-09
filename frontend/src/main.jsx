@@ -2716,7 +2716,7 @@ function TopMovers({movers,onOpen}){
 }
 function BudgetPicks({onOpen,favs,embedded}){
  const saved=React.useMemo(()=>loadLoanProfile(),[]);
- const [cash,setCash]=useState(saved&&saved.cash!=null&&saved.cash!==""?String(saved.cash):"");
+ const [cash,setCash]=useState(saved&&saved.cash!=null&&saved.cash!==""?String(Math.round(saved.cash/100)/100):"");   // 억 표시(v1.284)
  const [useIncome,setUseIncome]=useState(!!(saved&&saved.consent&&saved.income));
  const [income,setIncome]=useState(saved&&saved.income!=null&&saved.income!==""?String(saved.income):"");
  const [ptype,setPtype]=useState("all");
@@ -2733,18 +2733,18 @@ function BudgetPicks({onOpen,favs,embedded}){
  const load=useCallback((cashV,incV,useInc,pt,lawds)=>{
   if(cashV===""||+cashV<=0){setRes(null);return;}
   setLoading(true);
-  const inp={self_capital:+cashV,consent:!!(useInc&&incV!==""),annual_income:(useInc&&incV!=="")?+incV:null,
+  const inp={self_capital:Math.round((+cashV)*10000),consent:!!(useInc&&incV!==""),annual_income:(useInc&&incV!=="")?+incV:null,
    existing_annual_payment:0,is_no_house:true,is_first_time:false,over_85:false,property_type:pt,lawd_cds:lawds||null,limit:8};
   fetch(`${API}/loan/affordable`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(inp)})
-   .then(r=>r.json()).then(j=>{setRes(j&&j.items?j:demoAffordable(cashV,incV,useInc,pt,lawds));setLoading(false);})
-   .catch(()=>{setRes(demoAffordable(cashV,incV,useInc,pt,lawds));setLoading(false);});
+   .then(r=>r.json()).then(j=>{setRes(j&&j.items?j:demoAffordable(String(Math.round((+cashV)*10000)),incV,useInc,pt,lawds));setLoading(false);})
+   .catch(()=>{setRes(demoAffordable(String(Math.round((+cashV)*10000)),incV,useInc,pt,lawds));setLoading(false);});
  },[]);
- useEffect(()=>{ if(saved&&saved.cash){ load(String(saved.cash),saved.income!=null?String(saved.income):"",!!(saved.consent&&saved.income),"all",null); } },[]);
+ useEffect(()=>{ if(saved&&saved.cash){ load(String(Math.round(saved.cash/100)/100),saved.income!=null?String(saved.income):"",!!(saved.consent&&saved.income),"all",null); } },[]);
  useEffect(()=>{ if(!editing&&cash!==""){ load(cash,income,useIncome,ptype,codesFor(region)); } },[ptype,region]);
  const submit=()=>{
   if(cash===""||+cash<=0)return;
   const cur=loadLoanProfile()||{};
-  saveLoanProfile({...cur,consent:!!(useIncome&&income!==""),cash:+cash,income:income===""?"":+income});
+  saveLoanProfile({...cur,consent:!!(useIncome&&income!==""),cash:Math.round((+cash)*10000),income:income===""?"":+income});
   setEditing(false); load(cash,income,useIncome,ptype,codesFor(region));
  };
  const TYPES=[["all","전체"],["apartment","아파트"],["officetel","오피스텔"],["rowhouse","빌라"],["detached","단독"]];
@@ -2763,10 +2763,10 @@ function BudgetPicks({onOpen,favs,embedded}){
     <div style={{fontSize:12.5,color:MUTED,marginBottom:8}}>보유 현금(자기자본)을 입력하면, 그 예산으로 살 수 있는 청주 단지를 추천해드려요.</div>
     <div style={{display:"flex",alignItems:"center",gap:8,background:"var(--surface-2)",borderRadius:10,padding:"10px 12px"}}>
      <span style={{fontSize:13,color:MUTED,fontWeight:700,flex:"none"}}>보유 현금</span>
-     <input value={cash} onChange={e=>setCash(e.target.value.replace(/[^0-9]/g,""))} inputMode="numeric" placeholder="예: 15000" style={{flex:1,minWidth:0,border:"none",background:"none",textAlign:"right",fontWeight:800,fontSize:15,color:"var(--ink)",outline:"none"}}/>
-     <span style={{fontSize:13,color:MUTED,flex:"none"}}>만원</span>
+     <input value={cash} onChange={e=>setCash(e.target.value.replace(/[^0-9.]/g,""))} inputMode="decimal" placeholder="예: 1.5" style={{flex:1,minWidth:0,border:"none",background:"none",textAlign:"right",fontWeight:800,fontSize:15,color:"var(--ink)",outline:"none"}}/>
+     <span style={{fontSize:13,color:MUTED,flex:"none"}}>억</span>
     </div>
-    {cash!==""&&+cash>0&&<div className="num" style={{fontSize:11.5,color:MUTED,marginTop:4,textAlign:"right"}}>{eok(+cash)}</div>}
+    {cash!==""&&+cash>0&&<div className="num" style={{fontSize:11.5,color:MUTED,marginTop:4,textAlign:"right"}}>{Math.round(+cash*10000).toLocaleString()}만원</div>}
     <label style={{display:"flex",alignItems:"center",gap:7,marginTop:10,fontSize:12.5,color:"var(--ink)",cursor:"pointer"}}>
      <input type="checkbox" checked={useIncome} onChange={e=>setUseIncome(e.target.checked)} style={{accentColor:TEAL,width:16,height:16}}/>
      연소득 반영(더 정확한 한도) <span style={{color:MUTED}}>· 선택</span>
@@ -6169,7 +6169,7 @@ function LoanField({label,val,set,suf,ph}){
  return (<label style={{display:"block"}}>
   <div style={{fontSize:12.5,color:MUTED,marginBottom:5,fontWeight:600}}>{label}</div>
   <div style={{display:"flex",alignItems:"center",gap:6,background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:11,padding:"0 12px"}}>
-   <input type="number" inputMode="numeric" value={val} placeholder={ph||""} onChange={e=>set(e.target.value)}
+   <input type="number" step="0.01" inputMode="decimal" value={val} placeholder={ph||""} onChange={e=>set(e.target.value)}
     style={{flex:1,minWidth:0,border:"none",background:"transparent",outline:"none",font:"inherit",fontSize:15,padding:"11px 0",color:"var(--ink)"}}/>
    <span style={{fontSize:12.5,color:MUTED,flex:"none"}}>{suf}</span>
   </div>
@@ -6261,23 +6261,25 @@ function PolicyMatch(){
 function Loan({initialPrice,onOpen}){
  const saved=React.useMemo(()=>loadLoanProfile(),[]);
  const [consent,setConsent]=useState(saved?(saved.consent?true:false):null);
- const [price,setPrice]=useState(initialPrice!=null?initialPrice:(saved&&saved.price!=null?saved.price:30000)),[cash,setCash]=useState(saved&&saved.cash!=null?saved.cash:""),[income,setIncome]=useState(saved&&saved.income!=null?saved.income:""),[debt,setDebt]=useState(saved&&saved.debt!=null?saved.debt:"");
+ // 목돈은 억 단위 입력(v1.284 단위 통일 마감 — 저장·API는 만원 유지, 경계 변환)
+ const _mw2e=v=>v==null||v===""?"":String(Math.round(v/100)/100);   // 만원→억(소수2)
+ const [price,setPrice]=useState(initialPrice!=null?_mw2e(initialPrice):(saved&&saved.price!=null?_mw2e(saved.price):"3")),[cash,setCash]=useState(saved&&saved.cash!=null&&saved.cash!==""?_mw2e(saved.cash):"");
+ const [income,setIncome]=useState(saved&&saved.income!=null?saved.income:""),[debt,setDebt]=useState(saved&&saved.debt!=null?saved.debt:"");
  const [noHouse,setNoHouse]=useState(saved?!!saved.noHouse:true),[first,setFirst]=useState(saved?!!saved.first:false),[over85,setOver85]=useState(saved?!!saved.over85:false),[rate,setRate]=useState(saved&&saved.rate!=null?saved.rate:4.0),[years,setYears]=useState(saved&&saved.years!=null?saved.years:30);
  const [remember,setRemember]=useState(!!saved),[hasSaved,setHasSaved]=useState(!!saved);
  const [res,setRes]=useState(null);
  const calc=async()=>{
-  if(remember){saveLoanProfile({consent:consent===true,price,cash,income,debt,noHouse,first,over85,rate,years});setHasSaved(true);}
+  if(remember){saveLoanProfile({consent:consent===true,price:Math.round((+price||0)*10000),cash:cash===""?"":Math.round((+cash)*10000),income,debt,noHouse,first,over85,rate,years});setHasSaved(true);}
   else{clearLoanProfile();setHasSaved(false);}
-  const inp={price:+price||0,consent:consent===true,self_capital:cash===""?null:+cash,
+  const inp={price:Math.round((+price||0)*10000),consent:consent===true,self_capital:cash===""?null:Math.round((+cash)*10000),
    annual_income:(consent===true&&income!=="")?+income:null,existing_annual_payment:debt===""?0:+debt,
    is_no_house:noHouse,is_first_time:first,over_85:over85,rate_pct:rate,years};
   try{const r=await fetch(`${API}/loan/estimate`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(inp)}).then(x=>x.json());setRes(r);}
-  catch(e){setRes(loanLocal({price:+price||0,consent:consent===true,self_capital:cash===""?null:+cash,
+  catch(e){setRes(loanLocal({price:Math.round((+price||0)*10000),consent:consent===true,self_capital:cash===""?null:Math.round((+cash)*10000),
    annual_income:(consent===true&&income!=="")?+income:null,existing:debt===""?0:+debt,is_no_house:noHouse,is_first_time:first,over_85:over85,rate,years}));}
  };
  const forget=()=>{clearLoanProfile();setHasSaved(false);setRemember(false);};
  if(consent===null)return <ConsentGate onChoose={setConsent}/>;
- const priceEok=(+price)?`약 ${((+price)/10000).toFixed(2)}억` : "";
  return (<div style={{marginTop:6}}>
   <div style={{display:"flex",alignItems:"center",gap:8}}>
    <span className="pill" style={{background:consent?"rgba(31,166,118,.16)":"rgba(225,120,40,.14)",color:consent?"#1d6b3a":"#A85420"}}>{consent?"맞춤 추정":"간이 추정"}</span>
@@ -6286,14 +6288,13 @@ function Loan({initialPrice,onOpen}){
   </div>
   <div className="card" style={{padding:16,marginTop:10}}>
    {/* 단지 연동(v1.253) — 매매가를 손으로 만들지 않게. 고르면 실거래 중앙값이 들어감 */}
-   <ComplexPicker label="단지로 채우기" onPick={(c,d)=>{ if(d&&d.price_median)setPrice(String(Math.round(d.price_median))); }}/>
+   <ComplexPicker label="단지로 채우기" onPick={(c,d)=>{ if(d&&d.price_median)setPrice(String(Math.round(d.price_median/100)/100)); }}/>
    <div className="grid2">
-    <LoanField label="매매가" val={price} set={setPrice} suf="만원"/>
-    <LoanField label="보유 현금(자기자본)" val={cash} set={setCash} suf="만원" ph="선택"/>
+    <LoanField label="매매가" val={price} set={setPrice} suf="억"/>
+    <LoanField label="보유 현금(자기자본)" val={cash} set={setCash} suf="억" ph="선택"/>
     {consent&&<LoanField label="연소득(부부합산)" val={income} set={setIncome} suf="만원"/>}
     {consent&&<LoanField label="기존 부채 연상환액" val={debt} set={setDebt} suf="만원/년" ph="0"/>}
    </div>
-   {priceEok&&<div className="num" style={{fontSize:12,color:MUTED,marginTop:6}}>매매가 {priceEok}</div>}
 
    <div style={{fontSize:12.5,color:MUTED,fontWeight:600,margin:"16px 0 6px"}}>내 조건</div>
    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>

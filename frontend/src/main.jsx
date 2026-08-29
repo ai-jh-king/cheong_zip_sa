@@ -1434,9 +1434,10 @@ function PostDetail({id,account,onBack,onNeedLogin,onChanged,onOpenComplex,onEdi
  </div>);
 }
 /* 뉴스 리스트(v1.242) — 집사 소식 [뉴스] 서브탭: 피드의 부동산 뉴스 최근 7일. 원문 링크만(요약 왜곡 없음). */
-function CityNow({feed}){
- // v1.271(사용자 확정): '청주는 지금' 하나로 통합 — 개발 호재(추진/확정)와 부동산 뉴스를 같은 리스트에,
- // 성격은 배지로 구분(추진·확정·완료 / 뉴스). 소식 탭은 '읽는 화면'이므로 페이징 대신 더보기+내부 스크롤.
+function CityNow({feed,only="all"}){
+ // v1.285(사용자 확정): 집사 소식 = 큰 제목 '청주는 지금' 아래 뉴스 | 도감 | 정보 3탭.
+ //  · only="news" → 최근 7일 부동산 뉴스만 / only="info" → 개발 이슈(추진·계획·확정)만.
+ //  · 행 구조·배지·더보기는 통합 시절(v1.271)과 동일하게 유지(사용자: "구조는 똑같이").
  const [lms,setLms]=useState(null);
  useEffect(()=>{let on=true;
   fetch(`${API}/landmarks`).then(r=>r.json()).then(j=>{if(on)setLms(Array.isArray(j)?j:[]);}).catch(()=>{if(on)setLms([]);});
@@ -1446,11 +1447,10 @@ function CityNow({feed}){
   const d=new Date(String(n.date).replace(/\./g,"-"));
   return isNaN(d.getTime())?true:(Date.now()-d.getTime())<=7*86400000;
  });
- // 호재(고정 정보) 먼저, 그 다음 최근 7일 뉴스 — 성격이 다르므로 시간축으로 억지 정렬하지 않는다.
- const items=[
-  ...((lms||[]).map(L=>({kind:"lm",L}))),
-  ...(news.map(n=>({kind:"news",n}))),
- ];
+ // 탭별 목록. 통합(all)일 때만 호재→뉴스 순으로 이어 붙인다(성격이 달라 시간축 정렬 안 함).
+ const lmItems=(lms||[]).map(L=>({kind:"lm",L}));
+ const newsItems=news.map(n=>({kind:"news",n}));
+ const items=only==="news"?newsItems:only==="info"?lmItems:[...lmItems,...newsItems];
  const LM_BADGE={confirmed:{t:"확정",c:TEAL,bg:"rgba(15,118,110,.12)"},
                  ongoing:{t:"추진",c:"#C77A1A",bg:"rgba(199,122,26,.14)"},
                  planned:{t:"계획",c:MUTED,bg:"var(--chip)"}};
@@ -1485,13 +1485,19 @@ function CityNow({feed}){
    : <div key={"n"+i} style={{...ROW,padding:"11px 0",borderTop:i>0?"1px solid var(--line)":"none"}}>{inner}</div>;
  };
  return (<div style={{marginTop:2}}>
-  <div style={{display:"flex",alignItems:"center",gap:6,margin:"2px 2px 3px"}}>
-   <span style={{fontWeight:800,fontSize:16,display:"inline-flex",alignItems:"center",gap:6}}><Icon name="rocket" active color={INK} size={17}/>청주는 지금</span>
+  {/* 제목은 상위(집사 소식)의 '청주는 지금' 하나로 — 여기선 탭별 한 줄 안내만(v1.285) */}
+  <div style={{fontSize:11.5,color:MUTED,margin:"0 2px 9px",lineHeight:1.55}}>
+   {only==="info"?"청주 부동산에 영향을 줄 만한 개발 이슈예요. 추진 단계와 출처를 함께 확인하세요."
+    :only==="news"?"최근 7일 청주·부동산 뉴스예요. 제목을 누르면 언론사 원문으로 이동합니다."
+    :"청주 부동산에 영향을 줄 만한 개발 이슈와 최근 7일 뉴스예요. 출처를 함께 확인하세요."}
   </div>
-  <div style={{fontSize:11.5,color:MUTED,margin:"0 2px 9px",lineHeight:1.55}}>청주 부동산에 영향을 줄 만한 개발 이슈와 최근 7일 뉴스예요. 출처를 함께 확인하세요.</div>
-  {items.length===0?<div className="card" style={{padding:20}}><Empty>표시할 소식이 없어요.</Empty></div>
+  {items.length===0?<div className="card" style={{padding:20}}><Empty>{only==="info"?"등록된 개발 이슈가 없어요.":only==="news"?"최근 7일 뉴스가 없어요.":"표시할 소식이 없어요."}</Empty></div>
    :<div className="card" style={{padding:"2px 14px"}}><MoreList items={items} initial={6} step={6} render={row}/></div>}
-  <div style={{fontSize:10,color:MUTED,margin:"8px 2px 0",lineHeight:1.45}}>개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보이며 투자 판단·집값 상승을 보장하지 않습니다. 뉴스는 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다.</div>
+  <div style={{fontSize:10,color:MUTED,margin:"8px 2px 0",lineHeight:1.45}}>
+   {only==="news"?"뉴스는 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다."
+    :only==="info"?"개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보이며 투자 판단·집값 상승을 보장하지 않습니다."
+    :"개발 이슈는 진행 상황에 따라 변동될 수 있는 참고 정보이며 투자 판단·집값 상승을 보장하지 않습니다. 뉴스는 네이버 뉴스 검색 API 기반이며 기사 내용·저작권은 각 언론사에 있습니다."}
+  </div>
  </div>);
 }
 
@@ -1537,19 +1543,25 @@ function CommunityTab({kind="talk",account,onNeedLogin,onOpenComplex,openId,onCo
  const renderSub=(key,label,icon)=>{const on=section===key;
   return <button key={key} onClick={()=>setSection&&setSection(key)} style={{flex:1,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,padding:"9px 0",borderRadius:8,background:on?"var(--surface-solid)":"transparent",color:on?INK:MUTED,boxShadow:on?"0 1px 3px rgba(30,64,90,.12)":"none",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}><Icon name={icon} active={on} color={on?INK:MUTED} size={15}/>{label}</button>;};
  return (<div style={{marginTop:6}}>
+  {/* 집사 소식 = 큰 제목 '청주는 지금' + 뉴스|도감|정보 3탭(v1.285, 사용자 확정) */}
+  {kind==="news"&&<div style={{display:"flex",alignItems:"center",gap:7,margin:"2px 2px 9px"}}>
+   <Icon name="rocket" active color={INK} size={19}/>
+   <span style={{fontWeight:800,fontSize:18,letterSpacing:"-0.01em"}}>청주는 지금</span>
+  </div>}
   <div style={{display:"flex",gap:6,background:"var(--chip)",borderRadius:11,padding:4,marginBottom:12}}>
    {kind==="news"?<React.Fragment>
-    {renderSub("guide","도감","book")}
     {renderSub("news","뉴스","news")}
+    {renderSub("guide","도감","book")}
+    {renderSub("info","정보","build")}
    </React.Fragment>:<React.Fragment>
     {renderSub("board","게시판","board")}
     {renderSub("listing","매물","listing")}
    </React.Fragment>}
   </div>
-  {kind==="news"&&section!=="news"?
+  {kind==="news"&&section==="guide"?
    <GuideBook inline initialGid={guideGid} onOnboard={onOnboard}
     onGoBoard={()=>{setGuideGid(null);onGoTalk&&onGoTalk();}}/>
-  :kind==="news"?<CityNow feed={feed}/>
+  :kind==="news"?<CityNow feed={feed} only={section==="info"?"info":"news"}/>
   :section==="listing"?<ListingsTab account={account} onNeedLogin={onNeedLogin} openId={listingOpenId} onConsumeOpen={onConsumeListingOpen}/>:<React.Fragment>
   {latestGuide&&<div onClick={()=>{onGoGuide&&onGoGuide(latestGuide.id);}} role="button" tabIndex={0} onKeyDown={onEnter(()=>{onGoGuide&&onGoGuide(latestGuide.id);})}
     className="card" style={{padding:"11px 14px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:"linear-gradient(100deg,rgba(15,118,110,.10),rgba(15,118,110,.02))"}}>
@@ -1927,7 +1939,7 @@ function App(){
  const [loanOpen,setLoanOpen]=useState(false);
  const [agentOpen,setAgentOpen]=useState(false);
  const [openListingId,setOpenListingId]=useState(null);
- const [boardSection,setBoardSection]=useState("guide");   // 집사 소식(콘텐츠): guide(도감·기본)|news(뉴스, v1.242)
+ const [boardSection,setBoardSection]=useState("news");   // 집사 소식: news(뉴스·기본)|guide(도감)|info(개발 이슈) — v1.285
  const [talkSection,setTalkSection]=useState("board");     // 소통 탭(v1.242 분리): board(게시판)|listing(매물)
  const [openGuideId,setOpenGuideId]=useState(null);        // 소통→도감 최신 글 딥오픈
  const [myHome,setMyHome]=useState(()=>{try{const v=safeStore.get("cj_myhome");return v?JSON.parse(v):null;}catch(e){return null;}});
